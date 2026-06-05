@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Wakuwaku Quest</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <section id="auth-screen" class="auth-screen" aria-label="ログイン">
+      <div class="auth-card">
+        <div class="brand auth-brand">
+          <div class="brand-mark">WQ</div>
+          <div>
+            <p class="eyebrow">探究プラットフォーム</p>
+            <h1>Wakuwaku Quest</h1>
+          </div>
+        </div>
+
+        <form id="login-form" class="auth-form">
+          <h2>ログイン</h2>
+          <label for="login-email">メールアドレス</label>
+          <input id="login-email" type="email" placeholder="student@example.com" required />
+          <label for="login-password">パスワード</label>
+          <input id="login-password" type="password" placeholder="8文字以上" required />
+          <button class="primary-button" type="submit">ログイン</button>
+          <button id="demo-login-button" class="secondary-button" type="button">デモではじめる</button>
+        </form>
+
+        <form id="member-form" class="auth-form hidden">
+          <h2>会員情報入力</h2>
+          <label for="member-name">名前</label>
+          <input id="member-name" type="text" placeholder="山田 はる" required />
+          <label for="member-school">学校名</label>
+          <input id="member-school" type="text" placeholder="探究中学校" />
+          <div class="form-grid">
+            <div>
+              <label for="member-grade">学年</label>
+              <select id="member-grade">
+                <option>中1</option>
+                <option>中2</option>
+                <option>中3</option>
+                <option>高1</option>
+                <option>高2</option>
+                <option>高3</option>
+              </select>
+            </div>
+            <div>
+              <label for="member-region">地域</label>
+              <input id="member-region" type="text" placeholder="東京都" />
+            </div>
+          </div>
+          <label for="member-interest">最初のワクワク</label>
+          <textarea id="member-interest" rows="3" placeholder="例：AI、海洋ごみ、地域の居場所、文化祭で社会課題展示"></textarea>
+          <button class="primary-button" type="submit">会員情報を保存</button>
+          <button id="back-login-button" class="secondary-button" type="button">ログインに戻る</button>
+        </form>
+      </div>
+    </section>
+
+    <main class="shell">
+      <aside class="sidebar" aria-label="探究プロフィール">
+        <div class="brand">
+          <div class="brand-mark">WQ</div>
+          <div>
+            <p class="eyebrow">探究プラットフォーム</p>
+            <h1>Wakuwaku Quest</h1>
+          </div>
+        </div>
+
+        <section class="panel member-panel">
+          <div class="section-head">
+            <h2>会員情報</h2>
+            <button id="edit-member-button" class="text-button" type="button">編集</button>
+          </div>
+          <div class="member-summary">
+            <strong id="member-summary-name">未設定</strong>
+            <span id="member-summary-meta">学年・学校未設定</span>
+          </div>
+          <button id="logout-button" class="secondary-button db-button" type="button">ログアウト</button>
+        </section>
+
+        <section class="panel profile-panel">
+          <div class="profile-top">
+            <div>
+              <p class="label">今日の探究値</p>
+              <strong id="quest-score">72</strong>
+            </div>
+            <span id="score-delta" class="delta">+0</span>
+          </div>
+          <div class="meter">
+            <span id="quest-meter"></span>
+          </div>
+          <div class="mini-grid">
+            <div>
+              <span>ワクワク</span>
+              <strong id="joy-value">84</strong>
+            </div>
+            <div>
+              <span>探究距離</span>
+              <strong id="drive-value">61</strong>
+            </div>
+            <div>
+              <span>振り返り</span>
+              <strong id="thanks-value">18</strong>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel mission-panel">
+          <div class="section-head">
+            <h2>今日の探検</h2>
+            <span id="streak-count" class="small-badge">0日</span>
+          </div>
+          <p id="daily-mission" class="mission-text"></p>
+          <div class="pill-row" id="interest-pills"></div>
+        </section>
+
+        <section class="panel">
+          <div class="section-head">
+            <h2>探究の広がり</h2>
+            <span id="best-depth" class="small-badge">背景</span>
+          </div>
+          <div id="growth-path" class="growth-path"></div>
+        </section>
+
+        <section class="panel input-panel">
+          <div class="section-head">
+            <h2>ワクワクを集める</h2>
+            <button id="import-button" class="icon-button" type="button" aria-label="アプリから収集">↗</button>
+          </div>
+          <textarea id="spark-input" rows="4" placeholder="例：海洋ごみ、AIで学習支援、地域の居場所、文化祭で社会課題展示"></textarea>
+          <div class="range-row">
+            <label for="motivation">モチベーション</label>
+            <input id="motivation" type="range" min="1" max="100" value="68" />
+            <output id="motivation-output">68</output>
+          </div>
+          <button id="analyze-button" class="primary-button" type="button">次の出会いを探す</button>
+        </section>
+
+        <section class="panel">
+          <div class="section-head">
+            <h2>探究パラメータ</h2>
+          </div>
+          <div class="capital-list">
+            <div>
+              <span>問いを立てる力</span>
+              <div class="bar"><i id="capital-curiosity"></i></div>
+            </div>
+            <div>
+              <span>遠くへつなぐ力</span>
+              <div class="bar"><i id="capital-collab"></i></div>
+            </div>
+            <div>
+              <span>振り返る力</span>
+              <div class="bar"><i id="capital-trust"></i></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="section-head">
+            <h2>探究ログ</h2>
+            <button id="reset-button" class="text-button" type="button">リセット</button>
+          </div>
+          <ol id="activity-log" class="activity-log"></ol>
+        </section>
+
+        <section class="panel database-panel">
+          <div class="section-head">
+            <h2>データベース</h2>
+            <span id="db-status" class="small-badge">準備中</span>
+          </div>
+          <div id="db-counts" class="db-counts"></div>
+          <button id="export-db-button" class="secondary-button db-button" type="button">DBを書き出す</button>
+          <div class="drive-sync-box">
+            <label for="drive-api-url">Google Drive API URL</label>
+            <input id="drive-api-url" type="url" placeholder="Apps ScriptのWebアプリURL" />
+            <div class="drive-sync-actions">
+              <button id="save-drive-url-button" class="secondary-button" type="button">URL保存</button>
+              <button id="sync-drive-button" class="primary-button" type="button">Drive同期</button>
+            </div>
+            <p id="drive-sync-status" class="drive-sync-status">未設定</p>
+          </div>
+          <div class="drive-sync-box maps-api-box">
+            <label for="maps-api-key">Google Maps APIキー</label>
+            <input id="maps-api-key" type="password" autocomplete="off" placeholder="ブラウザ内だけに保存" />
+            <div class="drive-sync-actions">
+              <button id="save-maps-key-button" class="secondary-button" type="button">キー保存</button>
+              <button id="load-maps-button" class="primary-button" type="button">地図表示</button>
+            </div>
+            <p id="maps-status" class="drive-sync-status">未設定</p>
+          </div>
+        </section>
+      </aside>
+
+      <section class="map-area" aria-label="探索マップ">
+        <header class="topbar">
+          <div class="search-pill">
+            <span>⌕</span>
+            <input id="map-search" type="search" placeholder="イベント・社会課題・探究テーマを検索" />
+          </div>
+          <div class="mode-tabs" role="tablist" aria-label="表示モード">
+            <button class="active" type="button" data-mode="quest" onclick="window.setQuestMode && window.setQuestMode('quest')">探究</button>
+            <button type="button" data-mode="event-admin" onclick="window.setQuestMode && window.setQuestMode('event-admin')">イベント登録</button>
+            <button type="button" data-mode="feedback" onclick="window.setQuestMode && window.setQuestMode('feedback')">フィードバック</button>
+            <button type="button" data-mode="capital" onclick="window.setQuestMode && window.setQuestMode('capital')">成長</button>
+          </div>
+        </header>
+
+        <div class="map-canvas quest-view">
+          <div id="google-map-canvas" class="google-map-canvas" aria-hidden="true"></div>
+          <div class="map-grid"></div>
+          <div class="route"></div>
+          <div id="spots-layer"></div>
+          <div class="user-pin" aria-label="現在地"></div>
+        </div>
+
+        <section class="event-drawer quest-view" aria-label="推薦イベント">
+          <div class="section-head">
+            <h2>推薦イベント</h2>
+            <div class="drawer-actions">
+              <span id="event-count" class="small-badge">5件</span>
+              <button id="compact-events-button" class="icon-button drawer-button" type="button" aria-label="推薦イベントを小さく表示" title="小さく表示" onclick="window.toggleCompactEvents && window.toggleCompactEvents()">□</button>
+              <button id="collapse-events-button" class="icon-button drawer-button" type="button" aria-label="推薦イベントを折りたたむ" title="折りたたむ" onclick="window.toggleCollapseEvents && window.toggleCollapseEvents()">−</button>
+            </div>
+          </div>
+          <div id="event-list" class="event-list"></div>
+        </section>
+
+        <article class="encounter-panel quest-view" aria-live="polite">
+          <div class="encounter-media" id="encounter-media"></div>
+          <div class="encounter-body">
+            <div class="encounter-title-row">
+              <div>
+                <p class="eyebrow">ワクワクの一歩先のイベント</p>
+                <h2 id="encounter-title"></h2>
+              </div>
+              <strong id="encounter-index"></strong>
+            </div>
+            <p id="encounter-description"></p>
+            <div class="tag-row" id="tag-row"></div>
+            <dl class="reason-grid">
+              <div>
+                <dt>出会う理由</dt>
+                <dd id="match-reason"></dd>
+              </div>
+              <div>
+                <dt>社会課題</dt>
+                <dd id="impact-field"></dd>
+              </div>
+            </dl>
+            <div class="depth-panel">
+              <div class="range-row depth-row">
+                <label for="exploration-depth">どこまで探究できたか</label>
+                <input id="exploration-depth" type="range" min="1" max="5" value="2" />
+                <output id="exploration-depth-output">背景まで</output>
+              </div>
+              <div class="depth-scale" aria-hidden="true">
+                <span>事実</span>
+                <span>背景</span>
+                <span>構造</span>
+                <span>越境</span>
+                <span>実装</span>
+              </div>
+            </div>
+            <div class="question-card">
+              <p class="label">問いの道筋</p>
+              <ol id="question-path"></ol>
+            </div>
+            <div class="reflection-box">
+              <label for="reflection-input">気づき・問い</label>
+              <textarea id="reflection-input" rows="2" placeholder="例：なぜ同じ場所にペットボトルが集まるのか。販売や捨て方の仕組みも関係しそう。"></textarea>
+              <label for="hypothesis-input">次に試したいこと</label>
+              <input id="hypothesis-input" type="text" placeholder="例：学校で回収場所別にごみの種類を調べる" />
+            </div>
+            <div class="action-row">
+              <button id="start-button" class="primary-button" type="button">イベントに参加</button>
+              <button id="thanks-button" class="secondary-button" type="button">探究を記録</button>
+            </div>
+          </div>
+        </article>
+
+        <section class="event-admin-view hidden" aria-label="イベント登録">
+          <div class="event-admin-shell">
+            <section class="event-admin-main">
+              <div class="section-head">
+                <div>
+                  <p class="eyebrow">主催者・先生画面</p>
+                  <h2>イベント登録</h2>
+                </div>
+                <span id="event-admin-status" class="small-badge">未登録</span>
+              </div>
+
+              <form id="event-form" class="event-form">
+                <div class="form-grid">
+                  <div>
+                    <label for="event-title">イベント名</label>
+                    <input id="event-title" type="text" placeholder="例：商店街インタビュー探究" required />
+                  </div>
+                  <div>
+                    <label for="event-impact">社会課題</label>
+                    <input id="event-impact" type="text" placeholder="例：地域経済・フードロス" required />
+                  </div>
+                </div>
+                <label for="event-description">内容</label>
+                <textarea id="event-description" rows="4" placeholder="中高生がどんな事象に出会い、どんな問いへ広げられるイベントかを書いてください。" required></textarea>
+                <div class="form-grid">
+                  <div>
+                    <label for="event-tags">タグ</label>
+                    <input id="event-tags" type="text" placeholder="例：商店街, 聞き取り, 食" />
+                  </div>
+                  <div>
+                    <label for="event-keywords">推薦キーワード</label>
+                    <input id="event-keywords" type="text" placeholder="例：食, 地域, 経済" />
+                  </div>
+                </div>
+                <div class="form-grid">
+                  <div>
+                    <label for="event-index">探究指数</label>
+                    <input id="event-index" type="number" min="1" max="100" value="78" />
+                  </div>
+                  <div>
+                    <label for="event-color">色</label>
+                    <input id="event-color" type="color" value="#2f8f63" />
+                  </div>
+                </div>
+                <fieldset class="question-fieldset">
+                  <legend>問いの道筋</legend>
+                  <input id="event-q1" type="text" placeholder="事実: 何が起きているか" />
+                  <input id="event-q2" type="text" placeholder="背景: なぜ起きているか" />
+                  <input id="event-q3" type="text" placeholder="構造: 誰の行動や仕組みと関係するか" />
+                  <input id="event-q4" type="text" placeholder="越境: 他地域や他分野とどうつながるか" />
+                  <input id="event-q5" type="text" placeholder="実装: 学校や地域で何を試せるか" />
+                </fieldset>
+                <div class="action-row">
+                  <button class="primary-button" type="submit">イベントを登録</button>
+                  <button id="sample-event-button" class="secondary-button" type="button">サンプルを登録</button>
+                </div>
+              </form>
+            </section>
+
+            <aside class="event-admin-side">
+              <section>
+                <div class="section-head">
+                  <h3>登録済みイベント</h3>
+                  <span id="registered-event-count" class="small-badge">0件</span>
+                </div>
+                <div id="registered-event-list" class="registered-event-list"></div>
+              </section>
+            </aside>
+          </div>
+        </section>
+
+        <section class="feedback-view hidden" aria-label="先生・メンターのフィードバック">
+          <div class="feedback-shell">
+            <section class="feedback-main">
+              <div class="section-head">
+                <div>
+                  <p class="eyebrow">先生・メンター画面</p>
+                  <h2>探究フィードバック</h2>
+                </div>
+                <span id="feedback-status" class="small-badge">未送信</span>
+              </div>
+
+              <div class="student-summary">
+                <div>
+                  <span>生徒</span>
+                  <strong>中高生ユーザー</strong>
+                </div>
+                <div>
+                  <span>探究値</span>
+                  <strong id="feedback-quest-score">72</strong>
+                </div>
+                <div>
+                  <span>最高到達</span>
+                  <strong id="feedback-best-depth">背景</strong>
+                </div>
+                <div>
+                  <span>記録数</span>
+                  <strong id="feedback-reflection-count">0</strong>
+                </div>
+              </div>
+
+              <div class="feedback-grid">
+                <section>
+                  <div class="section-head">
+                    <h3>最近の探究記録</h3>
+                    <span id="review-target" class="small-badge">選択中</span>
+                  </div>
+                  <div id="reflection-review-list" class="review-list"></div>
+                </section>
+
+                <section>
+                  <h3>コメントを書く</h3>
+                  <div class="mentor-form">
+                    <label for="feedback-kind">観点</label>
+                    <select id="feedback-kind">
+                      <option value="question">問いの立て方</option>
+                      <option value="connection">遠くへつなぐ力</option>
+                      <option value="evidence">根拠の集め方</option>
+                      <option value="next">次の一歩</option>
+                    </select>
+                    <label for="mentor-comment">フィードバック</label>
+                    <textarea id="mentor-comment" rows="5" placeholder="例：背景まで調べられているので、次は誰の行動や仕組みが関係しているかを図にしてみよう。"></textarea>
+                    <label for="mentor-next-question">次の問い</label>
+                    <input id="mentor-next-question" type="text" placeholder="例：この問題に関わる人を3人に分けると誰か？" />
+                    <button id="save-feedback-button" class="primary-button" type="button">フィードバックを送る</button>
+                    <div class="quick-feedback" aria-label="クイックフィードバック">
+                      <button type="button" data-template="structure">構造へ進もう</button>
+                      <button type="button" data-template="evidence">根拠を集めよう</button>
+                      <button type="button" data-template="action">小さく試そう</button>
+                    </div>
+                  </div>
+                </section>
+              </div>
+            </section>
+
+            <aside class="feedback-side">
+              <section>
+                <h3>送信済みコメント</h3>
+                <div id="mentor-feedback-list" class="mentor-feedback-list"></div>
+              </section>
+              <section>
+                <h3>次に見るポイント</h3>
+                <ul id="mentor-suggestions" class="mentor-suggestions"></ul>
+              </section>
+            </aside>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <script src="database.js"></script>
+    <script src="public-config.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
