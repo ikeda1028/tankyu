@@ -99,6 +99,7 @@ const defaultState = {
   reflections: [],
   feedbacks: [],
   customEvents: [],
+  aiSuggestions: [],
   driveSync: {
     apiUrl: "",
     lastSyncAt: "",
@@ -225,6 +226,9 @@ const els = {
     document.querySelector("#event-q5"),
   ],
   sampleEventButton: document.querySelector("#sample-event-button"),
+  searchAiEventsButton: document.querySelector("#search-ai-events-button"),
+  aiSuggestionStatus: document.querySelector("#ai-suggestion-status"),
+  aiSuggestionList: document.querySelector("#ai-suggestion-list"),
   registeredEventCount: document.querySelector("#registered-event-count"),
   registeredEventList: document.querySelector("#registered-event-list"),
 };
@@ -235,6 +239,7 @@ state.maps = { ...defaultState.maps, ...(state.maps || {}) };
 state.auth = { ...defaultState.auth, ...(state.auth || {}) };
 state.member = { ...defaultState.member, ...(state.member || {}) };
 state.ui = { ...defaultState.ui, ...(state.ui || {}) };
+state.aiSuggestions = Array.isArray(state.aiSuggestions) ? state.aiSuggestions : [];
 let appDb = null;
 let dbReady = false;
 let dbSavePromise = Promise.resolve();
@@ -596,6 +601,15 @@ function formatDateLabel(value) {
   }).format(new Date(`${value}T00:00:00`));
 }
 
+function escapeHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 function getEventTypeLabel(event) {
   return event.eventType === "limited" ? "期間限定" : "常設";
 }
@@ -918,6 +932,7 @@ function render() {
   renderActivity();
   renderGrowthPath();
   renderFeedbackView();
+  renderAiSuggestions();
   renderRegisteredEvents();
   renderDriveSync();
   renderMapsSettings();
@@ -1320,7 +1335,16 @@ function importMockApps() {
 
 function resetState() {
   localStorage.removeItem(STORAGE_KEY);
-  Object.assign(state, { ...defaultState, activity: [], sparks: [], completed: [], reflections: [], feedbacks: [], customEvents: [] });
+  Object.assign(state, {
+    ...defaultState,
+    activity: [],
+    sparks: [],
+    completed: [],
+    reflections: [],
+    feedbacks: [],
+    customEvents: [],
+    aiSuggestions: [],
+  });
   els.sparkInput.value = "";
   els.reflectionInput.value = "";
   els.hypothesisInput.value = "";
@@ -1361,6 +1385,132 @@ function createPositionFromLatLng(lat, lng, fallbackIndex = 0) {
   const x = clamp(((lng - 122) / (153 - 122)) * 100);
   const y = clamp(((46 - lat) / (46 - 24)) * 100);
   return { x, y, lat, lng };
+}
+
+function suggestionToEventData(suggestion, index = 0) {
+  const title = suggestion.title || "AI候補イベント";
+  const lat = Number(suggestion.lat);
+  const lng = Number(suggestion.lng);
+  const hasLatLng = Number.isFinite(lat) && Number.isFinite(lng);
+  const tags = Array.isArray(suggestion.tags) ? suggestion.tags.filter(Boolean) : [];
+  const keywords = Array.isArray(suggestion.keywords) ? suggestion.keywords.filter(Boolean) : [];
+  const questionPath = Array.isArray(suggestion.questionPath) ? suggestion.questionPath.filter(Boolean).slice(0, 5) : [];
+  const fallbackQuestions = [
+    "何が起きているか",
+    "なぜ起きているか",
+    "誰の行動や仕組みと関係するか",
+    "他地域や他分野とどうつながるか",
+    "学校や地域で何を試せるか",
+  ];
+
+  while (questionPath.length < 5) {
+    questionPath.push(fallbackQuestions[questionPath.length]);
+  }
+
+  return {
+    id: createEventId(title),
+    title,
+    index: clamp(suggestion.explorationIndex || suggestion.index || 76),
+    description: suggestion.description || "AIが現在のワクワクから生成した探究イベント候補です。",
+    tags: tags.length ? tags : ["AI候補", "探究"],
+    keywords: keywords.length ? keywords : tags,
+    impact: suggestion.impact || "探究学習・地域課題",
+    locationName: suggestion.locationName || "",
+    eventType: suggestion.eventType === "limited" ? "limited" : "permanent",
+    startDate: suggestion.eventType === "limited" ? suggestion.startDate || "" : "",
+    endDate: suggestion.eventType === "limited" ? suggestion.endDate || "" : "",
+    questionPath,
+    color: ["#2f8f63", "#2f6fb3", "#c85d72", "#d49b2a"][index % 4],
+    position: hasLatLng ? createPositionFromLatLng(lat, lng, state.customEvents.length) : createMapPosition(state.customEvents.length),
+    boost: { joy: 4, distance: 5, reflection: 3 },
+    userCreated: true,
+    aiGenerated: true,
+    createdAt: new Date().toISOString(),
+  };
+}
+
+function renderAiSuggestions() {
+  if (!els.aiSuggestionList || !els.aiSuggestionStatus) return;
+  const suggestions = state.aiSuggestions || [];
+  if (!suggestions.length) {
+    els.aiSuggestionList.innerHTML = "<p class=\"empty-note\">まだAI候補はありません。</p>";
+    return;
+  }
+
+  els.aiSuggestionStatus.textContent = `${suggestions.length}件の候補を表示中`;
+  els.aiSuggestionList.innerHTML = suggestions
+    .map((suggestion, index) => {
+      const eventType = suggestion.eventType === "limited" ? "期間限定" : "常設";
+      const period =
+        suggestion.eventType === "limited" && (suggestion.startDate || suggestion.endDate)
+          ? ` / ${[suggestion.startDate, suggestion.endDate].filter(Boolean).join("-")}`
+          : "";
+      return `<article class="ai-suggestion-card">
+        <div>
+          <strong>${escapeHtml(suggestion.title || "AI候補イベント")}</strong>
+          <span>${escapeHtml([suggestion.impact, suggestion.locationName, `${eventType}${period}`].filter(Boolean).join(" / "))}</span>
+        </div>
+        <em>${escapeHtml(suggestion.explorationIndex || 76)}</em>
+        <p>${escapeHtml(suggestion.reason || suggestion.description || "現在のワクワクから一歩先へ広げる候補です。")}</p>
+        <button class="secondary-button" type="button" data-ai-index="${index}">候補を登録</button>
+      </article>`;
+    })
+    .join("");
+
+  els.aiSuggestionList.querySelectorAll("[data-ai-index]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const suggestion = state.aiSuggestions[Number(button.dataset.aiIndex)];
+      if (!suggestion) return;
+      addEventRecord(suggestionToEventData(suggestion, Number(button.dataset.aiIndex)));
+    });
+  });
+}
+
+async function searchAiEventSuggestions() {
+  if (!els.searchAiEventsButton) return;
+  const previousText = els.searchAiEventsButton.textContent;
+  els.searchAiEventsButton.disabled = true;
+  els.searchAiEventsButton.textContent = "検索中";
+  els.aiSuggestionStatus.textContent = "ChatGPT APIで候補を生成中...";
+
+  const existingEvents = getEncounters()
+    .map((event) => `${event.title} / ${event.impact}`)
+    .slice(0, 12);
+  const completedEvents = state.completed.map(getEventTitle).slice(0, 8);
+
+  try {
+    const response = await fetch("/api/suggest-events", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        grade: state.member.grade,
+        region: state.member.region,
+        motivation: Number(els.motivation.value),
+        sparks: els.sparkInput.value.trim() || state.member.initialInterest || state.sparks[0]?.text || "",
+        interests: state.interests,
+        existingEvents,
+        completedEvents,
+      }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data.error || `HTTP ${response.status}`);
+    }
+    state.aiSuggestions = Array.isArray(data.events) ? data.events : [];
+    addActivity(`AI候補イベントを${state.aiSuggestions.length}件検索`);
+    saveState();
+    renderAiSuggestions();
+  } catch (error) {
+    const localHint =
+      location.hostname === "127.0.0.1" || location.hostname === "localhost"
+        ? "公開版でOPENAI_API_KEYを設定すると使えます"
+        : "VercelのOPENAI_API_KEYを確認してください";
+    els.aiSuggestionStatus.textContent = `AI候補を取得できません: ${localHint}`;
+    console.error(error);
+  } finally {
+    els.searchAiEventsButton.disabled = false;
+    els.searchAiEventsButton.textContent = previousText;
+  }
 }
 
 function getEventPosition() {
@@ -1545,6 +1695,7 @@ els.editMemberButton.addEventListener("click", showMemberForm);
 els.logoutButton.addEventListener("click", logout);
 els.eventForm.addEventListener("submit", registerEvent);
 els.sampleEventButton.addEventListener("click", registerSampleEvent);
+els.searchAiEventsButton.addEventListener("click", searchAiEventSuggestions);
 els.useMapCenterButton.addEventListener("click", useMapCenterForEvent);
 els.openLocationMapButton.addEventListener("click", initializeEventLocationMap);
 els.eventLat.addEventListener("input", syncEventLocationMarkerFromInputs);

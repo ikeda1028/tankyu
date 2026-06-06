@@ -27,9 +27,12 @@ git push -u origin main
 ```text
 GOOGLE_MAPS_API_KEY=Google Cloudで作成したMaps APIキー
 GOOGLE_DRIVE_API_URL=Apps ScriptのWebアプリURL
+OPENAI_API_KEY=OpenAIのProject API Key
+OPENAI_MODEL=gpt-4.1-mini
 ```
 
 `GOOGLE_DRIVE_API_URL` は未設定でも公開できます。
+`OPENAI_API_KEY` はAI候補イベント生成に使います。ブラウザには配信されないサーバー側の環境変数です。
 
 ## 3. Google CloudのAPIキー制限を更新
 

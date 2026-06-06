@@ -9,6 +9,7 @@
 - 会員情報のDB保存
 - イベント登録画面
 - 登録イベントのDB保存、マップ・推薦一覧への反映
+- ChatGPT APIを使ったAI候補イベント生成とワンクリック登録
 - 興味キーワード抽出
 - モチベーション込みのイベント推薦
 - Google Map風の探索マップと探究指数ピン
@@ -64,6 +65,8 @@ Vercelの環境変数に以下を設定します。
 
 - `GOOGLE_MAPS_API_KEY`: Google Maps JavaScript APIキー
 - `GOOGLE_DRIVE_API_URL`: Apps Script WebアプリURL。未設定でも動作します。
+- `OPENAI_API_KEY`: AI候補イベント生成に使うOpenAI APIキー。未設定の場合、AI候補検索だけ使えません。
+- `OPENAI_MODEL`: 任意。未設定時は `gpt-4.1-mini` を使います。
 
 Vercelで発行されたURLをGoogle Cloud ConsoleのAPIキー制限に追加してください。
 
@@ -129,6 +132,19 @@ Google Cloud Consoleで作成したAPIキーはチャットやGitに貼らず、
 キーを保存したあと `地図表示` を押すと、`encounters[].position.lat/lng` を使ってイベントがGoogle Map上に表示されます。本番公開時は、公開ドメインのURLだけをHTTPリファラーに追加してください。
 
 公開版では `GOOGLE_MAPS_API_KEY` から `public-config.js` が生成されるため、画面にAPIキーを入力しなくても地図表示できます。ブラウザに配信されるキーなので、必ずHTTPリファラー制限をかけて運用してください。
+
+## ChatGPT API設定
+
+イベント登録画面の `AI候補イベント` は、Vercelのサーバー側API `/api/suggest-events` からOpenAI Responses APIを呼び出します。ブラウザ側にはOpenAI APIキーを出さない構成です。
+
+VercelのEnvironment Variablesに以下を追加してください。
+
+```text
+OPENAI_API_KEY=OpenAIのProject API Key
+OPENAI_MODEL=gpt-4.1-mini
+```
+
+ローカルの静的サーバーでは `/api/suggest-events` が動かないため、AI候補検索はVercel公開版で確認します。
 
 ## 次の実装ポイント
 

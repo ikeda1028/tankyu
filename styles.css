@@ -802,6 +802,12 @@ textarea {
   font-size: 15px;
 }
 
+.mini-action {
+  min-height: 32px;
+  padding: 7px 10px;
+  font-size: 12px;
+}
+
 .event-form {
   display: grid;
   gap: 12px;
@@ -880,6 +886,68 @@ textarea {
   display: grid;
   gap: 10px;
   margin-top: 10px;
+}
+
+.ai-suggestion-status {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.55;
+}
+
+.ai-suggestion-list {
+  display: grid;
+  gap: 10px;
+}
+
+.ai-suggestion-card {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfdf9;
+}
+
+.ai-suggestion-card strong {
+  display: block;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.ai-suggestion-card span,
+.ai-suggestion-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.55;
+}
+
+.ai-suggestion-card p {
+  grid-column: 1 / 3;
+  font-weight: 700;
+}
+
+.ai-suggestion-card em {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 8px;
+  color: white;
+  background: var(--blue);
+  font-style: normal;
+  font-weight: 900;
+}
+
+.ai-suggestion-card button {
+  grid-column: 1 / 3;
+  min-height: 34px;
+  padding: 7px 10px;
+  font-size: 12px;
 }
 
 .registered-event-card {
