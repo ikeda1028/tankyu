@@ -11,6 +11,7 @@ const HEADERS = {
     "keywords",
     "question_path",
     "color",
+    "location_name",
     "latitude",
     "longitude",
     "user_created",

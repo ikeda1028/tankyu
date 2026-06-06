@@ -325,6 +325,22 @@
                     <input id="event-color" type="color" value="#2f8f63" />
                   </div>
                 </div>
+                <label for="event-location">開催場所</label>
+                <input id="event-location" type="text" placeholder="例：東京駅周辺、海浜公園、オンライン" />
+                <div class="form-grid location-grid">
+                  <div>
+                    <label for="event-lat">緯度</label>
+                    <input id="event-lat" type="number" step="0.000001" min="-90" max="90" placeholder="例：35.681236" />
+                  </div>
+                  <div>
+                    <label for="event-lng">経度</label>
+                    <input id="event-lng" type="number" step="0.000001" min="-180" max="180" placeholder="例：139.767125" />
+                  </div>
+                </div>
+                <div class="location-tools">
+                  <button id="use-map-center-button" class="secondary-button" type="button">地図中心を使う</button>
+                  <p>緯度・経度を入れると、Google Map上のイベント位置に反映されます。</p>
+                </div>
                 <fieldset class="question-fieldset">
                   <legend>問いの道筋</legend>
                   <input id="event-q1" type="text" placeholder="事実: 何が起きているか" />

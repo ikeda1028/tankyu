@@ -208,6 +208,10 @@ const els = {
   eventKeywords: document.querySelector("#event-keywords"),
   eventIndex: document.querySelector("#event-index"),
   eventColor: document.querySelector("#event-color"),
+  eventLocation: document.querySelector("#event-location"),
+  eventLat: document.querySelector("#event-lat"),
+  eventLng: document.querySelector("#event-lng"),
+  useMapCenterButton: document.querySelector("#use-map-center-button"),
   eventQuestions: [
     document.querySelector("#event-q1"),
     document.querySelector("#event-q2"),
@@ -993,6 +997,7 @@ function eventToDriveRecord(event) {
     keywords: event.keywords.join(","),
     question_path: event.questionPath.join("|"),
     color: event.color,
+    location_name: event.locationName || "",
     latitude: event.position?.lat || "",
     longitude: event.position?.lng || "",
     user_created: Boolean(event.userCreated),
@@ -1256,6 +1261,48 @@ function createMapPosition(index) {
   return positions[index % positions.length];
 }
 
+function createPositionFromLatLng(lat, lng, fallbackIndex = 0) {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return createMapPosition(fallbackIndex);
+  }
+  const x = clamp(((lng - 122) / (153 - 122)) * 100);
+  const y = clamp(((46 - lat) / (46 - 24)) * 100);
+  return { x, y, lat, lng };
+}
+
+function getEventPosition() {
+  const latValue = els.eventLat.value.trim();
+  const lngValue = els.eventLng.value.trim();
+  if (!latValue && !lngValue) {
+    return createMapPosition(state.customEvents.length);
+  }
+  const lat = Number(latValue);
+  const lng = Number(lngValue);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    els.eventAdminStatus.textContent = "緯度経度を確認";
+    return null;
+  }
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+    els.eventAdminStatus.textContent = "緯度経度の範囲外";
+    return null;
+  }
+  return createPositionFromLatLng(lat, lng, state.customEvents.length);
+}
+
+function useMapCenterForEvent() {
+  if (googleMap && window.google?.maps) {
+    const center = googleMap.getCenter();
+    els.eventLat.value = center.lat().toFixed(6);
+    els.eventLng.value = center.lng().toFixed(6);
+    els.eventAdminStatus.textContent = "地図中心を入力";
+    return;
+  }
+  const selected = getSelectedEncounter();
+  els.eventLat.value = selected.position.lat.toFixed(6);
+  els.eventLng.value = selected.position.lng.toFixed(6);
+  els.eventAdminStatus.textContent = "選択中イベントの位置を入力";
+}
+
 function addEventRecord(eventData) {
   const duplicate = state.customEvents.find((event) => event.title === eventData.title && event.impact === eventData.impact);
   if (duplicate) {
@@ -1291,6 +1338,8 @@ function registerEvent(event) {
 
   const tags = splitList(els.eventTags.value);
   const keywords = splitList(els.eventKeywords.value);
+  const position = getEventPosition();
+  if (!position) return;
   const questionPath = els.eventQuestions.map((input, index) => input.value.trim() || [
     "何が起きているか",
     "なぜ起きているか",
@@ -1306,9 +1355,10 @@ function registerEvent(event) {
     tags,
     keywords: keywords.length ? keywords : tags,
     impact,
+    locationName: els.eventLocation.value.trim(),
     questionPath,
     color: els.eventColor.value || "#2f8f63",
-    position: createMapPosition(state.customEvents.length),
+    position,
     boost: { joy: 4, distance: 4, reflection: 3 },
     userCreated: true,
     createdAt: new Date().toISOString(),
@@ -1331,6 +1381,7 @@ function registerSampleEvent() {
     tags: ["防災", "聞き取り", "地域"],
     keywords: ["防災", "地域", "福祉", "避難"],
     impact: "防災・地域コミュニティ",
+    locationName: "地域の避難所・商店街",
     questionPath: [
       "避難所には何が必要か",
       "なぜ情報が届かない人がいるのか",
@@ -1339,7 +1390,7 @@ function registerSampleEvent() {
       "学校で防災情報の伝え方を試せるか",
     ],
     color: "#2f6fb3",
-    position: createMapPosition(state.customEvents.length),
+    position: createPositionFromLatLng(35.681, 139.767, state.customEvents.length),
     boost: { joy: 4, distance: 5, reflection: 3 },
     userCreated: true,
     createdAt: new Date().toISOString(),
@@ -1354,7 +1405,7 @@ function renderRegisteredEvents() {
         .map(
           (event) => `<button class="registered-event-card" type="button" data-id="${event.id}">
             <strong>${event.title}</strong>
-            <span>${event.impact}</span>
+            <span>${[event.impact, event.locationName].filter(Boolean).join(" / ")}</span>
             <em>${event.index}</em>
           </button>`
         )
@@ -1384,6 +1435,7 @@ els.editMemberButton.addEventListener("click", showMemberForm);
 els.logoutButton.addEventListener("click", logout);
 els.eventForm.addEventListener("submit", registerEvent);
 els.sampleEventButton.addEventListener("click", registerSampleEvent);
+els.useMapCenterButton.addEventListener("click", useMapCenterForEvent);
 els.saveDriveUrlButton.addEventListener("click", saveDriveUrl);
 els.syncDriveButton.addEventListener("click", syncAllToDrive);
 els.saveMapsKeyButton.addEventListener("click", saveMapsKey);

@@ -34,6 +34,7 @@ create table events (
   keywords text[] not null default '{}',
   question_path text[] not null default '{}',
   color text,
+  location_name text,
   latitude numeric,
   longitude numeric,
   user_created boolean not null default false,
