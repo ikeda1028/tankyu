@@ -209,6 +209,9 @@ const els = {
   eventIndex: document.querySelector("#event-index"),
   eventColor: document.querySelector("#event-color"),
   eventLocation: document.querySelector("#event-location"),
+  eventType: document.querySelector("#event-type"),
+  eventStartDate: document.querySelector("#event-start-date"),
+  eventEndDate: document.querySelector("#event-end-date"),
   eventLat: document.querySelector("#event-lat"),
   eventLng: document.querySelector("#event-lng"),
   useMapCenterButton: document.querySelector("#use-map-center-button"),
@@ -585,6 +588,29 @@ function formatTime(date = new Date()) {
   }).format(date);
 }
 
+function formatDateLabel(value) {
+  if (!value) return "";
+  return new Intl.DateTimeFormat("ja-JP", {
+    month: "numeric",
+    day: "numeric",
+  }).format(new Date(`${value}T00:00:00`));
+}
+
+function getEventTypeLabel(event) {
+  return event.eventType === "limited" ? "期間限定" : "常設";
+}
+
+function getEventPeriodLabel(event) {
+  const typeLabel = getEventTypeLabel(event);
+  if (event.eventType !== "limited") return typeLabel;
+  const start = formatDateLabel(event.startDate);
+  const end = formatDateLabel(event.endDate);
+  if (start && end) return `${typeLabel} ${start}-${end}`;
+  if (start) return `${typeLabel} ${start}から`;
+  if (end) return `${typeLabel} ${end}まで`;
+  return typeLabel;
+}
+
 function getEventTitle(eventId) {
   return getEncounters().find((encounter) => encounter.id === eventId)?.title || "未選択イベント";
 }
@@ -710,7 +736,7 @@ function renderEventList() {
       return `<button class="event-card${active}" type="button" data-id="${encounter.id}">
         <span>${index + 1}</span>
         <strong>${encounter.title}</strong>
-        <small>${encounter.impact}</small>
+        <small>${encounter.impact} / ${getEventPeriodLabel(encounter)}</small>
         <em>${complete}</em>
       </button>`;
     })
@@ -769,7 +795,7 @@ function renderEncounter() {
     ? `${overlap.slice(0, 3).join("・")}への関心が強く反応しています`
     : "未知の事象から問いを遠くへ広げるイベントです";
   els.impactField.textContent = encounter.impact;
-  els.description.textContent = `${encounter.description} 現在の探究距離: ${encounter.questionPath[getDepth() - 1]}`;
+  els.description.textContent = `${encounter.description} ${getEventPeriodLabel(encounter)}。現在の探究距離: ${encounter.questionPath[getDepth() - 1]}`;
   els.questionPath.innerHTML = encounter.questionPath
     .map((question, index) => {
       const active = index + 1 <= getDepth() ? " class=\"active\"" : "";
@@ -1062,6 +1088,9 @@ function eventToDriveRecord(event) {
     question_path: event.questionPath.join("|"),
     color: event.color,
     location_name: event.locationName || "",
+    event_type: event.eventType || "permanent",
+    start_date: event.startDate || "",
+    end_date: event.endDate || "",
     latitude: event.position?.lat || "",
     longitude: event.position?.lng || "",
     user_created: Boolean(event.userCreated),
@@ -1430,6 +1459,9 @@ function registerEvent(event) {
     keywords: keywords.length ? keywords : tags,
     impact,
     locationName: els.eventLocation.value.trim(),
+    eventType: els.eventType.value,
+    startDate: els.eventStartDate.value,
+    endDate: els.eventEndDate.value,
     questionPath,
     color: els.eventColor.value || "#2f8f63",
     position,
@@ -1441,6 +1473,7 @@ function registerEvent(event) {
   els.eventForm.reset();
   els.eventIndex.value = 78;
   els.eventColor.value = "#2f8f63";
+  els.eventType.value = "permanent";
   addEventRecord(eventData);
 }
 
@@ -1456,6 +1489,9 @@ function registerSampleEvent() {
     keywords: ["防災", "地域", "福祉", "避難"],
     impact: "防災・地域コミュニティ",
     locationName: "地域の避難所・商店街",
+    eventType: "limited",
+    startDate: "2026-07-20",
+    endDate: "2026-08-31",
     questionPath: [
       "避難所には何が必要か",
       "なぜ情報が届かない人がいるのか",
@@ -1479,7 +1515,7 @@ function renderRegisteredEvents() {
         .map(
           (event) => `<button class="registered-event-card" type="button" data-id="${event.id}">
             <strong>${event.title}</strong>
-            <span>${[event.impact, event.locationName].filter(Boolean).join(" / ")}</span>
+            <span>${[event.impact, event.locationName, getEventPeriodLabel(event)].filter(Boolean).join(" / ")}</span>
             <em>${event.index}</em>
           </button>`
         )

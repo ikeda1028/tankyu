@@ -816,6 +816,7 @@ textarea {
 }
 
 .event-form input,
+.event-form select,
 .event-form textarea {
   width: 100%;
   min-height: 40px;
