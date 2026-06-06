@@ -147,6 +147,7 @@ const els = {
   matchReason: document.querySelector("#match-reason"),
   impactField: document.querySelector("#impact-field"),
   mapSearch: document.querySelector("#map-search"),
+  mapSearchButton: document.querySelector("#map-search-button"),
   explorationDepth: document.querySelector("#exploration-depth"),
   explorationDepthOutput: document.querySelector("#exploration-depth-output"),
   bestDepth: document.querySelector("#best-depth"),
@@ -1859,7 +1860,12 @@ els.explorationDepth.addEventListener("input", () => {
   renderInterests();
   renderStats();
 });
-els.mapSearch.addEventListener("input", () => {
+els.mapSearchButton.addEventListener("click", () => {
+  searchThemeOnMap(els.mapSearch.value);
+});
+els.mapSearch.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter") return;
+  event.preventDefault();
   searchThemeOnMap(els.mapSearch.value);
 });
 
