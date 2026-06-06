@@ -263,6 +263,40 @@ function getEncounters() {
   return [...seedEncounters, ...state.customEvents];
 }
 
+function getEncounterTags(encounter) {
+  return Array.isArray(encounter?.tags) ? encounter.tags.filter(Boolean) : [];
+}
+
+function getEncounterKeywords(encounter) {
+  const keywords = Array.isArray(encounter?.keywords) ? encounter.keywords.filter(Boolean) : [];
+  const tags = getEncounterTags(encounter);
+  return keywords.length ? keywords : tags;
+}
+
+function getEncounterQuestions(encounter) {
+  const questions = Array.isArray(encounter?.questionPath) ? encounter.questionPath.filter(Boolean) : [];
+  const fallback = [
+    "何が起きているか",
+    "なぜ起きているか",
+    "誰の行動や仕組みと関係するか",
+    "他地域や他分野とどうつながるか",
+    "学校や地域で何を試せるか",
+  ];
+  return fallback.map((question, index) => questions[index] || question);
+}
+
+function hasValidLatLng(position) {
+  return (
+    position &&
+    Number.isFinite(Number(position.lat)) &&
+    Number.isFinite(Number(position.lng)) &&
+    Number(position.lat) >= -90 &&
+    Number(position.lat) <= 90 &&
+    Number(position.lng) >= -180 &&
+    Number(position.lng) <= 180
+  );
+}
+
 function dedupeCustomEvents() {
   const seen = new Set();
   state.customEvents = state.customEvents.filter((event) => {
@@ -401,8 +435,9 @@ async function initializeGoogleMap() {
     setMapsStatus("Google Map読み込み中...");
     await loadGoogleMapsScript(apiKey);
     const selected = getSelectedEncounter();
+    const center = hasValidLatLng(selected.position) ? selected.position : createMapPosition(0);
     googleMap = new google.maps.Map(els.googleMapCanvas, {
-      center: { lat: selected.position.lat, lng: selected.position.lng },
+      center: { lat: Number(center.lat), lng: Number(center.lng) },
       zoom: 6,
       clickableIcons: false,
       fullscreenControl: false,
@@ -444,7 +479,8 @@ function renderGoogleMapMarkers() {
   const bounds = new google.maps.LatLngBounds();
   const themeActive = Boolean(state.themeSearch?.query);
   rankedEncounters().forEach((encounter) => {
-    const position = { lat: encounter.position.lat, lng: encounter.position.lng };
+    if (!hasValidLatLng(encounter.position)) return;
+    const position = { lat: Number(encounter.position.lat), lng: Number(encounter.position.lng) };
     const evaluation = themeActive ? encounter.themeEvaluation || getThemeEvaluation(encounter.id) : null;
     const marker = new google.maps.Marker({
       map: googleMap,
@@ -470,7 +506,9 @@ function renderGoogleMapMarkers() {
   });
   if (!bounds.isEmpty()) googleMap.fitBounds(bounds, 64);
   const selected = getSelectedEncounter();
-  googleMap.panTo({ lat: selected.position.lat, lng: selected.position.lng });
+  if (hasValidLatLng(selected?.position)) {
+    googleMap.panTo({ lat: Number(selected.position.lat), lng: Number(selected.position.lng) });
+  }
 }
 
 function setEventLocationFromLatLng(lat, lng, label = "地図クリック位置") {
@@ -506,7 +544,8 @@ async function initializeEventLocationMap() {
   try {
     await loadGoogleMapsScript(apiKey);
     const selected = getSelectedEncounter();
-    const center = getEventPosition() || selected.position || createMapPosition(0);
+    const fallbackCenter = hasValidLatLng(selected.position) ? selected.position : createMapPosition(0);
+    const center = getEventPosition() || fallbackCenter;
     els.eventLocationMap.classList.add("active");
 
     if (!eventLocationMap) {
@@ -663,17 +702,17 @@ function extractInterests(text) {
     .map((word) => word.trim())
     .filter((word) => word.length >= 2);
   const matched = getEncounters().flatMap((encounter) =>
-    encounter.keywords.filter((keyword) => text.toLowerCase().includes(keyword.toLowerCase()))
+    getEncounterKeywords(encounter).filter((keyword) => text.toLowerCase().includes(keyword.toLowerCase()))
   );
   return [...new Set([...matched, ...words])].slice(0, 8);
 }
 
 function scoreEncounter(encounter, interests, motivation) {
   const normalized = interests.map((item) => item.toLowerCase());
-  const keywordHits = encounter.keywords.filter((keyword) =>
+  const keywordHits = getEncounterKeywords(encounter).filter((keyword) =>
     normalized.some((interest) => interest.includes(keyword.toLowerCase()) || keyword.toLowerCase().includes(interest))
   );
-  const tagHits = encounter.tags.filter((tag) => normalized.some((interest) => interest.includes(tag.toLowerCase())));
+  const tagHits = getEncounterTags(encounter).filter((tag) => normalized.some((interest) => interest.includes(tag.toLowerCase())));
   const completedPenalty = state.completed.includes(encounter.id) ? -10 : 0;
   const motivationFit = Math.round((motivation / 100) * 8);
   return encounter.index + keywordHits.length * 9 + tagHits.length * 6 + motivationFit + completedPenalty;
@@ -682,15 +721,15 @@ function scoreEncounter(encounter, interests, motivation) {
 function evaluateThemeForEncounter(encounter, query) {
   const interests = extractInterests(query);
   const normalized = [query, ...interests].map((item) => item.toLowerCase()).filter(Boolean);
-  const keywordHits = encounter.keywords.filter((keyword) =>
+  const keywordHits = getEncounterKeywords(encounter).filter((keyword) =>
     normalized.some((interest) => interest.includes(keyword.toLowerCase()) || keyword.toLowerCase().includes(interest))
   );
-  const tagHits = encounter.tags.filter((tag) =>
+  const tagHits = getEncounterTags(encounter).filter((tag) =>
     normalized.some((interest) => interest.includes(tag.toLowerCase()) || tag.toLowerCase().includes(interest))
   );
   const relevance = clamp(keywordHits.length * 18 + tagHits.length * 14 + (keywordHits.length || tagHits.length ? 18 : 4));
-  const questionDepth = clamp((encounter.questionPath?.length || 0) * 18);
-  const evidence = clamp((encounter.locationName ? 24 : 12) + (encounter.position?.lat ? 24 : 10) + (encounter.tags.length >= 3 ? 18 : 8));
+  const questionDepth = clamp(getEncounterQuestions(encounter).length * 18);
+  const evidence = clamp((encounter.locationName ? 24 : 12) + (hasValidLatLng(encounter.position) ? 24 : 10) + (getEncounterTags(encounter).length >= 3 ? 18 : 8));
   const action = clamp((encounter.eventType === "permanent" ? 24 : 18) + (encounter.index || 70) / 2);
   const total = clamp(relevance * 0.38 + questionDepth * 0.22 + evidence * 0.2 + action * 0.2);
 
@@ -789,7 +828,8 @@ function renderSpots() {
       const isActive = encounter.id === state.selected ? " active" : "";
       const mapped = themeActive && index < 6 ? " mapped" : "";
       const score = themeActive ? encounter.themeEvaluation?.total || getThemeEvaluation(encounter.id)?.total : encounter.index;
-      return `<button class="spot${isActive}${mapped}" style="--x: ${encounter.position.x}%; --y: ${encounter.position.y}%; --spot-color: ${encounter.color}" type="button" data-id="${encounter.id}" aria-label="${encounter.title}">
+      const position = encounter.position || createMapPosition(index);
+      return `<button class="spot${isActive}${mapped}" style="--x: ${position.x}%; --y: ${position.y}%; --spot-color: ${encounter.color || "#2f6fb3"}" type="button" data-id="${encounter.id}" aria-label="${encounter.title}">
         <span>${score}</span>
       </button>`;
     })
@@ -884,7 +924,9 @@ function renderThemeEvaluation() {
       render();
       if (googleMap) {
         const selected = getSelectedEncounter();
-        googleMap.panTo({ lat: selected.position.lat, lng: selected.position.lng });
+        if (hasValidLatLng(selected.position)) {
+          googleMap.panTo({ lat: Number(selected.position.lat), lng: Number(selected.position.lng) });
+        }
       }
     });
   });
@@ -907,20 +949,23 @@ window.toggleCollapseEvents = toggleCollapseEvents;
 
 function renderEncounter() {
   const encounter = getSelectedEncounter();
-  const overlap = encounter.keywords.filter((keyword) =>
+  const keywords = getEncounterKeywords(encounter);
+  const tags = getEncounterTags(encounter);
+  const questions = getEncounterQuestions(encounter);
+  const overlap = keywords.filter((keyword) =>
     state.interests.some((interest) => interest.toLowerCase().includes(keyword.toLowerCase()))
   );
   els.title.textContent = encounter.title;
   els.index.textContent = encounter.index;
-  els.index.style.background = encounter.color;
+  els.index.style.background = encounter.color || "#2f6fb3";
   els.description.textContent = encounter.description;
-  els.tags.innerHTML = encounter.tags.map((tag) => `<span>${tag}</span>`).join("");
+  els.tags.innerHTML = tags.map((tag) => `<span>${tag}</span>`).join("");
   els.matchReason.textContent = overlap.length
     ? `${overlap.slice(0, 3).join("・")}への関心が強く反応しています`
     : "未知の事象から問いを遠くへ広げるイベントです";
   els.impactField.textContent = encounter.impact;
-  els.description.textContent = `${encounter.description} ${getEventPeriodLabel(encounter)}。現在の探究距離: ${encounter.questionPath[getDepth() - 1]}`;
-  els.questionPath.innerHTML = encounter.questionPath
+  els.description.textContent = `${encounter.description} ${getEventPeriodLabel(encounter)}。現在の探究距離: ${questions[getDepth() - 1]}`;
+  els.questionPath.innerHTML = questions
     .map((question, index) => {
       const active = index + 1 <= getDepth() ? " class=\"active\"" : "";
       return `<li${active}><span>${depthLabels[index].replace("まで", "")}</span>${question}</li>`;
@@ -928,9 +973,9 @@ function renderEncounter() {
     .join("");
   els.media.style.setProperty(
     "--media",
-    `radial-gradient(circle at 28% 26%, ${encounter.color} 0 10%, transparent 11%),
+    `radial-gradient(circle at 28% 26%, ${encounter.color || "#2f6fb3"} 0 10%, transparent 11%),
      linear-gradient(140deg, rgba(255,255,255,.28), rgba(255,255,255,0)),
-     repeating-linear-gradient(35deg, ${encounter.color} 0 12px, #f7fbf6 12px 24px)`
+     repeating-linear-gradient(35deg, ${encounter.color || "#2f6fb3"} 0 12px, #f7fbf6 12px 24px)`
   );
 }
 
@@ -1018,7 +1063,7 @@ function renderMentorSuggestions(reflection) {
 function renderInterests() {
   els.interestPills.innerHTML = state.interests.map((interest) => `<span>${interest}</span>`).join("");
   const selected = getSelectedEncounter();
-  els.dailyMission.textContent = `${selected.title}で出会った事象から「${selected.questionPath[getDepth() - 1]}」まで問いを伸ばす。`;
+  els.dailyMission.textContent = `${selected.title}で出会った事象から「${getEncounterQuestions(selected)[getDepth() - 1]}」まで問いを伸ばす。`;
 }
 
 function renderActivity() {
@@ -1673,10 +1718,11 @@ function useMapCenterForEvent() {
     return;
   }
   const selected = getSelectedEncounter();
-  els.eventLat.value = selected.position.lat.toFixed(6);
-  els.eventLng.value = selected.position.lng.toFixed(6);
+  const position = hasValidLatLng(selected.position) ? selected.position : createMapPosition(state.customEvents.length);
+  els.eventLat.value = Number(position.lat).toFixed(6);
+  els.eventLng.value = Number(position.lng).toFixed(6);
   els.eventAdminStatus.textContent = "選択中イベントの位置を入力";
-  renderEventLocationMarker({ lat: selected.position.lat, lng: selected.position.lng });
+  renderEventLocationMarker({ lat: Number(position.lat), lng: Number(position.lng) });
 }
 
 function syncEventLocationMarkerFromInputs() {
