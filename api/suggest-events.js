@@ -16,10 +16,19 @@ function normalizeList(value, limit = 8) {
     : [];
 }
 
+function normalizeFutureDate(value, today) {
+  const date = normalizeText(value).slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return "";
+  return date >= today ? date : "";
+}
+
 function normalizeEvent(event, index) {
   const eventType = event.eventType === "limited" ? "limited" : "permanent";
   const lat = Number(event.lat);
   const lng = Number(event.lng);
+  const today = new Date().toISOString().slice(0, 10);
+  const startDate = eventType === "limited" ? normalizeFutureDate(event.startDate, today) : "";
+  const endDate = eventType === "limited" ? normalizeFutureDate(event.endDate, today) : "";
 
   return {
     title: normalizeText(event.title, `探究イベント ${index + 1}`).slice(0, 48),
@@ -30,8 +39,8 @@ function normalizeEvent(event, index) {
     explorationIndex: clamp(event.explorationIndex, 50, 95),
     locationName: normalizeText(event.locationName, "地域フィールド").slice(0, 80),
     eventType,
-    startDate: eventType === "limited" ? normalizeText(event.startDate).slice(0, 10) : "",
-    endDate: eventType === "limited" ? normalizeText(event.endDate).slice(0, 10) : "",
+    startDate,
+    endDate,
     lat: Number.isFinite(lat) && lat >= -90 && lat <= 90 ? lat : null,
     lng: Number.isFinite(lng) && lng >= -180 && lng <= 180 ? lng : null,
     questionPath: normalizeList(event.questionPath, 5).slice(0, 5),
@@ -74,6 +83,7 @@ export default async function handler(request, response) {
 
   try {
     const body = request.body || {};
+    const today = new Date().toISOString().slice(0, 10);
     const payload = {
       grade: normalizeText(body.grade, "中高生"),
       region: normalizeText(body.region, "日本"),
@@ -103,10 +113,12 @@ export default async function handler(request, response) {
                 text: `次の生徒プロフィールから、候補イベントを3件作ってください。
 
 条件:
+- 今日の日付は ${today}
 - 中高生が参加できる
 - 出会いはイベント
 - 探究値は「事象に出会って、どの程度遠くまで探究できるか」で伸びる
 - 常設か期間限定かを必ず入れる
+- 期間限定イベントの日付は必ず ${today} 以降にする。過去の日付は使わない
 - 緯度経度は地域が推測できる場合だけ日本国内の概算を入れる。難しい場合はnull
 - 既存イベントと重複しない
 
