@@ -100,6 +100,10 @@ const defaultState = {
   feedbacks: [],
   customEvents: [],
   aiSuggestions: [],
+  themeSearch: {
+    query: "",
+    evaluatedAt: "",
+  },
   driveSync: {
     apiUrl: "",
     lastSyncAt: "",
@@ -183,6 +187,10 @@ const els = {
   mapsStatus: document.querySelector("#maps-status"),
   mapCanvas: document.querySelector(".map-canvas"),
   googleMapCanvas: document.querySelector("#google-map-canvas"),
+  themeEvaluationPanel: document.querySelector("#theme-evaluation-panel"),
+  themeEvaluationTitle: document.querySelector("#theme-evaluation-title"),
+  themeEvaluationScore: document.querySelector("#theme-evaluation-score"),
+  themeEvaluationBases: document.querySelector("#theme-evaluation-bases"),
   authScreen: document.querySelector("#auth-screen"),
   loginForm: document.querySelector("#login-form"),
   memberForm: document.querySelector("#member-form"),
@@ -240,6 +248,7 @@ state.auth = { ...defaultState.auth, ...(state.auth || {}) };
 state.member = { ...defaultState.member, ...(state.member || {}) };
 state.ui = { ...defaultState.ui, ...(state.ui || {}) };
 state.aiSuggestions = Array.isArray(state.aiSuggestions) ? state.aiSuggestions : [];
+state.themeSearch = { ...defaultState.themeSearch, ...(state.themeSearch || {}) };
 let appDb = null;
 let dbReady = false;
 let dbSavePromise = Promise.resolve();
@@ -432,14 +441,16 @@ function renderGoogleMapMarkers() {
   if (!googleMap || !window.google?.maps) return;
   clearGoogleMapMarkers();
   const bounds = new google.maps.LatLngBounds();
+  const themeActive = Boolean(state.themeSearch?.query);
   rankedEncounters().forEach((encounter) => {
     const position = { lat: encounter.position.lat, lng: encounter.position.lng };
+    const evaluation = themeActive ? encounter.themeEvaluation || getThemeEvaluation(encounter.id) : null;
     const marker = new google.maps.Marker({
       map: googleMap,
       position,
-      title: encounter.title,
+      title: evaluation ? `${encounter.title} / 評価 ${evaluation.total}` : encounter.title,
       label: {
-        text: String(encounter.index),
+        text: String(evaluation ? evaluation.total : encounter.index),
         color: "#ffffff",
         fontSize: "11px",
         fontWeight: "900",
@@ -667,6 +678,48 @@ function scoreEncounter(encounter, interests, motivation) {
   return encounter.index + keywordHits.length * 9 + tagHits.length * 6 + motivationFit + completedPenalty;
 }
 
+function evaluateThemeForEncounter(encounter, query) {
+  const interests = extractInterests(query);
+  const normalized = [query, ...interests].map((item) => item.toLowerCase()).filter(Boolean);
+  const keywordHits = encounter.keywords.filter((keyword) =>
+    normalized.some((interest) => interest.includes(keyword.toLowerCase()) || keyword.toLowerCase().includes(interest))
+  );
+  const tagHits = encounter.tags.filter((tag) =>
+    normalized.some((interest) => interest.includes(tag.toLowerCase()) || tag.toLowerCase().includes(interest))
+  );
+  const relevance = clamp(keywordHits.length * 18 + tagHits.length * 14 + (keywordHits.length || tagHits.length ? 18 : 4));
+  const questionDepth = clamp((encounter.questionPath?.length || 0) * 18);
+  const evidence = clamp((encounter.locationName ? 24 : 12) + (encounter.position?.lat ? 24 : 10) + (encounter.tags.length >= 3 ? 18 : 8));
+  const action = clamp((encounter.eventType === "permanent" ? 24 : 18) + (encounter.index || 70) / 2);
+  const total = clamp(relevance * 0.38 + questionDepth * 0.22 + evidence * 0.2 + action * 0.2);
+
+  return {
+    total,
+    relevance,
+    questionDepth,
+    evidence,
+    action,
+    hits: [...new Set([...keywordHits, ...tagHits])].slice(0, 4),
+  };
+}
+
+function getThemeBaseRankings() {
+  const query = state.themeSearch?.query?.trim();
+  if (!query) return [];
+  return getEncounters()
+    .map((encounter) => ({
+      ...encounter,
+      themeEvaluation: evaluateThemeForEncounter(encounter, query),
+    }))
+    .sort((a, b) => b.themeEvaluation.total - a.themeEvaluation.total);
+}
+
+function getThemeEvaluation(eventId) {
+  if (!state.themeSearch?.query) return null;
+  const encounter = getEncounters().find((item) => item.id === eventId);
+  return encounter ? evaluateThemeForEncounter(encounter, state.themeSearch.query) : null;
+}
+
 function getDepth() {
   return Number(els.explorationDepth.value);
 }
@@ -691,6 +744,13 @@ function getReflectionBonus() {
 
 function rankedEncounters() {
   const motivation = Number(els.motivation.value);
+  const themeRankings = getThemeBaseRankings();
+  if (themeRankings.length) {
+    return themeRankings.map((encounter) => ({
+      ...encounter,
+      score: encounter.themeEvaluation.total,
+    }));
+  }
   return getEncounters()
     .map((encounter) => ({
       ...encounter,
@@ -721,12 +781,15 @@ function renderStats(delta = 0) {
 
 function renderSpots() {
   const ranked = rankedEncounters();
+  const themeActive = Boolean(state.themeSearch?.query);
   els.eventCount.textContent = `${ranked.length}件`;
   els.spotsLayer.innerHTML = ranked
-    .map((encounter) => {
+    .map((encounter, index) => {
       const isActive = encounter.id === state.selected ? " active" : "";
-      return `<button class="spot${isActive}" style="--x: ${encounter.position.x}%; --y: ${encounter.position.y}%" type="button" data-id="${encounter.id}" aria-label="${encounter.title}">
-        <span>${encounter.index}</span>
+      const mapped = themeActive && index < 6 ? " mapped" : "";
+      const score = themeActive ? encounter.themeEvaluation?.total || getThemeEvaluation(encounter.id)?.total : encounter.index;
+      return `<button class="spot${isActive}${mapped}" style="--x: ${encounter.position.x}%; --y: ${encounter.position.y}%; --spot-color: ${encounter.color}" type="button" data-id="${encounter.id}" aria-label="${encounter.title}">
+        <span>${score}</span>
       </button>`;
     })
     .join("");
@@ -742,11 +805,16 @@ function renderSpots() {
 
 function renderEventList() {
   const ranked = rankedEncounters();
+  const themeActive = Boolean(state.themeSearch?.query);
   renderEventDrawer();
   els.eventList.innerHTML = ranked
     .map((encounter, index) => {
       const active = encounter.id === state.selected ? " active" : "";
-      const complete = state.completed.includes(encounter.id) ? "参加済" : `適合 ${Math.min(99, encounter.score)}`;
+      const complete = state.completed.includes(encounter.id)
+        ? "参加済"
+        : themeActive
+          ? `評価 ${Math.min(99, encounter.score)}`
+          : `適合 ${Math.min(99, encounter.score)}`;
       return `<button class="event-card${active}" type="button" data-id="${encounter.id}">
         <span>${index + 1}</span>
         <strong>${encounter.title}</strong>
@@ -778,6 +846,47 @@ function renderEventDrawer() {
     "aria-label",
     mode === "collapsed" ? "推薦イベントを開く" : "推薦イベントを折りたたむ"
   );
+}
+
+function renderThemeEvaluation() {
+  if (!els.themeEvaluationPanel) return;
+  const query = state.themeSearch?.query?.trim();
+  if (els.mapSearch && document.activeElement !== els.mapSearch) {
+    els.mapSearch.value = query || "";
+  }
+  els.themeEvaluationPanel.classList.toggle("hidden", !query);
+  if (!query) return;
+
+  const bases = getThemeBaseRankings().slice(0, 4);
+  const average = bases.length
+    ? clamp(bases.reduce((sum, item) => sum + item.themeEvaluation.total, 0) / bases.length)
+    : 0;
+  els.themeEvaluationTitle.textContent = query;
+  els.themeEvaluationScore.textContent = average;
+  els.themeEvaluationScore.style.background = average >= 80 ? "var(--green)" : average >= 65 ? "var(--gold)" : "var(--rose)";
+  els.themeEvaluationBases.innerHTML = bases
+    .map((base, index) => {
+      const evaluation = base.themeEvaluation;
+      const hits = evaluation.hits.length ? evaluation.hits.join("・") : "未知との接続";
+      return `<button type="button" data-id="${base.id}">
+        <span>${index + 1}</span>
+        <strong>${escapeHtml(base.title)}</strong>
+        <em>評価 ${evaluation.total}</em>
+        <small>${escapeHtml(hits)} / ${escapeHtml(base.locationName || base.impact)}</small>
+      </button>`;
+    })
+    .join("");
+  els.themeEvaluationBases.querySelectorAll("[data-id]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.selected = button.dataset.id;
+      saveState();
+      render();
+      if (googleMap) {
+        const selected = getSelectedEncounter();
+        googleMap.panTo({ lat: selected.position.lat, lng: selected.position.lng });
+      }
+    });
+  });
 }
 
 function toggleCompactEvents() {
@@ -932,6 +1041,7 @@ function render() {
   renderActivity();
   renderGrowthPath();
   renderFeedbackView();
+  renderThemeEvaluation();
   renderAiSuggestions();
   renderRegisteredEvents();
   renderDriveSync();
@@ -1208,6 +1318,25 @@ function selectRecommendation() {
   render();
 }
 
+function searchThemeOnMap(query) {
+  const trimmed = query.trim();
+  if (!trimmed) {
+    state.themeSearch = { ...state.themeSearch, query: "", evaluatedAt: "" };
+    saveState();
+    render();
+    return;
+  }
+  state.themeSearch = {
+    query: trimmed,
+    evaluatedAt: new Date().toISOString(),
+  };
+  state.interests = [...new Set([...extractInterests(trimmed), trimmed, ...state.interests])].slice(0, 10);
+  const ranked = rankedEncounters();
+  if (ranked[0]) state.selected = ranked[0].id;
+  saveState();
+  render();
+}
+
 function startAdventure() {
   const encounter = getSelectedEncounter();
   const delta = calculateQuestDelta(encounter);
@@ -1344,6 +1473,7 @@ function resetState() {
     feedbacks: [],
     customEvents: [],
     aiSuggestions: [],
+    themeSearch: { query: "", evaluatedAt: "" },
   });
   els.sparkInput.value = "";
   els.reflectionInput.value = "";
@@ -1730,12 +1860,7 @@ els.explorationDepth.addEventListener("input", () => {
   renderStats();
 });
 els.mapSearch.addEventListener("input", () => {
-  const query = els.mapSearch.value.trim();
-  if (!query) return;
-  state.interests = [...new Set([query, ...state.interests])].slice(0, 10);
-  state.selected = rankedEncounters()[0].id;
-  saveState();
-  render();
+  searchThemeOnMap(els.mapSearch.value);
 });
 
 render();
