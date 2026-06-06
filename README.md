@@ -127,6 +127,7 @@ Google Cloud Consoleで作成したAPIキーはチャットやGitに貼らず、
 - 許可するURL:
   - `http://127.0.0.1:4173/*`
   - `http://localhost:4173/*`
+  - `https://tankyu-five.vercel.app/*`
 - APIの制限: `Maps JavaScript API`
 
 キーを保存したあと `地図表示` を押すと、`encounters[].position.lat/lng` を使ってイベントがGoogle Map上に表示されます。本番公開時は、公開ドメインのURLだけをHTTPリファラーに追加してください。

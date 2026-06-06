@@ -368,6 +368,14 @@ function getMapsKeySource() {
   return "none";
 }
 
+function getMapsReferrerHint() {
+  return `${window.location.origin}/*`;
+}
+
+function getMapsTroubleshootingMessage(reason = "認証エラー") {
+  return `${reason}: Google Cloudで ${getMapsReferrerHint()} をHTTPリファラーに追加し、Maps JavaScript APIと請求設定を確認`;
+}
+
 function setMapsStatus(message) {
   state.maps = {
     ...(state.maps || {}),
@@ -398,11 +406,11 @@ function renderMapsSettings() {
   els.mapsApiKey.disabled = publicKeyEnabled;
   els.saveMapsKeyButton.disabled = publicKeyEnabled;
   if (publicKeyEnabled) {
-    els.mapsStatus.textContent = "公開設定のキーを使用中";
+    els.mapsStatus.textContent = state.maps?.lastStatus || "公開設定のキーを使用中";
   } else if (source === "saved") {
     els.mapsStatus.textContent = state.maps?.lastStatus || "ブラウザ保存キーを使用中";
   } else {
-    els.mapsStatus.textContent = "公開設定未設定 / キーを入力してください";
+    els.mapsStatus.textContent = `公開設定未設定 / キーを入力してください / 許可URL ${getMapsReferrerHint()}`;
   }
 }
 
@@ -411,12 +419,19 @@ function loadGoogleMapsScript(apiKey) {
   if (googleMapsLoadPromise) return googleMapsLoadPromise;
 
   googleMapsLoadPromise = new Promise((resolve, reject) => {
+    window.gm_authFailure = () => {
+      googleMapsLoadPromise = null;
+      els.mapCanvas.classList.remove("google-map-enabled");
+      setMapsStatus(getMapsTroubleshootingMessage("Google Maps認証エラー"));
+      saveState();
+      reject(new Error("Google Maps authentication failed"));
+    };
     const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&v=weekly&language=ja&region=JP`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&v=weekly&language=ja&region=JP&loading=async`;
     script.async = true;
     script.defer = true;
     script.onload = resolve;
-    script.onerror = () => reject(new Error("Google Maps JavaScript APIを読み込めませんでした"));
+    script.onerror = () => reject(new Error(getMapsTroubleshootingMessage("Google Maps JavaScript APIを読み込めませんでした")));
     document.head.appendChild(script);
   });
 
@@ -451,7 +466,7 @@ async function initializeGoogleMap() {
     saveState();
   } catch (error) {
     els.mapCanvas.classList.remove("google-map-enabled");
-    setMapsStatus("読み込みエラー: キー制限とAPI有効化を確認");
+    setMapsStatus(error.message || getMapsTroubleshootingMessage("読み込みエラー"));
     saveState();
     console.error(error);
   }
