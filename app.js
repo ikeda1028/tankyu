@@ -212,6 +212,8 @@ const els = {
   eventLat: document.querySelector("#event-lat"),
   eventLng: document.querySelector("#event-lng"),
   useMapCenterButton: document.querySelector("#use-map-center-button"),
+  openLocationMapButton: document.querySelector("#open-location-map-button"),
+  eventLocationMap: document.querySelector("#event-location-map"),
   eventQuestions: [
     document.querySelector("#event-q1"),
     document.querySelector("#event-q2"),
@@ -236,6 +238,8 @@ let dbSavePromise = Promise.resolve();
 let googleMap = null;
 let googleMapsLoadPromise = null;
 let googleMapMarkers = [];
+let eventLocationMap = null;
+let eventLocationMarker = null;
 
 function getEncounters() {
   return [...seedEncounters, ...state.customEvents];
@@ -447,6 +451,66 @@ function renderGoogleMapMarkers() {
   if (!bounds.isEmpty()) googleMap.fitBounds(bounds, 64);
   const selected = getSelectedEncounter();
   googleMap.panTo({ lat: selected.position.lat, lng: selected.position.lng });
+}
+
+function setEventLocationFromLatLng(lat, lng, label = "地図クリック位置") {
+  els.eventLat.value = lat.toFixed(6);
+  els.eventLng.value = lng.toFixed(6);
+  if (!els.eventLocation.value.trim()) {
+    els.eventLocation.value = label;
+  }
+  els.eventAdminStatus.textContent = "地図から位置を入力";
+  renderEventLocationMarker({ lat, lng });
+}
+
+function renderEventLocationMarker(position) {
+  if (!eventLocationMap || !window.google?.maps || !position) return;
+  if (!eventLocationMarker) {
+    eventLocationMarker = new google.maps.Marker({
+      map: eventLocationMap,
+      title: "登録するイベント位置",
+      icon: createMarkerIcon(els.eventColor.value || "#2f8f63"),
+    });
+  }
+  eventLocationMarker.setPosition(position);
+  eventLocationMap.panTo(position);
+}
+
+async function initializeEventLocationMap() {
+  const apiKey = getMapsKey();
+  if (!apiKey) {
+    els.eventAdminStatus.textContent = "Maps APIキー未設定";
+    return;
+  }
+
+  try {
+    await loadGoogleMapsScript(apiKey);
+    const selected = getSelectedEncounter();
+    const center = getEventPosition() || selected.position || createMapPosition(0);
+    els.eventLocationMap.classList.add("active");
+
+    if (!eventLocationMap) {
+      eventLocationMap = new google.maps.Map(els.eventLocationMap, {
+        center: { lat: center.lat, lng: center.lng },
+        zoom: 12,
+        clickableIcons: false,
+        fullscreenControl: false,
+        mapTypeControl: false,
+        streetViewControl: false,
+      });
+      eventLocationMap.addListener("click", (event) => {
+        setEventLocationFromLatLng(event.latLng.lat(), event.latLng.lng());
+      });
+    } else {
+      eventLocationMap.setCenter({ lat: center.lat, lng: center.lng });
+    }
+
+    renderEventLocationMarker({ lat: center.lat, lng: center.lng });
+    els.eventAdminStatus.textContent = "地図をクリックして位置指定";
+  } catch (error) {
+    els.eventAdminStatus.textContent = "位置指定マップを読み込めません";
+    console.error(error);
+  }
 }
 
 async function postToDrive(sheet, record) {
@@ -1295,12 +1359,22 @@ function useMapCenterForEvent() {
     els.eventLat.value = center.lat().toFixed(6);
     els.eventLng.value = center.lng().toFixed(6);
     els.eventAdminStatus.textContent = "地図中心を入力";
+    renderEventLocationMarker({ lat: center.lat(), lng: center.lng() });
     return;
   }
   const selected = getSelectedEncounter();
   els.eventLat.value = selected.position.lat.toFixed(6);
   els.eventLng.value = selected.position.lng.toFixed(6);
   els.eventAdminStatus.textContent = "選択中イベントの位置を入力";
+  renderEventLocationMarker({ lat: selected.position.lat, lng: selected.position.lng });
+}
+
+function syncEventLocationMarkerFromInputs() {
+  const lat = Number(els.eventLat.value);
+  const lng = Number(els.eventLng.value);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return;
+  renderEventLocationMarker({ lat, lng });
 }
 
 function addEventRecord(eventData) {
@@ -1436,6 +1510,9 @@ els.logoutButton.addEventListener("click", logout);
 els.eventForm.addEventListener("submit", registerEvent);
 els.sampleEventButton.addEventListener("click", registerSampleEvent);
 els.useMapCenterButton.addEventListener("click", useMapCenterForEvent);
+els.openLocationMapButton.addEventListener("click", initializeEventLocationMap);
+els.eventLat.addEventListener("input", syncEventLocationMarkerFromInputs);
+els.eventLng.addEventListener("input", syncEventLocationMarkerFromInputs);
 els.saveDriveUrlButton.addEventListener("click", saveDriveUrl);
 els.syncDriveButton.addEventListener("click", syncAllToDrive);
 els.saveMapsKeyButton.addEventListener("click", saveMapsKey);

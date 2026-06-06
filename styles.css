@@ -832,7 +832,7 @@ textarea {
 
 .location-tools {
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto auto 1fr;
   gap: 10px;
   align-items: center;
 }
@@ -849,6 +849,20 @@ textarea {
   font-size: 11px;
   font-weight: 800;
   line-height: 1.45;
+}
+
+.event-location-map {
+  display: none;
+  width: 100%;
+  min-height: 240px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #eef3f7;
+}
+
+.event-location-map.active {
+  display: block;
 }
 
 .question-fieldset {
