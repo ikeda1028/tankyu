@@ -262,7 +262,7 @@ function saveState() {
 }
 
 function getDriveUrl() {
-  return (window.WAKUWAKU_CONFIG?.driveApiUrl || state.driveSync?.apiUrl || "").trim();
+  return (getPublicConfig().driveApiUrl || state.driveSync?.apiUrl || "").trim();
 }
 
 function setDriveStatus(message) {
@@ -295,7 +295,17 @@ function renderDriveSync() {
 }
 
 function getMapsKey() {
-  return (window.WAKUWAKU_CONFIG?.googleMapsApiKey || state.maps?.apiKey || "").trim();
+  return (getPublicConfig().googleMapsApiKey || state.maps?.apiKey || "").trim();
+}
+
+function getPublicConfig() {
+  return globalThis.WAKUWAKU_CONFIG || window.WAKUWAKU_CONFIG || {};
+}
+
+function getMapsKeySource() {
+  if (getPublicConfig().googleMapsApiKey) return "public";
+  if (state.maps?.apiKey) return "saved";
+  return "none";
 }
 
 function setMapsStatus(message) {
@@ -321,14 +331,19 @@ function saveMapsKey() {
 
 function renderMapsSettings() {
   if (!els.mapsApiKey || !els.mapsStatus) return;
-  const publicKeyEnabled = Boolean(window.WAKUWAKU_CONFIG?.googleMapsApiKey);
+  const source = getMapsKeySource();
+  const publicKeyEnabled = source === "public";
   els.mapsApiKey.value = publicKeyEnabled ? "" : getMapsKey();
   els.mapsApiKey.placeholder = publicKeyEnabled ? "公開設定から読み込み中" : "ブラウザ内だけに保存";
   els.mapsApiKey.disabled = publicKeyEnabled;
   els.saveMapsKeyButton.disabled = publicKeyEnabled;
-  els.mapsStatus.textContent = publicKeyEnabled
-    ? "公開設定のキーを使用中"
-    : state.maps?.lastStatus || (getMapsKey() ? "キー保存済み" : "未設定");
+  if (publicKeyEnabled) {
+    els.mapsStatus.textContent = "公開設定のキーを使用中";
+  } else if (source === "saved") {
+    els.mapsStatus.textContent = state.maps?.lastStatus || "ブラウザ保存キーを使用中";
+  } else {
+    els.mapsStatus.textContent = "公開設定未設定 / キーを入力してください";
+  }
 }
 
 function loadGoogleMapsScript(apiKey) {
