@@ -96,6 +96,7 @@ const defaultState = {
   sparks: [],
   interests: ["教育", "地域", "AI"],
   activity: [],
+  joyActions: [],
   completed: [],
   reflections: [],
   feedbacks: [],
@@ -261,6 +262,7 @@ state.maps = { ...defaultState.maps, ...(state.maps || {}) };
 state.auth = { ...defaultState.auth, ...(state.auth || {}) };
 state.member = { ...defaultState.member, ...(state.member || {}) };
 state.ui = { ...defaultState.ui, ...(state.ui || {}) };
+state.joyActions = Array.isArray(state.joyActions) ? state.joyActions : [];
 state.aiSuggestions = Array.isArray(state.aiSuggestions) ? state.aiSuggestions : [];
 state.themeSearch = { ...defaultState.themeSearch, ...(state.themeSearch || {}) };
 let appDb = null;
@@ -569,6 +571,7 @@ function renderGoogleMapMarkers() {
     });
     marker.addListener("click", () => {
       state.selected = encounter.id;
+      grantJoy(3, `${encounter.title}の地図ピンを開いた`, `event-view:${encounter.id}`);
       saveState();
       render();
       googleMap.panTo(position);
@@ -726,6 +729,25 @@ function clamp(value) {
 
 function addQuest(delta) {
   state.quest = Math.max(0, Math.min(999, Math.round(state.quest + delta)));
+}
+
+function getDepthJoyBonus(depth = getDepth()) {
+  if (depth >= 5) return 12;
+  if (depth >= 4) return 8;
+  if (depth >= 3) return 5;
+  if (depth >= 2) return 2;
+  return 0;
+}
+
+function grantJoy(amount, reason, key = reason) {
+  const normalized = Math.max(0, Math.round(amount));
+  if (!normalized) return 0;
+  const actionKey = `${todayKey()}:${key}`;
+  if (state.joyActions.includes(actionKey)) return 0;
+  state.joy = clamp(state.joy + normalized);
+  state.joyActions = [actionKey, ...state.joyActions].slice(0, 100);
+  addActivity(`${reason}。ワクワク +${normalized}`);
+  return normalized;
 }
 
 function todayKey() {
@@ -976,6 +998,7 @@ function renderSpots() {
   els.spotsLayer.querySelectorAll(".spot").forEach((spot) => {
     spot.addEventListener("click", () => {
       state.selected = spot.dataset.id;
+      grantJoy(3, `${getEventTitle(spot.dataset.id)}の詳細を開いた`, `event-view:${spot.dataset.id}`);
       saveState();
       render();
     });
@@ -1006,6 +1029,7 @@ function renderEventList() {
   els.eventList.querySelectorAll(".event-card").forEach((card) => {
     card.addEventListener("click", () => {
       state.selected = card.dataset.id;
+      grantJoy(3, `${getEventTitle(card.dataset.id)}の詳細を開いた`, `event-view:${card.dataset.id}`);
       saveState();
       render();
     });
@@ -1602,6 +1626,7 @@ async function askThemePlace(place) {
   const normalizedPlace = normalizeThemePlace(place);
   const query = state.themeSearch?.query?.trim() || normalizedPlace.name;
   if (!query || !normalizedPlace.name) return;
+  grantJoy(5, `${normalizedPlace.name}を探究場所として開いた`, `theme-place:${query}:${normalizedPlace.name}`);
   state.themeSearch = {
     ...state.themeSearch,
     query,
@@ -1658,6 +1683,7 @@ async function searchThemeOnMap(query) {
     selectedPlace: null,
   };
   state.interests = [...new Set([...extractInterests(trimmed), trimmed, ...state.interests])].slice(0, 10);
+  grantJoy(2, `探究テーマ「${trimmed}」を検索`, `theme-search:${trimmed}`);
   const ranked = rankedEncounters();
   if (ranked[0]) state.selected = ranked[0].id;
   saveState();
@@ -1696,13 +1722,15 @@ async function searchThemeOnMap(query) {
 
 function startAdventure() {
   const encounter = getSelectedEncounter();
+  const depth = getDepth();
   const delta = calculateQuestDelta(encounter);
+  const joyDelta = encounter.boost.joy + getDepthJoyBonus(depth);
   addQuest(delta);
-  state.joy = clamp(state.joy + encounter.boost.joy);
-  state.drive = clamp(state.drive + encounter.boost.distance + getDepth() * 3);
+  state.joy = clamp(state.joy + joyDelta);
+  state.drive = clamp(state.drive + encounter.boost.distance + depth * 3);
   state.thanks = clamp(state.thanks + encounter.boost.reflection);
   state.completed = [...new Set([encounter.id, ...state.completed])].slice(0, 30);
-  addActivity(`${encounter.title}に参加。${depthLabels[getDepth() - 1]}探究して探究値 +${delta}`);
+  addActivity(`${encounter.title}に参加。${depthLabels[depth - 1]}探究して探究値 +${delta} / ワクワク +${joyDelta}`);
   saveState();
   render();
   renderStats(delta);
@@ -1714,6 +1742,8 @@ function receiveThanks() {
   const reflection = els.reflectionInput.value.trim();
   const hypothesis = els.hypothesisInput.value.trim();
   const delta = depth * 3 + getReflectionBonus();
+  const joyDelta = 4 + getDepthJoyBonus(depth) + (reflection ? 3 : 0) + (hypothesis ? 2 : 0);
+  state.joy = clamp(state.joy + joyDelta);
   state.thanks = clamp(state.thanks + depth * 4 + (reflection ? 3 : 0));
   state.drive = clamp(state.drive + depth * 2 + (hypothesis ? 3 : 0));
   addQuest(delta);
@@ -1727,7 +1757,7 @@ function receiveThanks() {
   state.reflections.unshift(reflectionRecord);
   state.selectedReflection = state.reflections[0].at;
   state.reflections = state.reflections.slice(0, 30);
-  addActivity(`${encounter.title}の振り返りを記録。問いを「${encounter.questionPath[depth - 1]}」まで伸ばし探究値 +${delta}`);
+  addActivity(`${encounter.title}の振り返りを記録。問いを「${encounter.questionPath[depth - 1]}」まで伸ばし探究値 +${delta} / ワクワク +${joyDelta}`);
   els.reflectionInput.value = "";
   els.hypothesisInput.value = "";
   saveState();
