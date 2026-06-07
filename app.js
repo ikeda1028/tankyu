@@ -191,6 +191,9 @@ const els = {
   themeEvaluationPanel: document.querySelector("#theme-evaluation-panel"),
   themeEvaluationTitle: document.querySelector("#theme-evaluation-title"),
   themeEvaluationScore: document.querySelector("#theme-evaluation-score"),
+  themeOverview: document.querySelector("#theme-overview"),
+  themeKeywords: document.querySelector("#theme-keywords"),
+  themePlaces: document.querySelector("#theme-places"),
   themeEvaluationBases: document.querySelector("#theme-evaluation-bases"),
   authScreen: document.querySelector("#auth-screen"),
   loginForm: document.querySelector("#login-form"),
@@ -775,6 +778,41 @@ function getThemeEvaluation(eventId) {
   return encounter ? evaluateThemeForEncounter(encounter, state.themeSearch.query) : null;
 }
 
+function getThemeKeywords(query, bases) {
+  const fromQuery = extractInterests(query);
+  const fromBases = bases.flatMap((base) => [
+    ...getEncounterTags(base),
+    ...getEncounterKeywords(base),
+    ...(base.themeEvaluation?.hits || []),
+  ]);
+  return [...new Set([...fromQuery, ...fromBases])]
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .slice(0, 12);
+}
+
+function getThemePlaces(bases) {
+  return bases
+    .map((base) => ({
+      eventId: base.id,
+      title: base.title,
+      location: base.locationName || base.impact || "場所未設定",
+      score: base.themeEvaluation?.total || 0,
+      lat: hasValidLatLng(base.position) ? Number(base.position.lat).toFixed(4) : "",
+      lng: hasValidLatLng(base.position) ? Number(base.position.lng).toFixed(4) : "",
+    }))
+    .filter((place, index, items) => items.findIndex((item) => item.location === place.location) === index)
+    .slice(0, 5);
+}
+
+function buildThemeOverview(query, keywords, places, bases) {
+  const top = bases[0];
+  const keywordText = keywords.slice(0, 4).join("・") || "身近な事象";
+  const placeText = places.slice(0, 2).map((place) => place.location).join("、") || "学校や地域";
+  const impact = top?.impact || "社会課題";
+  return `「${query}」は、${keywordText}を手がかりに、${placeText}で観察・聞き取り・比較を行い、${impact}へ問いを広げられる探究テーマです。`;
+}
+
 function getDepth() {
   return Number(els.explorationDepth.value);
 }
@@ -917,9 +955,28 @@ function renderThemeEvaluation() {
   const average = bases.length
     ? clamp(bases.reduce((sum, item) => sum + item.themeEvaluation.total, 0) / bases.length)
     : 0;
+  const keywords = getThemeKeywords(query, bases);
+  const places = getThemePlaces(bases);
   els.themeEvaluationTitle.textContent = query;
   els.themeEvaluationScore.textContent = average;
   els.themeEvaluationScore.style.background = average >= 80 ? "var(--green)" : average >= 65 ? "var(--gold)" : "var(--rose)";
+  if (els.themeOverview) {
+    els.themeOverview.textContent = buildThemeOverview(query, keywords, places, bases);
+  }
+  if (els.themeKeywords) {
+    els.themeKeywords.innerHTML = keywords.map((keyword) => `<span>${escapeHtml(keyword)}</span>`).join("");
+  }
+  if (els.themePlaces) {
+    els.themePlaces.innerHTML = places
+      .map(
+        (place) => `<button type="button" data-id="${place.eventId}">
+        <strong>${escapeHtml(place.location)}</strong>
+        <span>${escapeHtml(place.title)} / 評価 ${place.score}</span>
+        <small>${place.lat && place.lng ? `${place.lat}, ${place.lng}` : "座標未設定"}</small>
+      </button>`
+      )
+      .join("");
+  }
   els.themeEvaluationBases.innerHTML = bases
     .map((base, index) => {
       const evaluation = base.themeEvaluation;
@@ -932,7 +989,10 @@ function renderThemeEvaluation() {
       </button>`;
     })
     .join("");
-  els.themeEvaluationBases.querySelectorAll("[data-id]").forEach((button) => {
+  [
+    ...els.themeEvaluationBases.querySelectorAll("[data-id]"),
+    ...(els.themePlaces ? els.themePlaces.querySelectorAll("[data-id]") : []),
+  ].forEach((button) => {
     button.addEventListener("click", () => {
       state.selected = button.dataset.id;
       saveState();

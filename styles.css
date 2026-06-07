@@ -666,7 +666,9 @@ textarea {
   grid-template-columns: 1fr auto;
   gap: 10px 12px;
   width: min(380px, calc(100% - 36px));
+  max-height: min(72vh, 620px);
   padding: 12px;
+  overflow-y: auto;
   border: 1px solid rgba(223, 230, 222, 0.9);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.93);
@@ -690,6 +692,73 @@ textarea {
   color: white;
   font-size: 20px;
   font-weight: 900;
+}
+
+.theme-overview {
+  grid-column: 1 / 3;
+  margin: 0;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.65;
+}
+
+.theme-keywords {
+  display: flex;
+  grid-column: 1 / 3;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.theme-keywords span {
+  padding: 5px 8px;
+  border-radius: 999px;
+  color: #315042;
+  background: #edf7ef;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.theme-places {
+  display: grid;
+  grid-column: 1 / 3;
+  gap: 8px;
+}
+
+.theme-places::before {
+  color: var(--muted);
+  content: "関係する場所";
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.theme-places button {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  background: #fff;
+  text-align: left;
+}
+
+.theme-places strong {
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.theme-places span,
+.theme-places small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .theme-bases {
@@ -1660,6 +1729,9 @@ textarea {
   }
 
   .theme-evaluation > strong,
+  .theme-overview,
+  .theme-keywords,
+  .theme-places,
   .theme-bases {
     grid-column: 1;
   }
