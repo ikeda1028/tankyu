@@ -757,6 +757,11 @@ textarea {
   text-align: left;
 }
 
+.theme-places .theme-place-note,
+.theme-bases .theme-question-note {
+  background: #f6faf7;
+}
+
 .theme-places strong {
   overflow: hidden;
   font-size: 12px;

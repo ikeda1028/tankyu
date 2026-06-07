@@ -1,4 +1,5 @@
 const STORAGE_KEY = "wakuwaku-quest-state-v3";
+const PUBLIC_API_BASE = "https://tankyu-five.vercel.app";
 
 const depthLabels = ["事実まで", "背景まで", "構造まで", "越境まで", "実装まで"];
 
@@ -103,6 +104,11 @@ const defaultState = {
   themeSearch: {
     query: "",
     evaluatedAt: "",
+    status: "",
+    answer: "",
+    aiKeywords: [],
+    aiPlaces: [],
+    nextQuestions: [],
   },
   driveSync: {
     apiUrl: "",
@@ -822,6 +828,13 @@ function buildThemeOverview(query, keywords, places, bases) {
   return `「${query}」は、${keywordText}を手がかりに、${placeText}で観察・聞き取り・比較を行い、${impact}へ問いを広げられる探究テーマです。`;
 }
 
+function getThemeAnswerApiPath() {
+  if (location.protocol === "file:" || location.hostname === "127.0.0.1" || location.hostname === "localhost") {
+    return `${PUBLIC_API_BASE}/api/theme-answer`;
+  }
+  return "/api/theme-answer";
+}
+
 function getDepth() {
   return Number(els.explorationDepth.value);
 }
@@ -966,25 +979,40 @@ function renderThemeEvaluation() {
     : 0;
   const keywords = getThemeKeywords(query, bases);
   const places = getThemePlaces(bases);
+  const aiKeywords = Array.isArray(state.themeSearch.aiKeywords) ? state.themeSearch.aiKeywords : [];
+  const aiPlaces = Array.isArray(state.themeSearch.aiPlaces) ? state.themeSearch.aiPlaces : [];
+  const nextQuestions = Array.isArray(state.themeSearch.nextQuestions) ? state.themeSearch.nextQuestions : [];
+  const mergedKeywords = [...new Set([...aiKeywords, ...keywords])].slice(0, 12);
   els.themeEvaluationTitle.textContent = query;
   els.themeEvaluationScore.textContent = average;
   els.themeEvaluationScore.style.background = average >= 80 ? "var(--green)" : average >= 65 ? "var(--gold)" : "var(--rose)";
   if (els.themeOverview) {
-    els.themeOverview.textContent = buildThemeOverview(query, keywords, places, bases);
+    els.themeOverview.textContent =
+      state.themeSearch.answer ||
+      (state.themeSearch.status === "loading"
+        ? "AIに探究の広がりを質問中..."
+        : buildThemeOverview(query, keywords, places, bases));
   }
   if (els.themeKeywords) {
-    els.themeKeywords.innerHTML = keywords.map((keyword) => `<span>${escapeHtml(keyword)}</span>`).join("");
+    els.themeKeywords.innerHTML = mergedKeywords.map((keyword) => `<span>${escapeHtml(keyword)}</span>`).join("");
   }
   if (els.themePlaces) {
-    els.themePlaces.innerHTML = places
-      .map(
+    els.themePlaces.innerHTML = [
+      ...aiPlaces.map(
+        (place) => `<button type="button" class="theme-place-note">
+        <strong>${escapeHtml(place)}</strong>
+        <span>AIが示した関係場所</span>
+        <small>訪問・観察・聞き取りの候補</small>
+      </button>`
+      ),
+      ...places.map(
         (place) => `<button type="button" data-id="${place.eventId}">
         <strong>${escapeHtml(place.location)}</strong>
         <span>${escapeHtml(place.title)} / 評価 ${place.score}</span>
         <small>${place.lat && place.lng ? `${place.lat}, ${place.lng}` : "座標未設定"}</small>
       </button>`
-      )
-      .join("");
+      ),
+    ].join("");
   }
   els.themeEvaluationBases.innerHTML = bases
     .map((base, index) => {
@@ -997,6 +1025,16 @@ function renderThemeEvaluation() {
         <small>${escapeHtml(hits)} / ${escapeHtml(base.locationName || base.impact)}</small>
       </button>`;
     })
+    .concat(
+      nextQuestions.map(
+        (question, index) => `<button type="button" class="theme-question-note">
+        <span>Q${index + 1}</span>
+        <strong>${escapeHtml(question)}</strong>
+        <em>次の問い</em>
+        <small>この問いをイベントや場所で確かめる</small>
+      </button>`
+      )
+    )
     .join("");
   [
     ...els.themeEvaluationBases.querySelectorAll("[data-id]"),
@@ -1462,10 +1500,30 @@ function selectRecommendation() {
   render();
 }
 
-function searchThemeOnMap(query) {
+async function fetchThemeAnswer(query) {
+  const bases = getThemeBaseRankings().slice(0, 4);
+  const response = await fetch(getThemeAnswerApiPath(), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      query,
+      grade: state.member.grade,
+      region: state.member.region,
+      interests: state.interests,
+      localPlaces: bases.map((base) => base.locationName || base.impact).filter(Boolean),
+    }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.error || `HTTP ${response.status}`);
+  }
+  return data;
+}
+
+async function searchThemeOnMap(query) {
   const trimmed = query.trim();
   if (!trimmed) {
-    state.themeSearch = { ...state.themeSearch, query: "", evaluatedAt: "" };
+    state.themeSearch = { ...state.themeSearch, query: "", evaluatedAt: "", status: "", answer: "", aiKeywords: [], aiPlaces: [], nextQuestions: [] };
     saveState();
     render();
     return;
@@ -1473,12 +1531,45 @@ function searchThemeOnMap(query) {
   state.themeSearch = {
     query: trimmed,
     evaluatedAt: new Date().toISOString(),
+    status: "loading",
+    answer: "",
+    aiKeywords: [],
+    aiPlaces: [],
+    nextQuestions: [],
   };
   state.interests = [...new Set([...extractInterests(trimmed), trimmed, ...state.interests])].slice(0, 10);
   const ranked = rankedEncounters();
   if (ranked[0]) state.selected = ranked[0].id;
   saveState();
   render();
+
+  try {
+    const answer = await fetchThemeAnswer(trimmed);
+    if (state.themeSearch.query !== trimmed) return;
+    state.themeSearch = {
+      ...state.themeSearch,
+      status: "done",
+      answer: answer.answer || "",
+      aiKeywords: Array.isArray(answer.keywords) ? answer.keywords : [],
+      aiPlaces: Array.isArray(answer.places) ? answer.places : [],
+      nextQuestions: Array.isArray(answer.nextQuestions) ? answer.nextQuestions : [],
+    };
+    saveState();
+    render();
+  } catch (error) {
+    if (state.themeSearch.query !== trimmed) return;
+    state.themeSearch = {
+      ...state.themeSearch,
+      status: "error",
+      answer: "",
+      aiKeywords: [],
+      aiPlaces: [],
+      nextQuestions: [],
+    };
+    saveState();
+    render();
+    console.error(error);
+  }
 }
 
 function startAdventure() {
