@@ -10,6 +10,38 @@ function normalizeList(value, limit = 8) {
     : [];
 }
 
+function normalizeNumber(value, min, max) {
+  const number = Number(value);
+  return Number.isFinite(number) && number >= min && number <= max ? number : null;
+}
+
+function normalizePlaces(value, limit = 6) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((place) => {
+      if (typeof place === "string") {
+        return {
+          name: normalizeText(place).slice(0, 80),
+          type: "関係場所",
+          reason: "観察・聞き取りの候補",
+          searchHint: normalizeText(place).slice(0, 80),
+          lat: null,
+          lng: null,
+        };
+      }
+      return {
+        name: normalizeText(place?.name).slice(0, 80),
+        type: normalizeText(place?.type, "関係場所").slice(0, 40),
+        reason: normalizeText(place?.reason, "観察・聞き取りの候補").slice(0, 140),
+        searchHint: normalizeText(place?.searchHint || place?.name).slice(0, 100),
+        lat: normalizeNumber(place?.lat, -90, 90),
+        lng: normalizeNumber(place?.lng, -180, 180),
+      };
+    })
+    .filter((place) => place.name)
+    .slice(0, limit);
+}
+
 function extractOutputText(responseJson) {
   if (responseJson.output_text) return responseJson.output_text;
   const textItems = responseJson.output
@@ -34,7 +66,7 @@ function normalizeThemeAnswer(data, query) {
   return {
     answer: normalizeText(data.answer, `「${query}」を身近な事象から観察し、背景、構造、別分野、実装へ問いを広げる探究テーマです。`).slice(0, 360),
     keywords: normalizeList(data.keywords, 10),
-    places: normalizeList(data.places, 6),
+    places: normalizePlaces(data.places, 6),
     nextQuestions: normalizeList(data.nextQuestions, 5),
   };
 }
@@ -77,6 +109,16 @@ export default async function handler(request, response) {
       region: normalizeText(body.region, "日本"),
       interests: normalizeList(body.interests, 10),
       localPlaces: normalizeList(body.localPlaces, 8),
+      selectedPlace: body.selectedPlace
+        ? {
+            name: normalizeText(body.selectedPlace.name).slice(0, 80),
+            type: normalizeText(body.selectedPlace.type).slice(0, 40),
+            reason: normalizeText(body.selectedPlace.reason).slice(0, 140),
+            searchHint: normalizeText(body.selectedPlace.searchHint).slice(0, 100),
+            lat: normalizeNumber(body.selectedPlace.lat, -90, 90),
+            lng: normalizeNumber(body.selectedPlace.lng, -180, 180),
+          }
+        : null,
     };
 
     const openAiResponse = await fetch("https://api.openai.com/v1/responses", {
@@ -101,9 +143,24 @@ JSON形式:
 {
   "answer": "中高生向けに220文字以内。検索語がどんな探究テーマになり、何を観察し、どこまで問いを広げられるかを書く",
   "keywords": ["関連キーワード 最大10件"],
-  "places": ["関係する場所 最大6件。固有名詞でなく、学校・地域で訪問できる場所の種類を中心にする"],
+  "places": [
+    {
+      "name": "場所名",
+      "type": "場所の種類",
+      "reason": "なぜこの探究語と関係するか",
+      "searchHint": "Google Mapで探す時の検索語",
+      "lat": 緯度の概算またはnull,
+      "lng": 経度の概算またはnull
+    }
+  ],
   "nextQuestions": ["次に立てる問い 最大5件"]
 }
+
+場所情報の条件:
+- placesは最大6件
+- 地域が分かる場合だけ日本国内の概算緯度経度を入れる
+- 分からない場合はlat/lngをnullにする
+- selectedPlaceがある場合は、その場所で何を観察・聞き取りできるかをanswerに反映する
 
 入力:
 ${JSON.stringify(payload, null, 2)}`,

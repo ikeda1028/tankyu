@@ -109,6 +109,7 @@ const defaultState = {
     aiKeywords: [],
     aiPlaces: [],
     nextQuestions: [],
+    selectedPlace: null,
   },
   driveSync: {
     apiUrl: "",
@@ -273,6 +274,33 @@ let eventLocationMarker = null;
 
 function getEncounters() {
   return [...seedEncounters, ...state.customEvents];
+}
+
+function normalizeThemePlace(place) {
+  if (typeof place === "string") {
+    return {
+      name: place,
+      type: "関係場所",
+      reason: "訪問・観察・聞き取りの候補",
+      searchHint: place,
+      lat: null,
+      lng: null,
+    };
+  }
+  const lat = Number(place?.lat);
+  const lng = Number(place?.lng);
+  return {
+    name: String(place?.name || place?.searchHint || "").trim(),
+    type: String(place?.type || "関係場所").trim(),
+    reason: String(place?.reason || "訪問・観察・聞き取りの候補").trim(),
+    searchHint: String(place?.searchHint || place?.name || "").trim(),
+    lat: Number.isFinite(lat) && lat >= -90 && lat <= 90 ? lat : null,
+    lng: Number.isFinite(lng) && lng >= -180 && lng <= 180 ? lng : null,
+  };
+}
+
+function hasThemePlaceLatLng(place) {
+  return Number.isFinite(Number(place?.lat)) && Number.isFinite(Number(place?.lng));
 }
 
 function getEncounterTags(encounter) {
@@ -533,6 +561,30 @@ function renderGoogleMapMarkers() {
       render();
       googleMap.panTo(position);
       googleMap.setZoom(Math.max(googleMap.getZoom(), 7));
+    });
+    googleMapMarkers.push(marker);
+    bounds.extend(position);
+  });
+  const aiPlaces = Array.isArray(state.themeSearch?.aiPlaces) ? state.themeSearch.aiPlaces.map(normalizeThemePlace) : [];
+  aiPlaces.forEach((place, index) => {
+    if (!place.name || !hasThemePlaceLatLng(place)) return;
+    const position = { lat: Number(place.lat), lng: Number(place.lng) };
+    const marker = new google.maps.Marker({
+      map: googleMap,
+      position,
+      title: `${place.name} / AI関係場所`,
+      label: {
+        text: `P${index + 1}`,
+        color: "#ffffff",
+        fontSize: "10px",
+        fontWeight: "900",
+      },
+      icon: createMarkerIcon("#7c4d9e"),
+    });
+    marker.addListener("click", () => {
+      askThemePlace(place);
+      googleMap.panTo(position);
+      googleMap.setZoom(Math.max(googleMap.getZoom(), 9));
     });
     googleMapMarkers.push(marker);
     bounds.extend(position);
@@ -980,7 +1032,7 @@ function renderThemeEvaluation() {
   const keywords = getThemeKeywords(query, bases);
   const places = getThemePlaces(bases);
   const aiKeywords = Array.isArray(state.themeSearch.aiKeywords) ? state.themeSearch.aiKeywords : [];
-  const aiPlaces = Array.isArray(state.themeSearch.aiPlaces) ? state.themeSearch.aiPlaces : [];
+  const aiPlaces = Array.isArray(state.themeSearch.aiPlaces) ? state.themeSearch.aiPlaces.map(normalizeThemePlace).filter((place) => place.name) : [];
   const nextQuestions = Array.isArray(state.themeSearch.nextQuestions) ? state.themeSearch.nextQuestions : [];
   const mergedKeywords = [...new Set([...aiKeywords, ...keywords])].slice(0, 12);
   els.themeEvaluationTitle.textContent = query;
@@ -999,10 +1051,10 @@ function renderThemeEvaluation() {
   if (els.themePlaces) {
     els.themePlaces.innerHTML = [
       ...aiPlaces.map(
-        (place) => `<button type="button" class="theme-place-note">
-        <strong>${escapeHtml(place)}</strong>
-        <span>AIが示した関係場所</span>
-        <small>訪問・観察・聞き取りの候補</small>
+        (place, index) => `<button type="button" class="theme-place-note" data-ai-place-index="${index}">
+        <strong>${escapeHtml(place.name)}</strong>
+        <span>${escapeHtml(place.type)} / ${escapeHtml(place.reason)}</span>
+        <small>${hasThemePlaceLatLng(place) ? `${Number(place.lat).toFixed(4)}, ${Number(place.lng).toFixed(4)}` : escapeHtml(place.searchHint || "位置情報なし")}</small>
       </button>`
       ),
       ...places.map(
@@ -1052,6 +1104,19 @@ function renderThemeEvaluation() {
       }
     });
   });
+  if (els.themePlaces) {
+    els.themePlaces.querySelectorAll("[data-ai-place-index]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const place = aiPlaces[Number(button.dataset.aiPlaceIndex)];
+        if (!place) return;
+        askThemePlace(place);
+        if (googleMap && hasThemePlaceLatLng(place)) {
+          googleMap.panTo({ lat: Number(place.lat), lng: Number(place.lng) });
+          googleMap.setZoom(Math.max(googleMap.getZoom(), 9));
+        }
+      });
+    });
+  }
 }
 
 function toggleCompactEvents() {
@@ -1500,7 +1565,7 @@ function selectRecommendation() {
   render();
 }
 
-async function fetchThemeAnswer(query) {
+async function fetchThemeAnswer(query, selectedPlace = null) {
   const bases = getThemeBaseRankings().slice(0, 4);
   const response = await fetch(getThemeAnswerApiPath(), {
     method: "POST",
@@ -1511,6 +1576,7 @@ async function fetchThemeAnswer(query) {
       region: state.member.region,
       interests: state.interests,
       localPlaces: bases.map((base) => base.locationName || base.impact).filter(Boolean),
+      selectedPlace,
     }),
   });
   const data = await response.json().catch(() => ({}));
@@ -1520,10 +1586,51 @@ async function fetchThemeAnswer(query) {
   return data;
 }
 
+async function askThemePlace(place) {
+  const normalizedPlace = normalizeThemePlace(place);
+  const query = state.themeSearch?.query?.trim() || normalizedPlace.name;
+  if (!query || !normalizedPlace.name) return;
+  state.themeSearch = {
+    ...state.themeSearch,
+    query,
+    status: "loading",
+    selectedPlace: normalizedPlace,
+    answer: `${normalizedPlace.name}の位置情報をもとにAIへ質問中...`,
+  };
+  saveState();
+  render();
+
+  try {
+    const answer = await fetchThemeAnswer(query, normalizedPlace);
+    if (state.themeSearch.query !== query) return;
+    state.themeSearch = {
+      ...state.themeSearch,
+      status: "done",
+      answer: answer.answer || "",
+      aiKeywords: Array.isArray(answer.keywords) ? answer.keywords : [],
+      aiPlaces: Array.isArray(answer.places) ? answer.places.map(normalizeThemePlace) : [],
+      nextQuestions: Array.isArray(answer.nextQuestions) ? answer.nextQuestions : [],
+      selectedPlace: normalizedPlace,
+    };
+    saveState();
+    render();
+  } catch (error) {
+    state.themeSearch = {
+      ...state.themeSearch,
+      status: "error",
+      answer: `${normalizedPlace.name}の位置情報を使ったAI回答を取得できませんでした。`,
+      selectedPlace: normalizedPlace,
+    };
+    saveState();
+    render();
+    console.error(error);
+  }
+}
+
 async function searchThemeOnMap(query) {
   const trimmed = query.trim();
   if (!trimmed) {
-    state.themeSearch = { ...state.themeSearch, query: "", evaluatedAt: "", status: "", answer: "", aiKeywords: [], aiPlaces: [], nextQuestions: [] };
+    state.themeSearch = { ...state.themeSearch, query: "", evaluatedAt: "", status: "", answer: "", aiKeywords: [], aiPlaces: [], nextQuestions: [], selectedPlace: null };
     saveState();
     render();
     return;
@@ -1536,6 +1643,7 @@ async function searchThemeOnMap(query) {
     aiKeywords: [],
     aiPlaces: [],
     nextQuestions: [],
+    selectedPlace: null,
   };
   state.interests = [...new Set([...extractInterests(trimmed), trimmed, ...state.interests])].slice(0, 10);
   const ranked = rankedEncounters();
@@ -1551,8 +1659,9 @@ async function searchThemeOnMap(query) {
       status: "done",
       answer: answer.answer || "",
       aiKeywords: Array.isArray(answer.keywords) ? answer.keywords : [],
-      aiPlaces: Array.isArray(answer.places) ? answer.places : [],
+      aiPlaces: Array.isArray(answer.places) ? answer.places.map(normalizeThemePlace) : [],
       nextQuestions: Array.isArray(answer.nextQuestions) ? answer.nextQuestions : [],
+      selectedPlace: null,
     };
     saveState();
     render();
@@ -1565,6 +1674,7 @@ async function searchThemeOnMap(query) {
       aiKeywords: [],
       aiPlaces: [],
       nextQuestions: [],
+      selectedPlace: null,
     };
     saveState();
     render();
