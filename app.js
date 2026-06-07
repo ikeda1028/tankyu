@@ -415,11 +415,18 @@ function getMapsKeySource() {
 }
 
 function getMapsReferrerHint() {
+  if (window.location.protocol === "file:") {
+    return "http://127.0.0.1:4173/* または https://tankyu-five.vercel.app/*";
+  }
   return `${window.location.origin}/*`;
 }
 
 function getMapsTroubleshootingMessage(reason = "認証エラー") {
   return `${reason}: Google Cloudで ${getMapsReferrerHint()} をHTTPリファラーに追加し、Maps JavaScript APIと請求設定を確認`;
+}
+
+function isFilePage() {
+  return window.location.protocol === "file:";
 }
 
 function setMapsStatus(message) {
@@ -485,6 +492,11 @@ function loadGoogleMapsScript(apiKey) {
 }
 
 async function initializeGoogleMap() {
+  if (isFilePage()) {
+    setMapsStatus("file://ではGoogle Mapを表示できません。http://127.0.0.1:4173/ で開いてください");
+    saveState();
+    return;
+  }
   const apiKey = getMapsKey();
   if (!apiKey) {
     setMapsStatus("APIキーを入力してください");
