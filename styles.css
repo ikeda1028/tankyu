@@ -536,6 +536,19 @@ textarea {
   line-height: 1.45;
 }
 
+.member-save-status {
+  min-height: 16px;
+  margin: 6px 0 0;
+  color: var(--green);
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1.45;
+}
+
+.member-save-status.error {
+  color: var(--rose);
+}
+
 .map-area {
   position: relative;
   min-width: 0;

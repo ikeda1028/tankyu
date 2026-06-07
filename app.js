@@ -207,8 +207,10 @@ const els = {
   memberGrade: document.querySelector("#member-grade"),
   memberRegion: document.querySelector("#member-region"),
   memberInterest: document.querySelector("#member-interest"),
+  memberFormStatus: document.querySelector("#member-form-status"),
   memberSummaryName: document.querySelector("#member-summary-name"),
   memberSummaryMeta: document.querySelector("#member-summary-meta"),
+  memberSummaryStatus: document.querySelector("#member-summary-status"),
   editMemberButton: document.querySelector("#edit-member-button"),
   logoutButton: document.querySelector("#logout-button"),
   eventAdminView: document.querySelector(".event-admin-view"),
@@ -320,8 +322,14 @@ function loadState() {
 }
 
 function saveState() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch (error) {
+    console.error(error);
+    return false;
+  }
   queueDatabaseSave();
+  return true;
 }
 
 function getDriveUrl() {
@@ -1183,6 +1191,14 @@ function renderMemberSummary() {
   els.memberSummaryMeta.textContent = meta || "学年・学校未設定";
 }
 
+function setMemberStatus(message, isError = false) {
+  [els.memberFormStatus, els.memberSummaryStatus].forEach((element) => {
+    if (!element) return;
+    element.textContent = message;
+    element.classList.toggle("error", isError);
+  });
+}
+
 function showMemberForm() {
   els.authScreen.classList.remove("hidden");
   els.loginForm.classList.add("hidden");
@@ -1192,6 +1208,7 @@ function showMemberForm() {
   els.memberGrade.value = state.member.grade || "中1";
   els.memberRegion.value = state.member.region || "";
   els.memberInterest.value = state.member.initialInterest || "";
+  setMemberStatus("");
 }
 
 function handleLogin(event) {
@@ -1239,8 +1256,9 @@ function saveMemberInfo(event) {
     state.sparks = state.sparks.slice(0, 20);
   }
   addActivity(`${state.member.name}の会員情報を保存`);
-  saveState();
+  const saved = saveState();
   render();
+  setMemberStatus(saved ? "会員情報を保存しました" : "ブラウザ保存に失敗しました。ローカルサーバーで開き直してください。", !saved);
   if (getDriveUrl()) {
     postToDrive("users", memberToDriveRecord());
   }
