@@ -115,6 +115,7 @@ const defaultState = {
   },
   ui: {
     eventsPanel: "compact",
+    memberEditing: false,
   },
   selectedReflection: "",
   streak: 0,
@@ -1180,9 +1181,11 @@ function render() {
 
 function renderAuth() {
   const needsMember = state.auth.loggedIn && !state.member.name;
-  els.authScreen.classList.toggle("hidden", state.auth.loggedIn && !needsMember);
+  const showMember = state.auth.loggedIn && (needsMember || state.ui.memberEditing);
+  els.authScreen.classList.toggle("hidden", state.auth.loggedIn && !showMember);
   els.loginForm.classList.toggle("hidden", state.auth.loggedIn);
-  els.memberForm.classList.toggle("hidden", !needsMember);
+  els.memberForm.classList.toggle("hidden", !showMember);
+  els.backLoginButton.textContent = state.auth.loggedIn ? "閉じる" : "ログインに戻る";
 }
 
 function renderMemberSummary() {
@@ -1200,6 +1203,7 @@ function setMemberStatus(message, isError = false) {
 }
 
 function showMemberForm() {
+  state.ui.memberEditing = true;
   els.authScreen.classList.remove("hidden");
   els.loginForm.classList.add("hidden");
   els.memberForm.classList.remove("hidden");
@@ -1256,6 +1260,7 @@ function saveMemberInfo(event) {
     state.sparks = state.sparks.slice(0, 20);
   }
   addActivity(`${state.member.name}の会員情報を保存`);
+  state.ui.memberEditing = false;
   const saved = saveState();
   render();
   setMemberStatus(saved ? "会員情報を保存しました" : "ブラウザ保存に失敗しました。ローカルサーバーで開き直してください。", !saved);
@@ -1957,6 +1962,12 @@ els.loginForm.addEventListener("submit", handleLogin);
 els.demoLoginButton.addEventListener("click", handleDemoLogin);
 els.memberForm.addEventListener("submit", saveMemberInfo);
 els.backLoginButton.addEventListener("click", () => {
+  if (state.auth.loggedIn) {
+    state.ui.memberEditing = false;
+    saveState();
+    render();
+    return;
+  }
   state.auth = { loggedIn: false, email: "" };
   saveState();
   render();
