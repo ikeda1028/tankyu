@@ -1084,7 +1084,9 @@ function renderThemeEvaluation() {
         : buildThemeOverview(query, keywords, places, bases));
   }
   if (els.themeKeywords) {
-    els.themeKeywords.innerHTML = mergedKeywords.map((keyword) => `<span>${escapeHtml(keyword)}</span>`).join("");
+    els.themeKeywords.innerHTML = mergedKeywords
+      .map((keyword) => `<button type="button" data-theme-keyword="${escapeHtml(keyword)}">${escapeHtml(keyword)}</button>`)
+      .join("");
   }
   if (els.themePlaces) {
     els.themePlaces.innerHTML = [
@@ -1152,6 +1154,16 @@ function renderThemeEvaluation() {
           googleMap.panTo({ lat: Number(place.lat), lng: Number(place.lng) });
           googleMap.setZoom(Math.max(googleMap.getZoom(), 9));
         }
+      });
+    });
+  }
+  if (els.themeKeywords) {
+    els.themeKeywords.querySelectorAll("[data-theme-keyword]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const keyword = button.dataset.themeKeyword || "";
+        if (!keyword) return;
+        grantJoy(2, `候補キーワード「${keyword}」を開いた`, `theme-keyword:${query}:${keyword}`);
+        searchThemeOnMap(keyword);
       });
     });
   }
