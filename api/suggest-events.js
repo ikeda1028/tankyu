@@ -16,6 +16,12 @@ function normalizeList(value, limit = 8) {
     : [];
 }
 
+function setCors(response) {
+  response.setHeader("Access-Control-Allow-Origin", "*");
+  response.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  response.setHeader("Access-Control-Allow-Headers", "Content-Type");
+}
+
 function normalizeFutureDate(value, today) {
   const date = normalizeText(value).slice(0, 10);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return "";
@@ -69,8 +75,13 @@ function parseJsonObject(text) {
 }
 
 export default async function handler(request, response) {
+  setCors(response);
+  if (request.method === "OPTIONS") {
+    response.status(204).end();
+    return;
+  }
   if (request.method !== "POST") {
-    response.setHeader("Allow", "POST");
+    response.setHeader("Allow", "POST, OPTIONS");
     response.status(405).json({ error: "Method not allowed" });
     return;
   }
@@ -84,13 +95,15 @@ export default async function handler(request, response) {
   try {
     const body = request.body || {};
     const today = new Date().toISOString().slice(0, 10);
+    const count = clamp(body.count || 3, 3, 30);
     const payload = {
+      count,
       grade: normalizeText(body.grade, "中高生"),
       region: normalizeText(body.region, "日本"),
       motivation: clamp(body.motivation, 1, 100),
       sparks: normalizeText(body.sparks),
       interests: normalizeList(body.interests, 10),
-      existingEvents: normalizeList(body.existingEvents, 10),
+      existingEvents: normalizeList(body.existingEvents, 40),
       completedEvents: normalizeList(body.completedEvents, 8),
     };
 
@@ -110,17 +123,19 @@ export default async function handler(request, response) {
             content: [
               {
                 type: "input_text",
-                text: `次の生徒プロフィールから、候補イベントを3件作ってください。
+                text: `次の生徒プロフィールから、探究ポイント候補を${count}件作ってください。
 
 条件:
 - 今日の日付は ${today}
 - 中高生が参加できる
 - 出会いはイベント
+- 地図上に置ける探究ポイントとして作る
 - 探究値は「事象に出会って、どの程度遠くまで探究できるか」で伸びる
 - 常設か期間限定かを必ず入れる
 - 期間限定イベントの日付は必ず ${today} 以降にする。過去の日付は使わない
 - 緯度経度は地域が推測できる場合だけ日本国内の概算を入れる。難しい場合はnull
 - 既存イベントと重複しない
+- 似たテーマに偏らず、環境、福祉、防災、文化、科学、地域経済、テクノロジーなどに分散する
 
 JSON形式:
 {
@@ -150,7 +165,7 @@ ${JSON.stringify(payload, null, 2)}`,
             ],
           },
         ],
-        max_output_tokens: 1400,
+        max_output_tokens: Math.min(8000, 700 + count * 520),
       }),
     });
 
@@ -163,7 +178,7 @@ ${JSON.stringify(payload, null, 2)}`,
     }
 
     const parsed = parseJsonObject(extractOutputText(responseJson));
-    const events = (Array.isArray(parsed.events) ? parsed.events : []).slice(0, 3).map(normalizeEvent);
+    const events = (Array.isArray(parsed.events) ? parsed.events : []).slice(0, count).map(normalizeEvent);
     response.status(200).json({ events });
   } catch (error) {
     response.status(500).json({ error: error.message || "AI候補を生成できませんでした" });

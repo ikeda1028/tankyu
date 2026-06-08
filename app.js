@@ -252,6 +252,8 @@ const els = {
   ],
   sampleEventButton: document.querySelector("#sample-event-button"),
   searchAiEventsButton: document.querySelector("#search-ai-events-button"),
+  registerAllAiEventsButton: document.querySelector("#register-all-ai-events-button"),
+  aiSuggestionCount: document.querySelector("#ai-suggestion-count"),
   aiSuggestionStatus: document.querySelector("#ai-suggestion-status"),
   aiSuggestionList: document.querySelector("#ai-suggestion-list"),
   registeredEventCount: document.querySelector("#registered-event-count"),
@@ -1001,6 +1003,13 @@ function getThemeAnswerApiPath() {
     return `${PUBLIC_API_BASE}/api/theme-answer`;
   }
   return "/api/theme-answer";
+}
+
+function getSuggestEventsApiPath() {
+  if (location.protocol === "file:" || location.hostname === "127.0.0.1" || location.hostname === "localhost") {
+    return `${PUBLIC_API_BASE}/api/suggest-events`;
+  }
+  return "/api/suggest-events";
 }
 
 function getDepth() {
@@ -2080,20 +2089,22 @@ function renderAiSuggestions() {
 async function searchAiEventSuggestions() {
   if (!els.searchAiEventsButton) return;
   const previousText = els.searchAiEventsButton.textContent;
+  const count = clamp(els.aiSuggestionCount?.value || 12, 3, 30);
   els.searchAiEventsButton.disabled = true;
   els.searchAiEventsButton.textContent = "検索中";
-  els.aiSuggestionStatus.textContent = "ChatGPT APIで候補を生成中...";
+  els.aiSuggestionStatus.textContent = `ChatGPT APIで${count}件の探究ポイントを生成中...`;
 
   const existingEvents = getEncounters()
     .map((event) => `${event.title} / ${event.impact}`)
-    .slice(0, 12);
+    .slice(0, 40);
   const completedEvents = state.completed.map(getEventTitle).slice(0, 8);
 
   try {
-    const response = await fetch("/api/suggest-events", {
+    const response = await fetch(getSuggestEventsApiPath(), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        count,
         grade: state.member.grade,
         region: state.member.region,
         motivation: Number(els.motivation.value),
@@ -2108,7 +2119,7 @@ async function searchAiEventSuggestions() {
       throw new Error(data.error || `HTTP ${response.status}`);
     }
     state.aiSuggestions = Array.isArray(data.events) ? data.events : [];
-    addActivity(`AI候補イベントを${state.aiSuggestions.length}件検索`);
+    addActivity(`AI探究ポイントを${state.aiSuggestions.length}件生成`);
     saveState();
     renderAiSuggestions();
   } catch (error) {
@@ -2189,6 +2200,30 @@ function addEventRecord(eventData) {
   if (getDriveUrl()) {
     postToDrive("events", eventToDriveRecord(eventData));
   }
+}
+
+function registerAllAiSuggestions() {
+  const suggestions = Array.isArray(state.aiSuggestions) ? state.aiSuggestions : [];
+  if (!suggestions.length) {
+    els.aiSuggestionStatus.textContent = "登録するAI候補がありません";
+    return;
+  }
+  let added = 0;
+  suggestions.forEach((suggestion, index) => {
+    const eventData = suggestionToEventData(suggestion, index);
+    const duplicate = state.customEvents.find((event) => event.title === eventData.title && event.impact === eventData.impact);
+    if (duplicate) return;
+    state.customEvents.unshift(eventData);
+    added += 1;
+  });
+  dedupeCustomEvents();
+  if (state.customEvents[0]) state.selected = state.customEvents[0].id;
+  els.aiSuggestionStatus.textContent = `${added}件の探究ポイントを登録しました`;
+  els.eventAdminStatus.textContent = `${added}件まとめて登録`;
+  addActivity(`AI探究ポイントを${added}件まとめて登録`);
+  saveState();
+  render();
+  showMode("event-admin");
 }
 
 function registerEvent(event) {
@@ -2314,6 +2349,7 @@ els.logoutButton.addEventListener("click", logout);
 els.eventForm.addEventListener("submit", registerEvent);
 els.sampleEventButton.addEventListener("click", registerSampleEvent);
 els.searchAiEventsButton.addEventListener("click", searchAiEventSuggestions);
+els.registerAllAiEventsButton?.addEventListener("click", registerAllAiSuggestions);
 els.useMapCenterButton.addEventListener("click", useMapCenterForEvent);
 els.openLocationMapButton.addEventListener("click", initializeEventLocationMap);
 els.eventLat.addEventListener("input", syncEventLocationMarkerFromInputs);

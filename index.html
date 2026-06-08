@@ -397,7 +397,12 @@
               <section>
                 <div class="section-head">
                   <h3>AI候補イベント</h3>
-                  <button id="search-ai-events-button" class="secondary-button mini-action" type="button">候補を検索</button>
+                  <div class="ai-bulk-actions">
+                    <label for="ai-suggestion-count">生成数</label>
+                    <input id="ai-suggestion-count" type="number" min="3" max="30" step="1" value="12" />
+                    <button id="search-ai-events-button" class="secondary-button mini-action" type="button">候補を検索</button>
+                    <button id="register-all-ai-events-button" class="secondary-button mini-action" type="button">まとめて登録</button>
+                  </div>
                 </div>
                 <p id="ai-suggestion-status" class="ai-suggestion-status">興味・地域・モチベーションから候補を生成します。</p>
                 <div id="ai-suggestion-list" class="ai-suggestion-list"></div>

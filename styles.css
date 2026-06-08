@@ -1124,6 +1124,30 @@ textarea {
   margin-top: 10px;
 }
 
+.ai-bulk-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.ai-bulk-actions label {
+  align-self: center;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.ai-bulk-actions input {
+  width: 58px;
+  min-height: 30px;
+  padding: 4px 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfdf9;
+  font-weight: 900;
+}
+
 .ai-suggestion-status {
   margin: 0 0 10px;
   color: var(--muted);
