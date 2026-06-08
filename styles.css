@@ -661,6 +661,27 @@ textarea {
   display: none;
 }
 
+.map-controls {
+  position: absolute;
+  z-index: 5;
+  left: 18px;
+  bottom: 18px;
+  display: flex;
+  gap: 8px;
+}
+
+.map-controls button {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid rgba(223, 230, 222, 0.9);
+  border-radius: 8px;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 8px 24px rgba(30, 48, 36, 0.09);
+  font-size: 12px;
+  font-weight: 900;
+}
+
 .event-drawer {
   position: absolute;
   z-index: 6;

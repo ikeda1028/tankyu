@@ -197,6 +197,8 @@ const els = {
   mapsStatus: document.querySelector("#maps-status"),
   mapCanvas: document.querySelector(".map-canvas"),
   googleMapCanvas: document.querySelector("#google-map-canvas"),
+  centerSearchButton: document.querySelector("#center-search-button"),
+  currentLocationButton: document.querySelector("#current-location-button"),
   themeEvaluationPanel: document.querySelector("#theme-evaluation-panel"),
   themeEvaluationTitle: document.querySelector("#theme-evaluation-title"),
   themeEvaluationScore: document.querySelector("#theme-evaluation-score"),
@@ -271,6 +273,7 @@ let dbSavePromise = Promise.resolve();
 let googleMap = null;
 let googleMapsLoadPromise = null;
 let googleMapMarkers = [];
+let currentLocationMarker = null;
 let eventLocationMap = null;
 let eventLocationMarker = null;
 
@@ -534,6 +537,47 @@ async function initializeGoogleMap() {
   }
 }
 
+function centerOnCurrentLocation() {
+  if (!googleMap) {
+    setMapsStatus("先に地図表示を押してください");
+    return;
+  }
+  if (!navigator.geolocation) {
+    setMapsStatus("このブラウザでは現在地を取得できません");
+    return;
+  }
+  setMapsStatus("現在地を取得中...");
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      const current = {
+        lat: position.coords.latitude,
+        lng: position.coords.longitude,
+      };
+      googleMap.panTo(current);
+      googleMap.setZoom(13);
+      if (!currentLocationMarker) {
+        currentLocationMarker = new google.maps.Marker({
+          map: googleMap,
+          title: "現在地",
+          label: {
+            text: "自分",
+            color: "#ffffff",
+            fontSize: "10px",
+            fontWeight: "900",
+          },
+          icon: createMarkerIcon("#17211b"),
+        });
+      }
+      currentLocationMarker.setPosition(current);
+      setMapsStatus("現在地に移動しました");
+    },
+    () => {
+      setMapsStatus("現在地を取得できませんでした。ブラウザの位置情報許可を確認してください");
+    },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+  );
+}
+
 function clearGoogleMapMarkers() {
   googleMapMarkers.forEach((marker) => marker.setMap(null));
   googleMapMarkers = [];
@@ -548,6 +592,38 @@ function createMarkerIcon(color) {
     strokeWeight: 3,
     scale: 15,
   };
+}
+
+function getThemeMapFocus() {
+  const selectedPlace = normalizeThemePlace(state.themeSearch?.selectedPlace);
+  if (selectedPlace.name && hasThemePlaceLatLng(selectedPlace)) {
+    return { lat: Number(selectedPlace.lat), lng: Number(selectedPlace.lng), zoom: 11 };
+  }
+
+  const aiPlace = (Array.isArray(state.themeSearch?.aiPlaces) ? state.themeSearch.aiPlaces : [])
+    .map(normalizeThemePlace)
+    .find((place) => place.name && hasThemePlaceLatLng(place));
+  if (aiPlace) {
+    return { lat: Number(aiPlace.lat), lng: Number(aiPlace.lng), zoom: 10 };
+  }
+
+  const topEncounter = rankedEncounters().find((encounter) => hasValidLatLng(encounter.position));
+  if (topEncounter) {
+    return { lat: Number(topEncounter.position.lat), lng: Number(topEncounter.position.lng), zoom: state.themeSearch?.query ? 9 : 7 };
+  }
+
+  const selected = getSelectedEncounter();
+  return hasValidLatLng(selected?.position)
+    ? { lat: Number(selected.position.lat), lng: Number(selected.position.lng), zoom: 7 }
+    : null;
+}
+
+function centerGoogleMapOnSearch() {
+  if (!googleMap) return;
+  const focus = getThemeMapFocus();
+  if (!focus) return;
+  googleMap.panTo({ lat: focus.lat, lng: focus.lng });
+  googleMap.setZoom(focus.zoom);
 }
 
 function renderGoogleMapMarkers() {
@@ -607,9 +683,13 @@ function renderGoogleMapMarkers() {
     bounds.extend(position);
   });
   if (!bounds.isEmpty()) googleMap.fitBounds(bounds, 64);
-  const selected = getSelectedEncounter();
-  if (hasValidLatLng(selected?.position)) {
-    googleMap.panTo({ lat: Number(selected.position.lat), lng: Number(selected.position.lng) });
+  if (state.themeSearch?.query) {
+    centerGoogleMapOnSearch();
+  } else {
+    const selected = getSelectedEncounter();
+    if (hasValidLatLng(selected?.position)) {
+      googleMap.panTo({ lat: Number(selected.position.lat), lng: Number(selected.position.lng) });
+    }
   }
 }
 
@@ -2242,6 +2322,8 @@ els.saveDriveUrlButton.addEventListener("click", saveDriveUrl);
 els.syncDriveButton.addEventListener("click", syncAllToDrive);
 els.saveMapsKeyButton.addEventListener("click", saveMapsKey);
 els.loadMapsButton.addEventListener("click", initializeGoogleMap);
+els.centerSearchButton?.addEventListener("click", centerGoogleMapOnSearch);
+els.currentLocationButton?.addEventListener("click", centerOnCurrentLocation);
 els.saveFeedbackButton.addEventListener("click", saveMentorFeedback);
 els.quickFeedbackButtons.forEach((button) => {
   button.addEventListener("click", () => saveQuickFeedback(button.dataset.template));
