@@ -460,7 +460,9 @@ function renderMapsSettings() {
   els.mapsApiKey.placeholder = publicKeyEnabled ? "公開設定から読み込み中" : "ブラウザ内だけに保存";
   els.mapsApiKey.disabled = publicKeyEnabled;
   els.saveMapsKeyButton.disabled = publicKeyEnabled;
-  if (publicKeyEnabled) {
+  if (isFilePage()) {
+    els.mapsStatus.textContent = "file://ではGoogle Map不可 / HTTPで開くを押してください";
+  } else if (publicKeyEnabled) {
     els.mapsStatus.textContent = state.maps?.lastStatus || "公開設定のキーを使用中";
   } else if (source === "saved") {
     els.mapsStatus.textContent = state.maps?.lastStatus || "ブラウザ保存キーを使用中";

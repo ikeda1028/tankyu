@@ -519,6 +519,20 @@ textarea {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
+.map-http-link {
+  display: grid;
+  min-height: 34px;
+  margin-top: 8px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  background: #f6faf7;
+  font-size: 12px;
+  font-weight: 900;
+  text-decoration: none;
+}
+
 .member-summary {
   display: grid;
   gap: 4px;
