@@ -276,6 +276,7 @@ let googleMap = null;
 let googleMapsLoadPromise = null;
 let googleMapMarkers = [];
 let currentLocationMarker = null;
+let googleMapFocusToken = 0;
 let eventLocationMap = null;
 let eventLocationMarker = null;
 
@@ -624,8 +625,69 @@ function centerGoogleMapOnSearch() {
   if (!googleMap) return;
   const focus = getThemeMapFocus();
   if (!focus) return;
-  googleMap.panTo({ lat: focus.lat, lng: focus.lng });
-  googleMap.setZoom(focus.zoom);
+  focusGoogleMapPoint({ lat: focus.lat, lng: focus.lng }, focus.zoom);
+}
+
+function getMapVisibleCenterOffset() {
+  if (!els.mapCanvas) return { x: 0, y: 0 };
+  const mapRect = els.mapCanvas.getBoundingClientRect();
+  let left = 0;
+  let right = 0;
+  let top = 0;
+  let bottom = 0;
+
+  const topbar = document.querySelector(".topbar");
+  if (topbar) {
+    const rect = topbar.getBoundingClientRect();
+    if (rect.bottom > mapRect.top) top = Math.max(top, rect.bottom - mapRect.top + 12);
+  }
+
+  if (els.eventDrawer && !els.eventDrawer.classList.contains("collapsed")) {
+    const rect = els.eventDrawer.getBoundingClientRect();
+    if (rect.right > mapRect.left && rect.left < mapRect.left + mapRect.width) {
+      left = Math.max(left, rect.right - mapRect.left + 16);
+    }
+  }
+
+  if (els.themeEvaluationPanel && !els.themeEvaluationPanel.classList.contains("hidden")) {
+    const rect = els.themeEvaluationPanel.getBoundingClientRect();
+    if (rect.left < mapRect.right && rect.right > mapRect.left) {
+      right = Math.max(right, mapRect.right - rect.left + 16);
+    }
+  }
+
+  const encounterPanel = document.querySelector(".encounter-panel:not(.hidden)");
+  if (encounterPanel) {
+    const rect = encounterPanel.getBoundingClientRect();
+    if (rect.left < mapRect.right && rect.right > mapRect.left) {
+      right = Math.max(right, mapRect.right - rect.left + 16);
+    }
+    if (rect.top < mapRect.bottom && rect.bottom > mapRect.top) {
+      bottom = Math.max(bottom, mapRect.bottom - rect.top + 16);
+    }
+  }
+
+  const visibleWidth = Math.max(220, mapRect.width - left - right);
+  const visibleHeight = Math.max(220, mapRect.height - top - bottom);
+  const visibleCenterX = left + visibleWidth / 2;
+  const visibleCenterY = top + visibleHeight / 2;
+  return {
+    x: Math.round(mapRect.width / 2 - visibleCenterX),
+    y: Math.round(mapRect.height / 2 - visibleCenterY),
+  };
+}
+
+function focusGoogleMapPoint(position, zoom = 9) {
+  if (!googleMap || !position) return;
+  googleMapFocusToken += 1;
+  const focusToken = googleMapFocusToken;
+  googleMap.setZoom(zoom);
+  googleMap.panTo(position);
+  window.setTimeout(() => {
+    if (!googleMap || focusToken !== googleMapFocusToken) return;
+    const offset = getMapVisibleCenterOffset();
+    googleMap.panBy(offset.x, offset.y);
+  }, 160);
 }
 
 function renderGoogleMapMarkers() {
@@ -654,8 +716,7 @@ function renderGoogleMapMarkers() {
       grantJoy(3, `${encounter.title}の地図ピンを開いた`, `event-view:${encounter.id}`);
       saveState();
       render();
-      googleMap.panTo(position);
-      googleMap.setZoom(Math.max(googleMap.getZoom(), 7));
+      focusGoogleMapPoint(position, Math.max(googleMap.getZoom(), 9));
     });
     googleMapMarkers.push(marker);
     bounds.extend(position);
@@ -678,8 +739,7 @@ function renderGoogleMapMarkers() {
     });
     marker.addListener("click", () => {
       askThemePlace(place);
-      googleMap.panTo(position);
-      googleMap.setZoom(Math.max(googleMap.getZoom(), 9));
+      focusGoogleMapPoint(position, Math.max(googleMap.getZoom(), 10));
     });
     googleMapMarkers.push(marker);
     bounds.extend(position);
@@ -690,7 +750,7 @@ function renderGoogleMapMarkers() {
   } else {
     const selected = getSelectedEncounter();
     if (hasValidLatLng(selected?.position)) {
-      googleMap.panTo({ lat: Number(selected.position.lat), lng: Number(selected.position.lng) });
+      focusGoogleMapPoint({ lat: Number(selected.position.lat), lng: Number(selected.position.lng) }, 7);
     }
   }
 }
@@ -1228,7 +1288,7 @@ function renderThemeEvaluation() {
       if (googleMap) {
         const selected = getSelectedEncounter();
         if (hasValidLatLng(selected.position)) {
-          googleMap.panTo({ lat: Number(selected.position.lat), lng: Number(selected.position.lng) });
+          focusGoogleMapPoint({ lat: Number(selected.position.lat), lng: Number(selected.position.lng) }, 9);
         }
       }
     });
@@ -1240,8 +1300,7 @@ function renderThemeEvaluation() {
         if (!place) return;
         askThemePlace(place);
         if (googleMap && hasThemePlaceLatLng(place)) {
-          googleMap.panTo({ lat: Number(place.lat), lng: Number(place.lng) });
-          googleMap.setZoom(Math.max(googleMap.getZoom(), 9));
+          focusGoogleMapPoint({ lat: Number(place.lat), lng: Number(place.lng) }, Math.max(googleMap.getZoom(), 10));
         }
       });
     });
