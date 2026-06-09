@@ -258,6 +258,7 @@ const els = {
   searchAiEventsButton: document.querySelector("#search-ai-events-button"),
   registerAllAiEventsButton: document.querySelector("#register-all-ai-events-button"),
   aiSuggestionCount: document.querySelector("#ai-suggestion-count"),
+  aiSearchWord: document.querySelector("#ai-search-word"),
   aiThemeFocus: document.querySelector("#ai-theme-focus"),
   aiRegionFocus: document.querySelector("#ai-region-focus"),
   aiEventTypeFocus: document.querySelector("#ai-event-type-focus"),
@@ -2203,9 +2204,12 @@ async function searchAiEventSuggestions() {
   if (!els.searchAiEventsButton) return;
   const previousText = els.searchAiEventsButton.textContent;
   const count = clamp(els.aiSuggestionCount?.value || 12, 3, 30);
+  const searchWord = els.aiSearchWord?.value.trim() || "";
   els.searchAiEventsButton.disabled = true;
   els.searchAiEventsButton.textContent = "検索中";
-  els.aiSuggestionStatus.textContent = `ChatGPT APIで${count}件の探究ポイントを生成中...`;
+  els.aiSuggestionStatus.textContent = searchWord
+    ? `「${searchWord}」で${count}件の探究ポイントを生成中...`
+    : `ChatGPT APIで${count}件の探究ポイントを生成中...`;
 
   const existingEvents = getEncounters()
     .map((event) => `${event.title} / ${event.impact}`)
@@ -2225,6 +2229,7 @@ async function searchAiEventSuggestions() {
         interests: state.interests,
         existingEvents,
         completedEvents,
+        searchWord,
         themeFocus: els.aiThemeFocus?.value.trim() || "",
         eventTypeFocus: els.aiEventTypeFocus?.value || "mixed",
         locationPrecision: els.aiLocationPrecision?.value || "region",
@@ -2467,6 +2472,11 @@ els.logoutButton.addEventListener("click", logout);
 els.eventForm.addEventListener("submit", registerEvent);
 els.sampleEventButton.addEventListener("click", registerSampleEvent);
 els.searchAiEventsButton.addEventListener("click", searchAiEventSuggestions);
+els.aiSearchWord?.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter") return;
+  event.preventDefault();
+  searchAiEventSuggestions();
+});
 els.registerAllAiEventsButton?.addEventListener("click", registerAllAiSuggestions);
 els.useMapCenterButton.addEventListener("click", useMapCenterForEvent);
 els.openLocationMapButton.addEventListener("click", initializeEventLocationMap);

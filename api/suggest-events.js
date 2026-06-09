@@ -105,6 +105,7 @@ export default async function handler(request, response) {
       interests: normalizeList(body.interests, 10),
       existingEvents: normalizeList(body.existingEvents, 40),
       completedEvents: normalizeList(body.completedEvents, 8),
+      searchWord: normalizeText(body.searchWord).slice(0, 100),
       themeFocus: normalizeText(body.themeFocus).slice(0, 160),
       eventTypeFocus: ["permanent", "limited", "mixed"].includes(body.eventTypeFocus) ? body.eventTypeFocus : "mixed",
       locationPrecision: ["region", "specific", "none"].includes(body.locationPrecision) ? body.locationPrecision : "region",
@@ -140,6 +141,7 @@ export default async function handler(request, response) {
 - 期間限定イベントの日付は必ず ${today} 以降にする。過去の日付は使わない
 - 緯度経度は地域が推測できる場合だけ日本国内の概算を入れる。難しい場合はnull
 - 既存イベントと重複しない
+- 検索ワードが指定されている場合は、全候補をその検索ワードから広げる
 - 似たテーマに偏らず、環境、福祉、防災、文化、科学、地域経済、テクノロジーなどに分散する
 - テーマの方向性が指定されている場合は優先する
 - 種類指定が permanent の場合は常設中心、limited の場合は期間限定中心、mixed の場合は混ぜる
