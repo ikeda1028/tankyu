@@ -281,6 +281,7 @@ let googleMapsLoadPromise = null;
 let googleMapMarkers = [];
 let currentLocationMarker = null;
 let googleMapFocusToken = 0;
+let publicMapsAutoLoadStarted = false;
 let eventLocationMap = null;
 let eventLocationMarker = null;
 
@@ -474,6 +475,11 @@ function renderMapsSettings() {
     els.mapsStatus.textContent = "file://ではGoogle Map不可 / HTTPで開くを押してください";
   } else if (publicKeyEnabled) {
     els.mapsStatus.textContent = state.maps?.lastStatus || "公開設定のキーを使用中";
+    if (!googleMap && !googleMapsLoadPromise && !publicMapsAutoLoadStarted) {
+      publicMapsAutoLoadStarted = true;
+      els.mapsStatus.textContent = "公開設定のキーを使用中 / 地図を自動読み込み中";
+      window.setTimeout(initializeGoogleMap, 0);
+    }
   } else if (source === "saved") {
     els.mapsStatus.textContent = state.maps?.lastStatus || "ブラウザ保存キーを使用中";
   } else {
