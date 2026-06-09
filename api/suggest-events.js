@@ -105,6 +105,11 @@ export default async function handler(request, response) {
       interests: normalizeList(body.interests, 10),
       existingEvents: normalizeList(body.existingEvents, 40),
       completedEvents: normalizeList(body.completedEvents, 8),
+      themeFocus: normalizeText(body.themeFocus).slice(0, 160),
+      eventTypeFocus: ["permanent", "limited", "mixed"].includes(body.eventTypeFocus) ? body.eventTypeFocus : "mixed",
+      locationPrecision: ["region", "specific", "none"].includes(body.locationPrecision) ? body.locationPrecision : "region",
+      diversityFocus: ["balanced", "nearby", "wide"].includes(body.diversityFocus) ? body.diversityFocus : "balanced",
+      extraPrompt: normalizeText(body.extraPrompt).slice(0, 300),
     };
 
     const openAiResponse = await fetch("https://api.openai.com/v1/responses", {
@@ -136,6 +141,12 @@ export default async function handler(request, response) {
 - 緯度経度は地域が推測できる場合だけ日本国内の概算を入れる。難しい場合はnull
 - 既存イベントと重複しない
 - 似たテーマに偏らず、環境、福祉、防災、文化、科学、地域経済、テクノロジーなどに分散する
+- テーマの方向性が指定されている場合は優先する
+- 種類指定が permanent の場合は常設中心、limited の場合は期間限定中心、mixed の場合は混ぜる
+- 位置情報指定が specific の場合はできるだけ具体的な場所と概算緯度経度を入れる
+- 位置情報指定が none の場合は緯度経度nullでもよい
+- 分散指定が nearby の場合は地域内・近場を多めに、wide の場合は少し遠い越境先も含める
+- 追加条件がある場合は安全性を保ちながら反映する
 
 JSON形式:
 {

@@ -409,6 +409,44 @@
                   </div>
                 </div>
                 <p id="ai-suggestion-status" class="ai-suggestion-status">興味・地域・モチベーションから候補を生成します。</p>
+                <div class="ai-detail-settings">
+                  <label for="ai-theme-focus">テーマの方向性</label>
+                  <input id="ai-theme-focus" type="text" placeholder="例：環境、防災、地域経済、AI、文化" />
+                  <div class="form-grid">
+                    <div>
+                      <label for="ai-region-focus">地域</label>
+                      <input id="ai-region-focus" type="text" placeholder="例：東京都、横浜市、学校周辺" />
+                    </div>
+                    <div>
+                      <label for="ai-event-type-focus">種類</label>
+                      <select id="ai-event-type-focus">
+                        <option value="mixed">常設・期間限定を混ぜる</option>
+                        <option value="permanent">常設中心</option>
+                        <option value="limited">期間限定中心</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="form-grid">
+                    <div>
+                      <label for="ai-location-precision">位置情報</label>
+                      <select id="ai-location-precision">
+                        <option value="region">地域の概算でよい</option>
+                        <option value="specific">できるだけ具体的に</option>
+                        <option value="none">位置なしでもよい</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label for="ai-diversity-focus">分散</label>
+                      <select id="ai-diversity-focus">
+                        <option value="balanced">バランスよく</option>
+                        <option value="nearby">近場を多めに</option>
+                        <option value="wide">遠くまで広げる</option>
+                      </select>
+                    </div>
+                  </div>
+                  <label for="ai-extra-prompt">追加条件</label>
+                  <textarea id="ai-extra-prompt" rows="3" placeholder="例：中学生でも安全に参加できる、商店街で聞き取りできる、夏休みに実施できる"></textarea>
+                </div>
                 <div id="ai-suggestion-list" class="ai-suggestion-list"></div>
               </section>
 
