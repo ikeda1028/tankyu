@@ -726,15 +726,17 @@ function renderGoogleMapMarkers() {
     bounds.extend(position);
   });
   const aiPlaces = Array.isArray(state.themeSearch?.aiPlaces) ? state.themeSearch.aiPlaces.map(normalizeThemePlace) : [];
-  aiPlaces.forEach((place, index) => {
+  let aiPlaceMarkerIndex = 0;
+  aiPlaces.forEach((place) => {
     if (!place.name || !hasThemePlaceLatLng(place)) return;
+    aiPlaceMarkerIndex += 1;
     const position = { lat: Number(place.lat), lng: Number(place.lng) };
     const marker = new google.maps.Marker({
       map: googleMap,
       position,
       title: `${place.name} / AI関係場所`,
       label: {
-        text: `P${index + 1}`,
+        text: `P${aiPlaceMarkerIndex}`,
         color: "#ffffff",
         fontSize: "10px",
         fontWeight: "900",
@@ -1246,6 +1248,8 @@ function renderThemeEvaluation() {
   const places = getThemePlaces(bases);
   const aiKeywords = Array.isArray(state.themeSearch.aiKeywords) ? state.themeSearch.aiKeywords : [];
   const aiPlaces = Array.isArray(state.themeSearch.aiPlaces) ? state.themeSearch.aiPlaces.map(normalizeThemePlace).filter((place) => place.name) : [];
+  let aiPlaceMarkerIndex = 0;
+  const aiPlaceLabels = aiPlaces.map((place) => (hasThemePlaceLatLng(place) ? `P${(aiPlaceMarkerIndex += 1)}` : "位置未定"));
   const nextQuestions = Array.isArray(state.themeSearch.nextQuestions) ? state.themeSearch.nextQuestions : [];
   const mergedKeywords = [...new Set([...aiKeywords, ...keywords])].slice(0, 12);
   els.themeEvaluationTitle.textContent = query;
@@ -1267,7 +1271,7 @@ function renderThemeEvaluation() {
     els.themePlaces.innerHTML = [
       ...aiPlaces.map(
         (place, index) => `<button type="button" class="theme-place-note" data-ai-place-index="${index}">
-        <strong>${escapeHtml(place.name)}</strong>
+        <strong><span class="theme-place-label">${escapeHtml(aiPlaceLabels[index])}</span>${escapeHtml(place.name)}</strong>
         <span>${escapeHtml(place.type)} / ${escapeHtml(place.reason)}</span>
         <small>${hasThemePlaceLatLng(place) ? `${Number(place.lat).toFixed(4)}, ${Number(place.lng).toFixed(4)}` : escapeHtml(place.searchHint || "位置情報なし")}</small>
       </button>`

@@ -810,6 +810,19 @@ textarea {
   white-space: nowrap;
 }
 
+.theme-place-label {
+  display: inline-grid;
+  min-width: 28px;
+  min-height: 20px;
+  margin-right: 6px;
+  place-items: center;
+  border-radius: 7px;
+  color: white;
+  background: #7c4d9e;
+  font-size: 10px;
+  font-weight: 900;
+}
+
 .theme-places span,
 .theme-places small {
   overflow: hidden;
