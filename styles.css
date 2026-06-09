@@ -1488,8 +1488,8 @@ textarea {
 }
 
 .encounter-panel {
-  position: absolute;
-  z-index: 6;
+  position: fixed;
+  z-index: 30;
   right: 18px;
   bottom: 18px;
   display: grid;
