@@ -1497,6 +1497,10 @@ textarea {
   width: min(660px, calc(100% - 36px));
   max-height: calc(100vh - 128px);
   overflow: hidden;
+  transition:
+    width 180ms ease,
+    max-height 180ms ease,
+    transform 180ms ease;
 }
 
 .encounter-media {
@@ -1513,6 +1517,12 @@ textarea {
   padding: 16px;
 }
 
+.encounter-title-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 #encounter-index {
   display: grid;
   min-width: 58px;
@@ -1522,6 +1532,64 @@ textarea {
   color: white;
   background: var(--green);
   font-size: 22px;
+}
+
+.encounter-panel.compact {
+  grid-template-columns: 1fr;
+  width: min(360px, calc(100% - 36px));
+  max-height: min(58vh, 430px);
+}
+
+.encounter-panel.compact .encounter-media {
+  display: none;
+}
+
+.encounter-panel.compact .encounter-body {
+  padding: 12px;
+}
+
+.encounter-panel.compact #encounter-description,
+.encounter-panel.compact .reason-grid,
+.encounter-panel.compact .question-card,
+.encounter-panel.compact .reflection-box {
+  display: none;
+}
+
+.encounter-panel.compact .depth-panel {
+  margin-top: 10px;
+}
+
+.encounter-panel.collapsed {
+  grid-template-columns: 1fr;
+  width: min(330px, calc(100% - 36px));
+  max-height: 86px;
+}
+
+.encounter-panel.collapsed .encounter-media,
+.encounter-panel.collapsed #encounter-description,
+.encounter-panel.collapsed .tag-row,
+.encounter-panel.collapsed .reason-grid,
+.encounter-panel.collapsed .depth-panel,
+.encounter-panel.collapsed .question-card,
+.encounter-panel.collapsed .reflection-box,
+.encounter-panel.collapsed .action-row {
+  display: none;
+}
+
+.encounter-panel.collapsed .encounter-body {
+  overflow: hidden;
+  padding: 12px;
+}
+
+.encounter-panel.collapsed .encounter-title-row {
+  margin: 0;
+}
+
+.encounter-panel.collapsed #encounter-title {
+  overflow: hidden;
+  max-width: 190px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 #encounter-description {
@@ -1760,10 +1828,18 @@ textarea {
 
   .encounter-panel {
     grid-template-columns: 1fr;
+    right: 12px;
+    bottom: 12px;
+    width: min(360px, calc(100% - 24px));
   }
 
   .encounter-media {
     min-height: 130px;
+  }
+
+  .encounter-panel.compact,
+  .encounter-panel.collapsed {
+    width: min(330px, calc(100% - 24px));
   }
 
   .mode-tabs {

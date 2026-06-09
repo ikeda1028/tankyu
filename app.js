@@ -123,6 +123,7 @@ const defaultState = {
   },
   ui: {
     eventsPanel: "compact",
+    encounterPanel: "open",
     memberEditing: false,
   },
   selectedReflection: "",
@@ -145,6 +146,9 @@ const els = {
   description: document.querySelector("#encounter-description"),
   tags: document.querySelector("#tag-row"),
   media: document.querySelector("#encounter-media"),
+  encounterPanel: document.querySelector(".encounter-panel"),
+  compactEncounterButton: document.querySelector("#compact-encounter-button"),
+  collapseEncounterButton: document.querySelector("#collapse-encounter-button"),
   motivation: document.querySelector("#motivation"),
   motivationOutput: document.querySelector("#motivation-output"),
   sparkInput: document.querySelector("#spark-input"),
@@ -1161,6 +1165,7 @@ function renderEventList() {
   const ranked = rankedEncounters();
   const themeActive = Boolean(state.themeSearch?.query);
   renderEventDrawer();
+  renderEncounterPanelState();
   els.eventList.innerHTML = ranked
     .map((encounter, index) => {
       const active = encounter.id === state.selected ? " active" : "";
@@ -1201,6 +1206,27 @@ function renderEventDrawer() {
     "aria-label",
     mode === "collapsed" ? "推薦イベントを開く" : "推薦イベントを折りたたむ"
   );
+}
+
+function renderEncounterPanelState() {
+  if (!els.encounterPanel) return;
+  const mode = state.ui?.encounterPanel || "open";
+  els.encounterPanel.classList.toggle("compact", mode === "compact");
+  els.encounterPanel.classList.toggle("collapsed", mode === "collapsed");
+  if (els.compactEncounterButton) {
+    els.compactEncounterButton.textContent = mode === "compact" ? "□" : "▣";
+    els.compactEncounterButton.setAttribute(
+      "aria-label",
+      mode === "compact" ? "イベント詳細を通常表示" : "イベント詳細を小さく表示"
+    );
+  }
+  if (els.collapseEncounterButton) {
+    els.collapseEncounterButton.textContent = mode === "collapsed" ? "+" : "−";
+    els.collapseEncounterButton.setAttribute(
+      "aria-label",
+      mode === "collapsed" ? "イベント詳細を開く" : "イベント詳細を見出しだけ表示"
+    );
+  }
 }
 
 function renderThemeEvaluation() {
@@ -1327,6 +1353,18 @@ function toggleCollapseEvents() {
   state.ui.eventsPanel = state.ui.eventsPanel === "collapsed" ? "compact" : "collapsed";
   saveState();
   renderEventDrawer();
+}
+
+function toggleCompactEncounter() {
+  state.ui.encounterPanel = state.ui.encounterPanel === "compact" ? "open" : "compact";
+  saveState();
+  renderEncounterPanelState();
+}
+
+function toggleCollapseEncounter() {
+  state.ui.encounterPanel = state.ui.encounterPanel === "collapsed" ? "compact" : "collapsed";
+  saveState();
+  renderEncounterPanelState();
 }
 
 window.toggleCompactEvents = toggleCompactEvents;
@@ -2419,6 +2457,8 @@ els.saveMapsKeyButton.addEventListener("click", saveMapsKey);
 els.loadMapsButton.addEventListener("click", initializeGoogleMap);
 els.centerSearchButton?.addEventListener("click", centerGoogleMapOnSearch);
 els.currentLocationButton?.addEventListener("click", centerOnCurrentLocation);
+els.compactEncounterButton?.addEventListener("click", toggleCompactEncounter);
+els.collapseEncounterButton?.addEventListener("click", toggleCollapseEncounter);
 els.saveFeedbackButton.addEventListener("click", saveMentorFeedback);
 els.quickFeedbackButtons.forEach((button) => {
   button.addEventListener("click", () => saveQuickFeedback(button.dataset.template));
