@@ -303,6 +303,7 @@ function normalizeThemePlace(place) {
       type: "関係場所",
       reason: "訪問・観察・聞き取りの候補",
       searchHint: place,
+      url: "",
       lat: null,
       lng: null,
     };
@@ -314,6 +315,7 @@ function normalizeThemePlace(place) {
     type: String(place?.type || "関係場所").trim(),
     reason: String(place?.reason || "訪問・観察・聞き取りの候補").trim(),
     searchHint: String(place?.searchHint || place?.name || "").trim(),
+    url: normalizeExternalUrl(place?.url),
     lat: Number.isFinite(lat) && lat >= -90 && lat <= 90 ? lat : null,
     lng: Number.isFinite(lng) && lng >= -180 && lng <= 180 ? lng : null,
   };
@@ -321,6 +323,38 @@ function normalizeThemePlace(place) {
 
 function hasThemePlaceLatLng(place) {
   return Number.isFinite(Number(place?.lat)) && Number.isFinite(Number(place?.lng));
+}
+
+function normalizeExternalUrl(value) {
+  const url = String(value || "").trim();
+  return /^https?:\/\//i.test(url) ? url : "";
+}
+
+function getGoogleMapsSearchUrl(query) {
+  const trimmed = String(query || "").trim();
+  return trimmed ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(trimmed)}` : "";
+}
+
+function getThemePlaceUrl(place) {
+  const normalizedPlace = normalizeThemePlace(place);
+  if (normalizedPlace.url) return normalizedPlace.url;
+  if (hasThemePlaceLatLng(normalizedPlace)) {
+    return getGoogleMapsSearchUrl(`${normalizedPlace.lat},${normalizedPlace.lng}`);
+  }
+  return getGoogleMapsSearchUrl(normalizedPlace.searchHint || normalizedPlace.name);
+}
+
+function getLocalThemePlaceUrl(place) {
+  if (place?.lat && place?.lng) return getGoogleMapsSearchUrl(`${place.lat},${place.lng}`);
+  return getGoogleMapsSearchUrl(place?.location || place?.title || "");
+}
+
+function openExternalUrl(url) {
+  const safeUrl = normalizeExternalUrl(url);
+  if (!safeUrl) return false;
+  const opened = window.open(safeUrl, "_blank", "noopener,noreferrer");
+  if (opened) opened.opener = null;
+  return true;
 }
 
 function getEncounterTags(encounter) {
@@ -1283,18 +1317,24 @@ function renderThemeEvaluation() {
   if (els.themePlaces) {
     els.themePlaces.innerHTML = [
       ...aiPlaces.map(
-        (place, index) => `<button type="button" class="theme-place-note" data-ai-place-index="${index}">
+        (place, index) => {
+          const placeUrl = getThemePlaceUrl(place);
+          return `<button type="button" class="theme-place-note" data-ai-place-index="${index}" data-place-url="${escapeHtml(placeUrl)}" aria-label="${escapeHtml(`${place.name}を地図で開く`)}">
         <strong><span class="theme-place-label">${escapeHtml(aiPlaceLabels[index])}</span>${escapeHtml(place.name)}</strong>
         <span>${escapeHtml(place.type)} / ${escapeHtml(place.reason)}</span>
-        <small>${hasThemePlaceLatLng(place) ? `${Number(place.lat).toFixed(4)}, ${Number(place.lng).toFixed(4)}` : escapeHtml(place.searchHint || "位置情報なし")}</small>
-      </button>`
+        <small>${hasThemePlaceLatLng(place) ? `${Number(place.lat).toFixed(4)}, ${Number(place.lng).toFixed(4)}` : escapeHtml(place.searchHint || "位置情報なし")} / クリックで地図を開く</small>
+      </button>`;
+        }
       ),
       ...places.map(
-        (place) => `<button type="button" data-id="${place.eventId}">
+        (place) => {
+          const placeUrl = getLocalThemePlaceUrl(place);
+          return `<button type="button" data-id="${place.eventId}" data-place-url="${escapeHtml(placeUrl)}" aria-label="${escapeHtml(`${place.location}を地図で開く`)}">
         <strong>${escapeHtml(place.location)}</strong>
         <span>${escapeHtml(place.title)} / 評価 ${place.score}</span>
-        <small>${place.lat && place.lng ? `${place.lat}, ${place.lng}` : "座標未設定"}</small>
-      </button>`
+        <small>${place.lat && place.lng ? `${place.lat}, ${place.lng}` : "座標未設定"} / クリックで地図を開く</small>
+      </button>`;
+        }
       ),
     ].join("");
   }
@@ -1334,6 +1374,7 @@ function renderThemeEvaluation() {
           focusGoogleMapPoint({ lat: Number(selected.position.lat), lng: Number(selected.position.lng) }, 9);
         }
       }
+      openExternalUrl(button.dataset.placeUrl);
     });
   });
   if (els.themePlaces) {
@@ -1341,10 +1382,11 @@ function renderThemeEvaluation() {
       button.addEventListener("click", () => {
         const place = aiPlaces[Number(button.dataset.aiPlaceIndex)];
         if (!place) return;
-        askThemePlace(place);
+        grantJoy(5, `${place.name}の地図リンクを開いた`, `theme-place-link:${query}:${place.name}`);
         if (googleMap && hasThemePlaceLatLng(place)) {
           focusGoogleMapPoint({ lat: Number(place.lat), lng: Number(place.lng) }, Math.max(googleMap.getZoom(), 10));
         }
+        openExternalUrl(button.dataset.placeUrl || getThemePlaceUrl(place));
       });
     });
   }

@@ -15,6 +15,11 @@ function normalizeNumber(value, min, max) {
   return Number.isFinite(number) && number >= min && number <= max ? number : null;
 }
 
+function normalizeUrl(value) {
+  const url = normalizeText(value).slice(0, 300);
+  return /^https?:\/\//i.test(url) ? url : "";
+}
+
 function normalizePlaces(value, limit = 6) {
   if (!Array.isArray(value)) return [];
   return value
@@ -25,6 +30,7 @@ function normalizePlaces(value, limit = 6) {
           type: "関係場所",
           reason: "観察・聞き取りの候補",
           searchHint: normalizeText(place).slice(0, 80),
+          url: "",
           lat: null,
           lng: null,
         };
@@ -34,6 +40,7 @@ function normalizePlaces(value, limit = 6) {
         type: normalizeText(place?.type, "関係場所").slice(0, 40),
         reason: normalizeText(place?.reason, "観察・聞き取りの候補").slice(0, 140),
         searchHint: normalizeText(place?.searchHint || place?.name).slice(0, 100),
+        url: normalizeUrl(place?.url),
         lat: normalizeNumber(place?.lat, -90, 90),
         lng: normalizeNumber(place?.lng, -180, 180),
       };
@@ -115,6 +122,7 @@ export default async function handler(request, response) {
             type: normalizeText(body.selectedPlace.type).slice(0, 40),
             reason: normalizeText(body.selectedPlace.reason).slice(0, 140),
             searchHint: normalizeText(body.selectedPlace.searchHint).slice(0, 100),
+            url: normalizeUrl(body.selectedPlace.url),
             lat: normalizeNumber(body.selectedPlace.lat, -90, 90),
             lng: normalizeNumber(body.selectedPlace.lng, -180, 180),
           }
@@ -149,6 +157,7 @@ JSON形式:
       "type": "場所の種類",
       "reason": "なぜこの探究語と関係するか",
       "searchHint": "Google Mapで探す時の検索語",
+      "url": "公式ページまたはGoogle Mapsで開けるURL。確信がない場合は空文字",
       "lat": 緯度の概算またはnull,
       "lng": 経度の概算またはnull
     }
@@ -160,6 +169,7 @@ JSON形式:
 - placesは最大6件
 - 地域が分かる場合だけ日本国内の概算緯度経度を入れる
 - 分からない場合はlat/lngをnullにする
+- URLは実在に確信がある公式ページかGoogle Maps URLだけを入れる。不確かなURLは作らず空文字にする
 - selectedPlaceがある場合は、その場所で何を観察・聞き取りできるかをanswerに反映する
 
 入力:
