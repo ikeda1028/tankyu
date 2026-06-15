@@ -40,6 +40,10 @@ create table events (
   end_date date,
   latitude numeric,
   longitude numeric,
+  character_name text,
+  character_role text,
+  character_message text,
+  character_local_only boolean not null default true,
   user_created boolean not null default false,
   created_at timestamptz not null default now()
 );

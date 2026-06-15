@@ -98,6 +98,7 @@ const defaultState = {
   activity: [],
   joyActions: [],
   completed: [],
+  visitedCharacters: [],
   reflections: [],
   feedbacks: [],
   customEvents: [],
@@ -171,6 +172,7 @@ const els = {
   compactEventsButton: document.querySelector("#compact-events-button"),
   collapseEventsButton: document.querySelector("#collapse-events-button"),
   questionPath: document.querySelector("#question-path"),
+  characterCard: document.querySelector("#character-card"),
   reflectionInput: document.querySelector("#reflection-input"),
   hypothesisInput: document.querySelector("#hypothesis-input"),
   questViews: document.querySelectorAll(".quest-view"),
@@ -242,6 +244,10 @@ const els = {
   eventType: document.querySelector("#event-type"),
   eventStartDate: document.querySelector("#event-start-date"),
   eventEndDate: document.querySelector("#event-end-date"),
+  eventCharacterEnabled: document.querySelector("#event-character-enabled"),
+  eventCharacterName: document.querySelector("#event-character-name"),
+  eventCharacterRole: document.querySelector("#event-character-role"),
+  eventCharacterMessage: document.querySelector("#event-character-message"),
   eventLat: document.querySelector("#event-lat"),
   eventLng: document.querySelector("#event-lng"),
   useMapCenterButton: document.querySelector("#use-map-center-button"),
@@ -282,6 +288,7 @@ state.auth = { ...defaultState.auth, ...(state.auth || {}) };
 state.member = { ...defaultState.member, ...(state.member || {}) };
 state.ui = { ...defaultState.ui, ...(state.ui || {}) };
 state.joyActions = Array.isArray(state.joyActions) ? state.joyActions : [];
+state.visitedCharacters = Array.isArray(state.visitedCharacters) ? state.visitedCharacters : [];
 state.aiSuggestions = Array.isArray(state.aiSuggestions) ? state.aiSuggestions : [];
 state.themeSearch = { ...defaultState.themeSearch, ...(state.themeSearch || {}) };
 let appDb = null;
@@ -393,6 +400,91 @@ function hasValidLatLng(position) {
     Number(position.lng) >= -180 &&
     Number(position.lng) <= 180
   );
+}
+
+function normalizeCharacter(character) {
+  if (!character || !character.name) return null;
+  return {
+    name: String(character.name || "").trim().slice(0, 40),
+    role: String(character.role || "現地案内人").trim().slice(0, 40),
+    message: String(character.message || "現地で観察したことを手がかりに、次の問いを見つけよう。").trim().slice(0, 180),
+    localOnly: character.localOnly !== false,
+  };
+}
+
+function getEventCharacter(encounter) {
+  return normalizeCharacter(encounter?.character);
+}
+
+function hasVisitedCharacter(eventId) {
+  return state.visitedCharacters.some((item) => item.eventId === eventId);
+}
+
+function markCharacterVisited(encounter) {
+  const character = getEventCharacter(encounter);
+  if (!character || hasVisitedCharacter(encounter.id)) return false;
+  state.visitedCharacters.unshift({
+    eventId: encounter.id,
+    characterName: character.name,
+    at: new Date().toISOString(),
+  });
+  state.visitedCharacters = state.visitedCharacters.slice(0, 60);
+  return true;
+}
+
+function getDistanceMeters(a, b) {
+  if (!hasValidLatLng(a) || !hasValidLatLng(b)) return Infinity;
+  const radius = 6371000;
+  const toRad = (value) => (Number(value) * Math.PI) / 180;
+  const lat1 = toRad(a.lat);
+  const lat2 = toRad(b.lat);
+  const deltaLat = toRad(Number(b.lat) - Number(a.lat));
+  const deltaLng = toRad(Number(b.lng) - Number(a.lng));
+  const h =
+    Math.sin(deltaLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLng / 2) ** 2;
+  return 2 * radius * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+}
+
+function requestCurrentPosition() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error("このブラウザでは現在地を取得できません"));
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(resolve, reject, {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 30000,
+    });
+  });
+}
+
+async function unlockLocalCharacter(encounter) {
+  const character = getEventCharacter(encounter);
+  if (!character || !character.localOnly || hasVisitedCharacter(encounter.id)) return true;
+  if (!hasValidLatLng(encounter.position)) {
+    els.matchReason.textContent = "このイベントは位置情報が未設定のため、現地キャラクターを解放できません。";
+    return false;
+  }
+
+  try {
+    els.matchReason.textContent = "現地キャラクターのため現在地を確認中...";
+    const position = await requestCurrentPosition();
+    const current = { lat: position.coords.latitude, lng: position.coords.longitude };
+    const distance = getDistanceMeters(current, encounter.position);
+    if (distance > 300) {
+      els.matchReason.textContent = `現地まであと約${Math.round(distance)}m。300m以内でキャラクターに会えます。`;
+      return false;
+    }
+    markCharacterVisited(encounter);
+    addActivity(`${character.name}に現地で出会った`);
+    return true;
+  } catch (error) {
+    els.matchReason.textContent = "現在地を取得できませんでした。位置情報を許可して現地で再度試してください。";
+    console.error(error);
+    return false;
+  }
 }
 
 function dedupeCustomEvents() {
@@ -1464,12 +1556,40 @@ function renderEncounter() {
       return `<li${active}><span>${depthLabels[index].replace("まで", "")}</span>${question}</li>`;
     })
     .join("");
+  renderCharacterCard(encounter);
   els.media.style.setProperty(
     "--media",
     `radial-gradient(circle at 28% 26%, ${encounter.color || "#2f6fb3"} 0 10%, transparent 11%),
      linear-gradient(140deg, rgba(255,255,255,.28), rgba(255,255,255,0)),
      repeating-linear-gradient(35deg, ${encounter.color || "#2f6fb3"} 0 12px, #f7fbf6 12px 24px)`
   );
+}
+
+function renderCharacterCard(encounter) {
+  if (!els.characterCard) return;
+  const character = getEventCharacter(encounter);
+  if (!character) {
+    els.characterCard.className = "character-card empty";
+    els.characterCard.innerHTML = "<p>このイベントにはまだキャラクターが設定されていません。</p>";
+    return;
+  }
+  const unlocked = !character.localOnly || hasVisitedCharacter(encounter.id);
+  els.characterCard.className = `character-card${unlocked ? " unlocked" : " locked"}`;
+  els.characterCard.innerHTML = unlocked
+    ? `<div class="character-avatar">${escapeHtml(character.name.slice(0, 1))}</div>
+      <div>
+        <p class="label">現地で出会ったキャラクター</p>
+        <strong>${escapeHtml(character.name)}</strong>
+        <span>${escapeHtml(character.role)}</span>
+        <p>${escapeHtml(character.message)}</p>
+      </div>`
+    : `<div class="character-avatar">?</div>
+      <div>
+        <p class="label">現地限定キャラクター</p>
+        <strong>現場に行くと会えます</strong>
+        <span>${hasValidLatLng(encounter.position) ? "イベント地点から300m以内で解放" : "イベント位置を設定すると解放できます"}</span>
+        <p>このキャラクターの名前とメッセージは、リアルにその場所へ行った時だけ表示されます。</p>
+      </div>`;
 }
 
 function renderGrowthPath() {
@@ -1771,6 +1891,10 @@ function eventToDriveRecord(event) {
     end_date: event.endDate || "",
     latitude: event.position?.lat || "",
     longitude: event.position?.lng || "",
+    character_name: event.character?.name || "",
+    character_role: event.character?.role || "",
+    character_message: event.character?.message || "",
+    character_local_only: event.character?.localOnly !== false,
     user_created: Boolean(event.userCreated),
     created_by: state.auth.email || state.member.name || "local-user",
     created_at: event.createdAt || new Date().toISOString(),
@@ -1990,8 +2114,14 @@ async function searchThemeOnMap(query) {
   }
 }
 
-function startAdventure() {
+async function startAdventure() {
   const encounter = getSelectedEncounter();
+  const unlocked = await unlockLocalCharacter(encounter);
+  if (!unlocked) {
+    saveState();
+    renderCharacterCard(encounter);
+    return;
+  }
   const depth = getDepth();
   const delta = calculateQuestDelta(encounter);
   const joyDelta = encounter.boost.joy + getDepthJoyBonus(depth);
@@ -2206,6 +2336,14 @@ function suggestionToEventData(suggestion, index = 0) {
     eventType: suggestion.eventType === "limited" ? "limited" : "permanent",
     startDate: suggestion.eventType === "limited" ? suggestion.startDate || "" : "",
     endDate: suggestion.eventType === "limited" ? suggestion.endDate || "" : "",
+    character: hasLatLng
+      ? {
+          name: `${(tags[0] || suggestion.impact || "探究").slice(0, 8)}ナビ`,
+          role: "現地案内人",
+          message: "この場所で気づいたことを3つ集めて、なぜここで起きているのかを問いにしてみよう。",
+          localOnly: true,
+        }
+      : null,
     questionPath,
     color: ["#2f8f63", "#2f6fb3", "#c85d72", "#d49b2a"][index % 4],
     position: hasLatLng ? createPositionFromLatLng(lat, lng, state.customEvents.length) : createMapPosition(state.customEvents.length),
@@ -2503,6 +2641,15 @@ function registerEvent(event) {
     eventType: els.eventType.value,
     startDate: els.eventStartDate.value,
     endDate: els.eventEndDate.value,
+    character:
+      els.eventCharacterEnabled?.checked && els.eventCharacterName?.value.trim()
+        ? {
+            name: els.eventCharacterName.value.trim(),
+            role: els.eventCharacterRole.value.trim() || "現地案内人",
+            message: els.eventCharacterMessage.value.trim() || "現地で見えたことを記録して、次の問いを見つけよう。",
+            localOnly: true,
+          }
+        : null,
     questionPath,
     color: els.eventColor.value || "#2f8f63",
     position,
@@ -2515,6 +2662,7 @@ function registerEvent(event) {
   els.eventIndex.value = 78;
   els.eventColor.value = "#2f8f63";
   els.eventType.value = "permanent";
+  if (els.eventCharacterEnabled) els.eventCharacterEnabled.checked = true;
   addEventRecord(eventData);
 }
 
@@ -2533,6 +2681,12 @@ function registerSampleEvent() {
     eventType: "limited",
     startDate: "2026-07-20",
     endDate: "2026-08-31",
+    character: {
+      name: "ミライ防災ナビ",
+      role: "現地案内人",
+      message: "避難所の入口、掲示物、人の動線を観察して、情報が届く人と届きにくい人の違いを探してみよう。",
+      localOnly: true,
+    },
     questionPath: [
       "避難所には何が必要か",
       "なぜ情報が届かない人がいるのか",

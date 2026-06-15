@@ -292,6 +292,7 @@
               <p class="label">問いの道筋</p>
               <ol id="question-path"></ol>
             </div>
+            <div id="character-card" class="character-card"></div>
             <div class="reflection-box">
               <label for="reflection-input">気づき・問い</label>
               <textarea id="reflection-input" rows="2" placeholder="例：なぜ同じ場所にペットボトルが集まるのか。販売や捨て方の仕組みも関係しそう。"></textarea>
@@ -366,6 +367,25 @@
                 </div>
                 <label for="event-end-date">終了日</label>
                 <input id="event-end-date" type="date" />
+                <fieldset class="character-fieldset">
+                  <legend>現地限定キャラクター</legend>
+                  <div class="character-toggle-row">
+                    <label for="event-character-enabled">現場に行った時だけ会える</label>
+                    <input id="event-character-enabled" type="checkbox" checked />
+                  </div>
+                  <div class="form-grid">
+                    <div>
+                      <label for="event-character-name">キャラクター名</label>
+                      <input id="event-character-name" type="text" placeholder="例：防災ナビのミライ" />
+                    </div>
+                    <div>
+                      <label for="event-character-role">役割</label>
+                      <input id="event-character-role" type="text" placeholder="例：現地案内人、問いの番人" />
+                    </div>
+                  </div>
+                  <label for="event-character-message">現地で出会った時のメッセージ</label>
+                  <textarea id="event-character-message" rows="3" placeholder="例：ここで見えるものを3つ記録して、なぜこの場所に集まるのか考えてみよう。"></textarea>
+                </fieldset>
                 <div class="form-grid location-grid">
                   <div>
                     <label for="event-lat">緯度</label>

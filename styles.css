@@ -1131,6 +1131,28 @@ textarea {
   background: #fbfdf9;
 }
 
+.character-fieldset {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f6faf7;
+}
+
+.character-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.character-toggle-row input {
+  width: 20px;
+  min-height: 20px;
+}
+
 .registered-event-list {
   display: grid;
   gap: 10px;
@@ -1643,6 +1665,7 @@ textarea {
 .encounter-panel.compact #encounter-description,
 .encounter-panel.compact .reason-grid,
 .encounter-panel.compact .question-card,
+.encounter-panel.compact .character-card,
 .encounter-panel.compact .reflection-box {
   display: none;
 }
@@ -1663,6 +1686,7 @@ textarea {
 .encounter-panel.collapsed .reason-grid,
 .encounter-panel.collapsed .depth-panel,
 .encounter-panel.collapsed .question-card,
+.encounter-panel.collapsed .character-card,
 .encounter-panel.collapsed .reflection-box,
 .encounter-panel.collapsed .action-row {
   display: none;
@@ -1682,6 +1706,69 @@ textarea {
   max-width: 190px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.character-card {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  gap: 10px;
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfdf9;
+}
+
+.character-card.empty {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.character-card.locked {
+  border-style: dashed;
+  background: #f3f6f1;
+}
+
+.character-card.unlocked {
+  border-color: rgba(47, 143, 99, 0.45);
+  background: #f6faf7;
+}
+
+.character-avatar {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  border-radius: 8px;
+  color: white;
+  background: linear-gradient(135deg, var(--green), var(--blue));
+  font-size: 22px;
+  font-weight: 900;
+}
+
+.character-card.locked .character-avatar {
+  background: #839088;
+}
+
+.character-card strong,
+.character-card span,
+.character-card p {
+  display: block;
+  margin: 0;
+}
+
+.character-card strong {
+  font-size: 14px;
+}
+
+.character-card span,
+.character-card p {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.55;
 }
 
 #encounter-description {
