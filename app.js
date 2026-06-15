@@ -267,6 +267,10 @@ const els = {
   aiExtraPrompt: document.querySelector("#ai-extra-prompt"),
   aiSuggestionStatus: document.querySelector("#ai-suggestion-status"),
   aiSuggestionList: document.querySelector("#ai-suggestion-list"),
+  eventImagePrompt: document.querySelector("#event-image-prompt"),
+  generateEventImageButton: document.querySelector("#generate-event-image-button"),
+  generatedImageStatus: document.querySelector("#generated-image-status"),
+  generatedImagePreview: document.querySelector("#generated-image-preview"),
   registeredEventCount: document.querySelector("#registered-event-count"),
   registeredEventList: document.querySelector("#registered-event-list"),
 };
@@ -1123,6 +1127,13 @@ function getSuggestEventsApiPath() {
     return `${PUBLIC_API_BASE}/api/suggest-events`;
   }
   return "/api/suggest-events";
+}
+
+function getGenerateImageApiPath() {
+  if (location.protocol === "file:" || location.hostname === "127.0.0.1" || location.hostname === "localhost") {
+    return `${PUBLIC_API_BASE}/api/generate-image`;
+  }
+  return "/api/generate-image";
 }
 
 function getDepth() {
@@ -2300,6 +2311,74 @@ async function searchAiEventSuggestions() {
   }
 }
 
+function buildEventImagePrompt() {
+  const manualPrompt = els.eventImagePrompt?.value.trim();
+  if (manualPrompt) return manualPrompt;
+
+  const title = els.eventTitle?.value.trim() || getSelectedEncounter().title || "探究イベント";
+  const impact = els.eventImpact?.value.trim() || getSelectedEncounter().impact || "地域課題";
+  const description = els.eventDescription?.value.trim() || getSelectedEncounter().description || "";
+  const locationName = els.eventLocation?.value.trim() || getSelectedEncounter().locationName || state.member.region || "日本の地域";
+  const tags = splitList(els.eventTags?.value || "").slice(0, 4).join("、");
+
+  return [
+    "中高生向け探究イベントのキービジュアルを作る。",
+    `イベント名: ${title}`,
+    `社会課題: ${impact}`,
+    `場所: ${locationName}`,
+    tags ? `タグ: ${tags}` : "",
+    description ? `内容: ${description}` : "",
+    "写真とイラストの中間の、明るく現実感のあるビジュアル。",
+    "中高生が観察、聞き取り、フィールドワーク、アイデア出しをしている雰囲気。",
+    "文字、ロゴ、看板の読める文字は入れない。",
+    "安全で年齢に適した表現にする。",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+async function generateEventImage() {
+  if (!els.generateEventImageButton || !els.generatedImageStatus || !els.generatedImagePreview) return;
+  const prompt = buildEventImagePrompt();
+  if (!prompt.trim()) {
+    els.generatedImageStatus.textContent = "画像プロンプトを入力してください";
+    return;
+  }
+
+  const previousText = els.generateEventImageButton.textContent;
+  els.generateEventImageButton.disabled = true;
+  els.generateEventImageButton.textContent = "生成中";
+  els.generatedImageStatus.textContent = "gpt-image-2で画像を生成中...";
+
+  try {
+    const response = await fetch(getGenerateImageApiPath(), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data.error || `HTTP ${response.status}`);
+    }
+    if (!data.imageDataUrl) {
+      throw new Error("画像データが空です");
+    }
+    els.generatedImagePreview.innerHTML = `<img src="${data.imageDataUrl}" alt="AIが生成したイベント画像" />`;
+    els.generatedImageStatus.textContent = `${data.model || "gpt-image-2"}で生成しました`;
+    addActivity("AI画像を生成");
+  } catch (error) {
+    const localHint =
+      location.hostname === "127.0.0.1" || location.hostname === "localhost"
+        ? "公開版でOPENAI_API_KEYを設定すると使えます"
+        : "VercelのOPENAI_API_KEYと画像モデルの利用権限を確認してください";
+    els.generatedImageStatus.textContent = `画像を生成できません: ${localHint}`;
+    console.error(error);
+  } finally {
+    els.generateEventImageButton.disabled = false;
+    els.generateEventImageButton.textContent = previousText;
+  }
+}
+
 function getEventPosition() {
   const latValue = els.eventLat.value.trim();
   const lngValue = els.eventLng.value.trim();
@@ -2519,6 +2598,7 @@ els.aiSearchWord?.addEventListener("keydown", (event) => {
   event.preventDefault();
   searchAiEventSuggestions();
 });
+els.generateEventImageButton?.addEventListener("click", generateEventImage);
 els.registerAllAiEventsButton?.addEventListener("click", registerAllAiSuggestions);
 els.useMapCenterButton.addEventListener("click", useMapCenterForEvent);
 els.openLocationMapButton.addEventListener("click", initializeEventLocationMap);

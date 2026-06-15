@@ -29,10 +29,12 @@ GOOGLE_MAPS_API_KEY=Google Cloudで作成したMaps APIキー
 GOOGLE_DRIVE_API_URL=Apps ScriptのWebアプリURL
 OPENAI_API_KEY=OpenAIのProject API Key
 OPENAI_MODEL=gpt-4.1-mini
+OPENAI_IMAGE_MODEL=gpt-image-2
 ```
 
 `GOOGLE_DRIVE_API_URL` は未設定でも公開できます。
-`OPENAI_API_KEY` はAI候補イベント生成に使います。ブラウザには配信されないサーバー側の環境変数です。
+`OPENAI_API_KEY` はAI候補イベント生成とAI画像生成に使います。ブラウザには配信されないサーバー側の環境変数です。
+`OPENAI_IMAGE_MODEL` は省略しても `gpt-image-2` が使われます。
 
 ## 3. Google CloudのAPIキー制限を更新
 

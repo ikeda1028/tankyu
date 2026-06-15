@@ -1194,6 +1194,52 @@ textarea {
   resize: vertical;
 }
 
+.image-generation-box {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfdf9;
+}
+
+.image-generation-box label {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.image-generation-box textarea {
+  width: 100%;
+  min-height: 92px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+  font-size: 12px;
+  resize: vertical;
+}
+
+.generated-image-preview {
+  display: grid;
+  min-height: 210px;
+  overflow: hidden;
+  place-items: center;
+  border: 1px dashed #b9c8bd;
+  border-radius: 8px;
+  color: var(--muted);
+  background: white;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.generated-image-preview img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
 .ai-suggestion-status {
   margin: 0 0 10px;
   color: var(--muted);

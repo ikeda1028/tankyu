@@ -454,6 +454,21 @@
 
               <section>
                 <div class="section-head">
+                  <h3>AI画像生成</h3>
+                  <button id="generate-event-image-button" class="secondary-button mini-action" type="button">画像生成</button>
+                </div>
+                <p id="generated-image-status" class="ai-suggestion-status">イベント内容からキービジュアルを生成できます。</p>
+                <div class="image-generation-box">
+                  <label for="event-image-prompt">画像プロンプト</label>
+                  <textarea id="event-image-prompt" rows="4" placeholder="空欄なら左のイベント名・社会課題・内容から自動で作ります"></textarea>
+                  <div id="generated-image-preview" class="generated-image-preview">
+                    <span>まだ画像はありません</span>
+                  </div>
+                </div>
+              </section>
+
+              <section>
+                <div class="section-head">
                   <h3>登録済みイベント</h3>
                   <span id="registered-event-count" class="small-badge">0件</span>
                 </div>

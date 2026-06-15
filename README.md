@@ -143,9 +143,12 @@ VercelのEnvironment Variablesに以下を追加してください。
 ```text
 OPENAI_API_KEY=OpenAIのProject API Key
 OPENAI_MODEL=gpt-4.1-mini
+OPENAI_IMAGE_MODEL=gpt-image-2
 ```
 
-ローカルの静的サーバーでは `/api/suggest-events` が動かないため、AI候補検索はVercel公開版で確認します。
+`OPENAI_IMAGE_MODEL` は省略しても `gpt-image-2` が使われます。GPT Imageモデルの利用には、OpenAI側の組織確認やモデル利用権限が必要になる場合があります。
+
+ローカルの静的サーバーでは `/api/suggest-events` と `/api/generate-image` が動かないため、AI候補検索と画像生成はVercel公開版のAPIへ接続して確認します。
 
 ## 次の実装ポイント
 
