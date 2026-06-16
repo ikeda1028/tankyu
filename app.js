@@ -2434,6 +2434,10 @@ function eventToDriveRecord(event) {
     user_created: Boolean(event.userCreated),
     created_by: state.auth.email || state.member.name || "local-user",
     created_at: event.createdAt || new Date().toISOString(),
+    source_url: event.sourceUrl || "",
+    source_title: event.sourceTitle || "",
+    source_type: event.sourceType || "",
+    verification_note: event.verificationNote || "",
   };
 }
 
@@ -2866,6 +2870,7 @@ function suggestionToEventData(suggestion, index = 0) {
   const lat = Number(suggestion.lat);
   const lng = Number(suggestion.lng);
   const hasLatLng = Number.isFinite(lat) && Number.isFinite(lng);
+  const sourceUrl = normalizeExternalUrl(suggestion.sourceUrl);
   const tags = Array.isArray(suggestion.tags) ? suggestion.tags.filter(Boolean) : [];
   const keywords = Array.isArray(suggestion.keywords) ? suggestion.keywords.filter(Boolean) : [];
   const questionPath = Array.isArray(suggestion.questionPath) ? suggestion.questionPath.filter(Boolean).slice(0, 5) : [];
@@ -2907,8 +2912,16 @@ function suggestionToEventData(suggestion, index = 0) {
     boost: { joy: 4, distance: 5, reflection: 3 },
     userCreated: true,
     aiGenerated: true,
+    sourceUrl,
+    sourceTitle: suggestion.sourceTitle || "",
+    sourceType: suggestion.sourceType || "",
+    verificationNote: suggestion.verificationNote || "",
     createdAt: new Date().toISOString(),
   };
+}
+
+function isVerifiedAiSuggestion(suggestion) {
+  return Boolean(normalizeExternalUrl(suggestion?.sourceUrl));
 }
 
 function renderAiSuggestions() {
@@ -2923,6 +2936,8 @@ function renderAiSuggestions() {
   els.aiSuggestionList.innerHTML = suggestions
     .map((suggestion, index) => {
       const eventType = suggestion.eventType === "limited" ? "期間限定" : "常設";
+      const sourceUrl = normalizeExternalUrl(suggestion.sourceUrl);
+      const verified = isVerifiedAiSuggestion(suggestion);
       const period =
         suggestion.eventType === "limited" && (suggestion.startDate || suggestion.endDate)
           ? ` / ${[suggestion.startDate, suggestion.endDate].filter(Boolean).join("-")}`
@@ -2934,7 +2949,16 @@ function renderAiSuggestions() {
         </div>
         <em>${escapeHtml(suggestion.explorationIndex || 76)}</em>
         <p>${escapeHtml(suggestion.reason || suggestion.description || "現在のワクワクから一歩先へ広げる候補です。")}</p>
-        <button class="secondary-button" type="button" data-ai-index="${index}">候補を登録</button>
+        <div class="ai-source-row">
+          <span class="${verified ? "verified-source" : "unverified-source"}">${verified ? "実在確認済み" : "出典未確認"}</span>
+          ${
+            sourceUrl
+              ? `<a href="${escapeHtml(sourceUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(suggestion.sourceTitle || "出典を開く")}</a>`
+              : "<span>登録には出典URLが必要です</span>"
+          }
+        </div>
+        ${suggestion.verificationNote ? `<p class="ai-verification-note">${escapeHtml(suggestion.verificationNote)}</p>` : ""}
+        <button class="secondary-button" type="button" data-ai-index="${index}"${verified ? "" : " disabled"}>${verified ? "候補を登録" : "登録不可"}</button>
       </article>`;
     })
     .join("");
@@ -2943,6 +2967,10 @@ function renderAiSuggestions() {
     button.addEventListener("click", () => {
       const suggestion = state.aiSuggestions[Number(button.dataset.aiIndex)];
       if (!suggestion) return;
+      if (!isVerifiedAiSuggestion(suggestion)) {
+        els.aiSuggestionStatus.textContent = "出典URLのないAI候補は登録できません";
+        return;
+      }
       addEventRecord(suggestionToEventData(suggestion, Number(button.dataset.aiIndex)));
     });
   });
@@ -2956,8 +2984,8 @@ async function searchAiEventSuggestions() {
   els.searchAiEventsButton.disabled = true;
   els.searchAiEventsButton.textContent = "検索中";
   els.aiSuggestionStatus.textContent = searchWord
-    ? `「${searchWord}」で${count}件の探究ポイントを生成中...`
-    : `ChatGPT APIで${count}件の探究ポイントを生成中...`;
+    ? `「${searchWord}」で実在確認できる候補をWeb検索中...`
+    : `実在確認できる探究ポイントをWeb検索中...`;
 
   const existingEvents = getEncounters()
     .map((event) => `${event.title} / ${event.impact}`)
@@ -2989,7 +3017,7 @@ async function searchAiEventSuggestions() {
     if (!response.ok) {
       throw new Error(data.error || `HTTP ${response.status}`);
     }
-    state.aiSuggestions = Array.isArray(data.events) ? data.events : [];
+    state.aiSuggestions = (Array.isArray(data.events) ? data.events : []).filter(isVerifiedAiSuggestion);
     addActivity(`AI探究ポイントを${state.aiSuggestions.length}件生成`);
     saveState();
     renderAiSuggestions();
@@ -3349,6 +3377,7 @@ function registerAllAiSuggestions() {
   }
   let added = 0;
   suggestions.forEach((suggestion, index) => {
+    if (!isVerifiedAiSuggestion(suggestion)) return;
     const eventData = suggestionToEventData(suggestion, index);
     const duplicate = state.customEvents.find((event) => event.title === eventData.title && event.impact === eventData.impact);
     if (duplicate) return;
@@ -3357,7 +3386,7 @@ function registerAllAiSuggestions() {
   });
   dedupeCustomEvents();
   if (state.customEvents[0]) state.selected = state.customEvents[0].id;
-  els.aiSuggestionStatus.textContent = `${added}件の探究ポイントを登録しました`;
+  els.aiSuggestionStatus.textContent = `${added}件の実在確認済み探究ポイントを登録しました`;
   els.eventAdminStatus.textContent = `${added}件まとめて登録`;
   addActivity(`AI探究ポイントを${added}件まとめて登録`);
   saveState();
