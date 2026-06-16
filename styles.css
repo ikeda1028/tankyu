@@ -1676,20 +1676,41 @@ textarea {
   grid-column: auto;
 }
 
-.registered-edit-control {
+.registered-action-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.registered-edit-control,
+.registered-delete-control {
   padding: 5px 9px;
-  border: 1px solid rgba(47, 143, 99, 0.24);
   border-radius: 999px;
-  color: var(--green);
-  background: #edf7ef;
   font-size: 11px;
   font-weight: 900;
   white-space: nowrap;
 }
 
+.registered-edit-control {
+  border: 1px solid rgba(47, 143, 99, 0.24);
+  color: var(--green);
+  background: #edf7ef;
+}
+
 .registered-edit-control:hover {
   border-color: rgba(47, 143, 99, 0.45);
   background: #e0f1e5;
+}
+
+.registered-delete-control {
+  border: 1px solid rgba(200, 93, 114, 0.3);
+  color: #9f354a;
+  background: #f8e7eb;
+}
+
+.registered-delete-control:hover {
+  border-color: rgba(200, 93, 114, 0.58);
+  background: #f4d7de;
 }
 
 .registered-event-card em {

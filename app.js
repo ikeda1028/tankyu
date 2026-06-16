@@ -4,6 +4,7 @@ const PUBLIC_API_BASE = location.hostname.endsWith("vercel.app")
   : "https://tankyu-five.vercel.app";
 
 const depthLabels = ["事実まで", "背景まで", "構造まで", "越境まで", "実装まで"];
+const DEFAULT_ADMIN_EMAILS = ["ikeda@manabinomichi.com"];
 
 const seedEncounters = [
   {
@@ -741,6 +742,17 @@ function getMapsKey() {
 
 function getPublicConfig() {
   return globalThis.WAKUWAKU_CONFIG || window.WAKUWAKU_CONFIG || {};
+}
+
+function getAdminEmails() {
+  const configured = getPublicConfig().adminEmails;
+  const list = Array.isArray(configured) ? configured : [];
+  return [...DEFAULT_ADMIN_EMAILS, ...list].map((email) => String(email || "").trim().toLowerCase()).filter(Boolean);
+}
+
+function isAdminUser() {
+  const email = String(state.auth?.email || "").trim().toLowerCase();
+  return Boolean(email && getAdminEmails().includes(email));
 }
 
 function getMapsKeySource() {
@@ -3369,6 +3381,36 @@ function startEditingEvent(eventId) {
   els.eventTitle.focus();
 }
 
+function deleteRegisteredEvent(eventId) {
+  if (!isAdminUser()) {
+    els.eventAdminStatus.textContent = "管理者のみ削除できます";
+    return;
+  }
+  const eventData = state.customEvents.find((event) => event.id === eventId);
+  if (!eventData) return;
+  const confirmed = window.confirm(`「${eventData.title}」を削除しますか？\nこの操作はこの端末の登録済み探究ポイントから削除します。`);
+  if (!confirmed) return;
+
+  state.customEvents = state.customEvents.filter((event) => event.id !== eventId);
+  state.completed = state.completed.filter((id) => id !== eventId);
+  state.reflections = state.reflections.filter((reflection) => reflection.eventId !== eventId);
+  state.feedbacks = state.feedbacks.filter((feedback) => feedback.eventId !== eventId && feedback.reflectionEventId !== eventId);
+  state.fieldPosts = state.fieldPosts.filter((post) => post.eventId !== eventId);
+  state.visitedCharacters = state.visitedCharacters.filter((id) => id !== eventId);
+  if (state.ui.editingEventId === eventId) {
+    resetEventFormToCreate("削除済み");
+  } else {
+    els.eventAdminStatus.textContent = "削除済み";
+  }
+  if (state.selected === eventId) {
+    state.selected = state.customEvents[0]?.id || seedEncounters[0]?.id || "";
+  }
+  addActivity(`${eventData.title}を削除`);
+  saveState();
+  render();
+  showMode("event-admin");
+}
+
 function registerAllAiSuggestions() {
   const suggestions = Array.isArray(state.aiSuggestions) ? state.aiSuggestions : [];
   if (!suggestions.length) {
@@ -3510,6 +3552,7 @@ function registerSampleEvent() {
 
 function renderRegisteredEvents() {
   const events = state.customEvents;
+  const admin = isAdminUser();
   els.registeredEventCount.textContent = `${events.length}件`;
   els.registeredEventList.innerHTML = events.length
     ? events
@@ -3520,7 +3563,10 @@ function renderRegisteredEvents() {
             <em>${event.index}</em>
             <span class="registered-event-actions">
               <span>${state.ui.editingEventId === event.id ? "編集中" : "詳細を見る"}</span>
-              <span class="registered-edit-control" data-edit-id="${event.id}">編集</span>
+              <span class="registered-action-group">
+                <span class="registered-edit-control" data-edit-id="${event.id}">編集</span>
+                ${admin ? `<span class="registered-delete-control" data-delete-id="${event.id}">削除</span>` : ""}
+              </span>
             </span>
           </button>`
         )
@@ -3538,6 +3584,12 @@ function renderRegisteredEvents() {
     button.addEventListener("click", (event) => {
       event.stopPropagation();
       startEditingEvent(button.dataset.editId);
+    });
+  });
+  els.registeredEventList.querySelectorAll(".registered-delete-control").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      deleteRegisteredEvent(button.dataset.deleteId);
     });
   });
 }

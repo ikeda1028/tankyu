@@ -156,6 +156,12 @@ Google Cloud Consoleで作成したAPIキーはチャットやGitに貼らず、
 
 公開版では `GOOGLE_MAPS_API_KEY` から `public-config.js` が生成されるため、画面にAPIキーを入力しなくても地図表示できます。ブラウザに配信されるキーなので、必ずHTTPリファラー制限をかけて運用してください。
 
+管理者だけが登録済み探究ポイントを削除できます。VercelのEnvironment Variablesで管理者メールを追加する場合は、カンマ区切りで設定します。
+
+```text
+ADMIN_EMAILS=ikeda@manabinomichi.com,admin@example.com
+```
+
 ## ChatGPT API設定
 
 探究ポイント登録画面の `AI候補探究ポイント` は、Vercelのサーバー側API `/api/suggest-events` からOpenAI Responses APIを呼び出します。ブラウザ側にはOpenAI APIキーを出さない構成です。

@@ -15,6 +15,10 @@ for (const file of publicFiles) {
 const config = {
   googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY || "",
   driveApiUrl: process.env.GOOGLE_DRIVE_API_URL || "",
+  adminEmails: (process.env.ADMIN_EMAILS || "ikeda@manabinomichi.com")
+    .split(",")
+    .map((email) => email.trim())
+    .filter(Boolean),
   firebase: {
     apiKey: process.env.FIREBASE_API_KEY || "",
     authDomain: process.env.FIREBASE_AUTH_DOMAIN || "",
