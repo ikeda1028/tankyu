@@ -1,5 +1,7 @@
 const STORAGE_KEY = "wakuwaku-quest-state-v3";
-const PUBLIC_API_BASE = "https://tankyu-five.vercel.app";
+const PUBLIC_API_BASE = location.hostname.endsWith("vercel.app")
+  ? location.origin
+  : "https://tankyu-five.vercel.app";
 
 const depthLabels = ["事実まで", "背景まで", "構造まで", "越境まで", "実装まで"];
 
