@@ -67,6 +67,12 @@ Vercelの環境変数に以下を設定します。
 - `GOOGLE_DRIVE_API_URL`: Apps Script WebアプリURL。未設定でも動作します。
 - `OPENAI_API_KEY`: AI候補探究ポイント生成に使うOpenAI APIキー。未設定の場合、AI候補検索だけ使えません。
 - `OPENAI_MODEL`: 任意。未設定時は `gpt-4.1-mini` を使います。
+- `FIREBASE_API_KEY`: Firebase Webアプリ設定の apiKey
+- `FIREBASE_AUTH_DOMAIN`: Firebase Webアプリ設定の authDomain
+- `FIREBASE_PROJECT_ID`: Firebase Webアプリ設定の projectId
+- `FIREBASE_STORAGE_BUCKET`: Firebase Webアプリ設定の storageBucket
+- `FIREBASE_MESSAGING_SENDER_ID`: Firebase Webアプリ設定の messagingSenderId
+- `FIREBASE_APP_ID`: Firebase Webアプリ設定の appId
 
 Vercelで発行されたURLをGoogle Cloud ConsoleのAPIキー制限に追加してください。
 
@@ -93,6 +99,20 @@ https://wakuwaku-quest.vercel.app/*
 - `feedbacks`: 先生・メンターからのコメントと次の問い
 
 将来バックエンド化する場合は [schema.sql](/Users/ikedatetsuya/Documents/Codex/2026-06-05/googlemap-web/schema.sql) をPostgreSQL/Supabase用の初期スキーマとして使えます。
+
+## Firebase同期
+
+Firebaseを使う場合は、Firebase ConsoleでWebアプリを追加し、表示される `firebaseConfig` のJSONをアプリの「データベース」欄にある `Firebase設定` へ貼り付けます。
+
+まず使うFirebase機能:
+
+- Cloud Firestore: 生徒ごとのプロフィール、探究ポイント、ログ、振り返り、フィードバック、現場投稿メタデータを保存
+- Firebase Storage: 現場写真の本体保存に拡張予定
+- Firebase Authentication: 将来の本ログインに拡張予定
+
+現在の実装では、Firestoreの `wakuwakuUsers/{ユーザーID}` に1ユーザー分のスナップショットを保存します。写真本体は容量が大きいため、Firestoreには写真の有無・名前・サイズだけを保存し、画像データはブラウザ内DBに残します。
+
+公開版で常にFirebaseを使う場合は、VercelのEnvironment Variablesに `FIREBASE_*` を設定します。ブラウザに配信されるFirebase設定は秘密鍵ではありませんが、Firestore Security Rulesで読み書き範囲を制限してください。
 
 ## Google Drive試作
 

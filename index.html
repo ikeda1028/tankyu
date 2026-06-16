@@ -194,6 +194,16 @@
             <a class="map-http-link" href="http://127.0.0.1:4173/">HTTPで開く</a>
             <p id="maps-status" class="drive-sync-status">未設定</p>
           </div>
+          <div class="drive-sync-box firebase-sync-box">
+            <label for="firebase-config">Firebase設定</label>
+            <textarea id="firebase-config" rows="5" placeholder='{"apiKey":"...","authDomain":"...","projectId":"...","appId":"..."}'></textarea>
+            <div class="drive-sync-actions">
+              <button id="save-firebase-config-button" class="secondary-button" type="button">設定保存</button>
+              <button id="sync-firebase-button" class="primary-button" type="button">Firebase同期</button>
+            </div>
+            <button id="load-firebase-button" class="secondary-button db-button" type="button">Firebaseから読込</button>
+            <p id="firebase-status" class="drive-sync-status">未設定</p>
+          </div>
         </section>
       </aside>
 
@@ -605,6 +615,7 @@
     </main>
 
     <script src="database.js"></script>
+    <script src="firebase-sync.js"></script>
     <script src="public-config.js"></script>
     <script src="app.js"></script>
   </body>

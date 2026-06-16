@@ -494,6 +494,20 @@ textarea {
   font-size: 12px;
 }
 
+.drive-sync-box textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 10px 11px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  outline: 0;
+  background: #fff;
+  font: inherit;
+  font-size: 11px;
+  line-height: 1.45;
+  resize: vertical;
+}
+
 .drive-sync-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -515,7 +529,15 @@ textarea {
   line-height: 1.45;
 }
 
+.drive-sync-status.error {
+  color: var(--rose);
+}
+
 .maps-api-box input {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.firebase-sync-box textarea {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 

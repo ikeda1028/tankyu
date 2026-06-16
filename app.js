@@ -121,6 +121,11 @@ const defaultState = {
     lastSyncAt: "",
     lastStatus: "未設定",
   },
+  firebase: {
+    configJson: "",
+    lastSyncAt: "",
+    lastStatus: "未設定",
+  },
   maps: {
     apiKey: "",
     lastStatus: "未設定",
@@ -210,6 +215,11 @@ const els = {
   saveDriveUrlButton: document.querySelector("#save-drive-url-button"),
   syncDriveButton: document.querySelector("#sync-drive-button"),
   driveSyncStatus: document.querySelector("#drive-sync-status"),
+  firebaseConfig: document.querySelector("#firebase-config"),
+  saveFirebaseConfigButton: document.querySelector("#save-firebase-config-button"),
+  syncFirebaseButton: document.querySelector("#sync-firebase-button"),
+  loadFirebaseButton: document.querySelector("#load-firebase-button"),
+  firebaseStatus: document.querySelector("#firebase-status"),
   mapsApiKey: document.querySelector("#maps-api-key"),
   saveMapsKeyButton: document.querySelector("#save-maps-key-button"),
   loadMapsButton: document.querySelector("#load-maps-button"),
@@ -299,6 +309,7 @@ const els = {
 
 const state = loadState();
 state.driveSync = { ...defaultState.driveSync, ...(state.driveSync || {}) };
+state.firebase = { ...defaultState.firebase, ...(state.firebase || {}) };
 state.maps = { ...defaultState.maps, ...(state.maps || {}) };
 state.auth = { ...defaultState.auth, ...(state.auth || {}) };
 state.member = { ...defaultState.member, ...(state.member || {}) };
@@ -570,6 +581,158 @@ function renderDriveSync() {
   const status = state.driveSync?.lastStatus || (getDriveUrl() ? "URL保存済み" : "未設定");
   const lastSync = state.driveSync?.lastSyncAt ? ` / 最終 ${formatTime(new Date(state.driveSync.lastSyncAt))}` : "";
   els.driveSyncStatus.textContent = `${status}${lastSync}`;
+}
+
+function getFirebasePublicConfig() {
+  return getPublicConfig().firebase || {};
+}
+
+function parseFirebaseConfigJson(value) {
+  if (!value.trim()) return {};
+  const parsed = JSON.parse(value);
+  return typeof parsed === "object" && parsed ? parsed : {};
+}
+
+function getFirebaseConfig() {
+  const publicConfig = getFirebasePublicConfig();
+  if (window.WakuwakuFirebase?.hasFirebaseConfig(publicConfig)) return publicConfig;
+  try {
+    return parseFirebaseConfigJson(state.firebase?.configJson || "");
+  } catch {
+    return {};
+  }
+}
+
+function hasFirebaseConfig() {
+  return Boolean(window.WakuwakuFirebase?.hasFirebaseConfig(getFirebaseConfig()));
+}
+
+function setFirebaseStatus(message, isError = false) {
+  state.firebase = {
+    ...(state.firebase || {}),
+    lastStatus: message,
+  };
+  if (els.firebaseStatus) {
+    els.firebaseStatus.textContent = message;
+    els.firebaseStatus.classList.toggle("error", isError);
+  }
+}
+
+function renderFirebaseSettings() {
+  if (!els.firebaseConfig || !els.firebaseStatus) return;
+  const publicEnabled = window.WakuwakuFirebase?.hasFirebaseConfig(getFirebasePublicConfig());
+  els.firebaseConfig.disabled = publicEnabled;
+  els.saveFirebaseConfigButton.disabled = publicEnabled;
+  els.firebaseConfig.value = publicEnabled ? "" : state.firebase?.configJson || "";
+  els.firebaseConfig.placeholder = publicEnabled ? "公開設定から読み込み中" : "{\"apiKey\":\"...\",\"authDomain\":\"...\",\"projectId\":\"...\",\"appId\":\"...\"}";
+  const status = state.firebase?.lastStatus || (hasFirebaseConfig() ? "Firebase設定済み" : "未設定");
+  const lastSync = state.firebase?.lastSyncAt ? ` / 最終 ${formatTime(new Date(state.firebase.lastSyncAt))}` : "";
+  els.firebaseStatus.textContent = `${status}${lastSync}`;
+  els.firebaseStatus.classList.remove("error");
+}
+
+function saveFirebaseConfig() {
+  try {
+    const configJson = els.firebaseConfig.value.trim();
+    const config = parseFirebaseConfigJson(configJson);
+    if (!window.WakuwakuFirebase?.hasFirebaseConfig(config)) {
+      setFirebaseStatus("apiKey / projectId / appIdを含む設定を入れてください", true);
+      return;
+    }
+    state.firebase = {
+      ...(state.firebase || {}),
+      configJson: JSON.stringify(config, null, 2),
+      lastStatus: "Firebase設定を保存しました",
+    };
+    saveState();
+    renderFirebaseSettings();
+  } catch {
+    setFirebaseStatus("Firebase設定JSONを確認してください", true);
+  }
+}
+
+function createFirebaseSnapshot() {
+  const snapshot = JSON.parse(JSON.stringify(state));
+  snapshot.maps = { ...(snapshot.maps || {}), apiKey: "", lastStatus: snapshot.maps?.lastStatus || "" };
+  snapshot.driveSync = { ...(snapshot.driveSync || {}), apiUrl: "", lastStatus: snapshot.driveSync?.lastStatus || "" };
+  snapshot.firebase = { ...defaultState.firebase, lastStatus: "cloud snapshot" };
+  snapshot.fieldPosts = (snapshot.fieldPosts || []).map((post) => ({
+    ...post,
+    image: post.image
+      ? {
+          name: post.image.name || "",
+          type: post.image.type || "",
+          size: post.image.size || 0,
+          hasPhoto: Boolean(post.image.dataUrl),
+        }
+      : null,
+  }));
+  return snapshot;
+}
+
+async function syncFirebase() {
+  if (!window.WakuwakuFirebase) {
+    setFirebaseStatus("Firebase同期機能を読み込めません", true);
+    return;
+  }
+  const config = getFirebaseConfig();
+  if (!window.WakuwakuFirebase.hasFirebaseConfig(config)) {
+    setFirebaseStatus("Firebase設定を入力してください", true);
+    return;
+  }
+
+  try {
+    setFirebaseStatus("Firebase同期中...");
+    const result = await window.WakuwakuFirebase.saveSnapshot(config, state, createFirebaseSnapshot());
+    state.firebase.lastSyncAt = new Date().toISOString();
+    setFirebaseStatus(`Firestore保存完了: ${result.userId}`);
+    saveState();
+    renderFirebaseSettings();
+  } catch (error) {
+    setFirebaseStatus("Firebase同期エラー。設定とFirestoreルールを確認してください", true);
+    console.error(error);
+  }
+}
+
+async function loadFirebaseSnapshot() {
+  if (!window.WakuwakuFirebase) {
+    setFirebaseStatus("Firebase同期機能を読み込めません", true);
+    return;
+  }
+  const config = getFirebaseConfig();
+  if (!window.WakuwakuFirebase.hasFirebaseConfig(config)) {
+    setFirebaseStatus("Firebase設定を入力してください", true);
+    return;
+  }
+
+  try {
+    setFirebaseStatus("Firebase読込中...");
+    const savedConfig = state.firebase;
+    const result = await window.WakuwakuFirebase.loadSnapshot(config, state);
+    if (!result?.snapshot) {
+      setFirebaseStatus("Firebaseに保存データがありません", true);
+      return;
+    }
+    Object.assign(state, { ...defaultState, ...result.snapshot });
+    state.firebase = {
+      ...defaultState.firebase,
+      ...savedConfig,
+      lastSyncAt: new Date().toISOString(),
+      lastStatus: `Firestore読込完了: ${result.userId}`,
+    };
+    state.driveSync = { ...defaultState.driveSync, ...(state.driveSync || {}) };
+    state.maps = { ...defaultState.maps, ...(state.maps || {}) };
+    state.auth = { ...defaultState.auth, ...(state.auth || {}) };
+    state.member = { ...defaultState.member, ...(state.member || {}) };
+    state.ui = { ...defaultState.ui, ...(state.ui || {}) };
+    state.fieldPosts = Array.isArray(state.fieldPosts) ? state.fieldPosts : [];
+    dedupeCustomEvents();
+    saveState();
+    render();
+  } catch (error) {
+    setFirebaseStatus("Firebase読込エラー。設定とFirestoreルールを確認してください", true);
+    console.error(error);
+  }
 }
 
 function getMapsKey() {
@@ -1912,6 +2075,7 @@ function render() {
   renderAiSuggestions();
   renderRegisteredEvents();
   renderDriveSync();
+  renderFirebaseSettings();
   renderMapsSettings();
   renderDatabaseStatus();
 }
@@ -3143,6 +3307,9 @@ els.eventLat.addEventListener("input", syncEventLocationMarkerFromInputs);
 els.eventLng.addEventListener("input", syncEventLocationMarkerFromInputs);
 els.saveDriveUrlButton.addEventListener("click", saveDriveUrl);
 els.syncDriveButton.addEventListener("click", syncAllToDrive);
+els.saveFirebaseConfigButton?.addEventListener("click", saveFirebaseConfig);
+els.syncFirebaseButton?.addEventListener("click", syncFirebase);
+els.loadFirebaseButton?.addEventListener("click", loadFirebaseSnapshot);
 els.saveMapsKeyButton.addEventListener("click", saveMapsKey);
 els.loadMapsButton.addEventListener("click", initializeGoogleMap);
 els.centerSearchButton?.addEventListener("click", centerGoogleMapOnSearch);
