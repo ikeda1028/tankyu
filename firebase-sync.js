@@ -1,10 +1,12 @@
 const FIREBASE_APP_URL = "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 const FIREBASE_FIRESTORE_URL = "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+const FIREBASE_STORAGE_URL = "https://www.gstatic.com/firebasejs/10.12.5/firebase-storage.js";
 const FIREBASE_COLLECTION = "wakuwakuUsers";
 
 let firebaseModulesPromise = null;
 let firebaseApp = null;
 let firebaseDb = null;
+let firebaseStorage = null;
 
 function hasFirebaseConfig(config) {
   return Boolean(config?.apiKey && config?.projectId && config?.appId);
@@ -12,9 +14,10 @@ function hasFirebaseConfig(config) {
 
 async function loadFirebaseModules() {
   if (!firebaseModulesPromise) {
-    firebaseModulesPromise = Promise.all([import(FIREBASE_APP_URL), import(FIREBASE_FIRESTORE_URL)]).then(([app, firestore]) => ({
+    firebaseModulesPromise = Promise.all([import(FIREBASE_APP_URL), import(FIREBASE_FIRESTORE_URL), import(FIREBASE_STORAGE_URL)]).then(([app, firestore, storage]) => ({
       app,
       firestore,
+      storage,
     }));
   }
   return firebaseModulesPromise;
@@ -25,12 +28,13 @@ async function connectFirebase(config) {
     throw new Error("Firebase設定を入力してください");
   }
 
-  const { app, firestore } = await loadFirebaseModules();
+  const { app, firestore, storage } = await loadFirebaseModules();
   if (!firebaseApp) {
     firebaseApp = app.initializeApp(config, "wakuwakuQuest");
     firebaseDb = firestore.getFirestore(firebaseApp);
+    firebaseStorage = storage.getStorage(firebaseApp);
   }
-  return { firestore, db: firebaseDb };
+  return { firestore, storage, db: firebaseDb, storageBucket: firebaseStorage };
 }
 
 function getFirebaseUserId(state) {
@@ -38,22 +42,77 @@ function getFirebaseUserId(state) {
   return String(rawId).trim().replace(/[/.#[\]\s]/g, "_") || "demo-student";
 }
 
+function dataUrlToBlob(dataUrl) {
+  const [meta = "", base64 = ""] = String(dataUrl).split(",");
+  const contentType = meta.match(/data:(.*?);base64/)?.[1] || "image/jpeg";
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return new Blob([bytes], { type: contentType });
+}
+
+async function uploadFieldPostImages(firebase, userId, snapshot) {
+  const posts = Array.isArray(snapshot?.fieldPosts) ? snapshot.fieldPosts : [];
+  const uploadedPosts = [];
+
+  for (const post of posts) {
+    const image = post?.image;
+    if (!image?.dataUrl) {
+      uploadedPosts.push(post);
+      continue;
+    }
+
+    const safePostId = String(post.id || `post-${Date.now()}`).replace(/[^a-zA-Z0-9_-]/g, "_");
+    const storagePath = `fieldPosts/${userId}/${safePostId}.jpg`;
+    const imageRef = firebase.storage.ref(firebase.storageBucket, storagePath);
+    const blob = dataUrlToBlob(image.dataUrl);
+    await firebase.storage.uploadBytes(imageRef, blob, {
+      contentType: image.type || blob.type || "image/jpeg",
+      customMetadata: {
+        originalName: image.name || "",
+        eventId: post.eventId || "",
+      },
+    });
+    const downloadUrl = await firebase.storage.getDownloadURL(imageRef);
+    uploadedPosts.push({
+      ...post,
+      image: {
+        name: image.name || "",
+        type: image.type || blob.type || "image/jpeg",
+        size: image.size || blob.size || 0,
+        hasPhoto: true,
+        storagePath,
+        downloadUrl,
+      },
+    });
+  }
+
+  return {
+    ...snapshot,
+    fieldPosts: uploadedPosts,
+  };
+}
+
 async function saveSnapshot(config, state, snapshot) {
-  const { firestore, db } = await connectFirebase(config);
+  const firebase = await connectFirebase(config);
+  const { firestore, db } = firebase;
   const userId = getFirebaseUserId(state);
   const ref = firestore.doc(db, FIREBASE_COLLECTION, userId);
+  const uploadedSnapshot = await uploadFieldPostImages(firebase, userId, snapshot);
   await firestore.setDoc(
     ref,
     {
       userId,
       email: state?.auth?.email || "",
       displayName: state?.member?.name || "",
-      snapshot,
+      snapshot: uploadedSnapshot,
       updatedAt: firestore.serverTimestamp(),
     },
     { merge: true }
   );
-  return { userId };
+  return { userId, snapshot: uploadedSnapshot };
 }
 
 async function loadSnapshot(config, state) {

@@ -656,17 +656,6 @@ function createFirebaseSnapshot() {
   snapshot.maps = { ...(snapshot.maps || {}), apiKey: "", lastStatus: snapshot.maps?.lastStatus || "" };
   snapshot.driveSync = { ...(snapshot.driveSync || {}), apiUrl: "", lastStatus: snapshot.driveSync?.lastStatus || "" };
   snapshot.firebase = { ...defaultState.firebase, lastStatus: "cloud snapshot" };
-  snapshot.fieldPosts = (snapshot.fieldPosts || []).map((post) => ({
-    ...post,
-    image: post.image
-      ? {
-          name: post.image.name || "",
-          type: post.image.type || "",
-          size: post.image.size || 0,
-          hasPhoto: Boolean(post.image.dataUrl),
-        }
-      : null,
-  }));
   return snapshot;
 }
 
@@ -684,6 +673,9 @@ async function syncFirebase() {
   try {
     setFirebaseStatus("Firebase同期中...");
     const result = await window.WakuwakuFirebase.saveSnapshot(config, state, createFirebaseSnapshot());
+    if (Array.isArray(result.snapshot?.fieldPosts)) {
+      state.fieldPosts = result.snapshot.fieldPosts;
+    }
     state.firebase.lastSyncAt = new Date().toISOString();
     setFirebaseStatus(`Firestore保存完了: ${result.userId}`);
     saveState();
@@ -1824,14 +1816,17 @@ function renderFieldPosts() {
     ? posts
         .slice(0, 4)
         .map(
-          (post) => `<article class="field-post-card">
-            ${post.image?.dataUrl ? `<img src="${post.image.dataUrl}" alt="${escapeHtml(post.eventTitle)}の現場写真" />` : ""}
+          (post) => {
+            const imageSrc = post.image?.dataUrl || post.image?.downloadUrl || "";
+            return `<article class="field-post-card">
+            ${imageSrc ? `<img src="${imageSrc}" alt="${escapeHtml(post.eventTitle)}の現場写真" />` : ""}
             <div>
               <time>${formatTime(new Date(post.at))}</time>
               <p>${escapeHtml(post.text || "写真のみの投稿")}</p>
               <small>${post.location ? `位置 ${Number(post.location.lat).toFixed(5)}, ${Number(post.location.lng).toFixed(5)}` : "位置なし"}</small>
             </div>
-          </article>`
+          </article>`;
+          }
         )
         .join("")
     : "<p class=\"empty-note\">まだ現場投稿はありません。</p>";
