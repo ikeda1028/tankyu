@@ -133,6 +133,7 @@ const defaultState = {
   ui: {
     eventsPanel: "compact",
     encounterPanel: "open",
+    fieldPostPanel: "open",
     memberEditing: false,
   },
   selectedReflection: "",
@@ -187,6 +188,8 @@ const els = {
   hypothesisInput: document.querySelector("#hypothesis-input"),
   fieldPostPanel: document.querySelector(".field-post-panel"),
   fieldPostCount: document.querySelector("#field-post-count"),
+  compactFieldPostButton: document.querySelector("#compact-field-post-button"),
+  collapseFieldPostButton: document.querySelector("#collapse-field-post-button"),
   fieldPostTarget: document.querySelector("#field-post-target"),
   fieldPostPhoto: document.querySelector("#field-post-photo"),
   fieldPhotoPreview: document.querySelector("#field-photo-preview"),
@@ -1574,6 +1577,27 @@ function renderEncounterPanelState() {
   }
 }
 
+function renderFieldPostPanelState() {
+  if (!els.fieldPostPanel) return;
+  const mode = state.ui?.fieldPostPanel || "open";
+  els.fieldPostPanel.classList.toggle("compact", mode === "compact");
+  els.fieldPostPanel.classList.toggle("collapsed", mode === "collapsed");
+  if (els.compactFieldPostButton) {
+    els.compactFieldPostButton.textContent = mode === "compact" ? "□" : "▣";
+    els.compactFieldPostButton.setAttribute(
+      "aria-label",
+      mode === "compact" ? "現場投稿を通常表示" : "現場投稿を小さく表示"
+    );
+  }
+  if (els.collapseFieldPostButton) {
+    els.collapseFieldPostButton.textContent = mode === "collapsed" ? "+" : "−";
+    els.collapseFieldPostButton.setAttribute(
+      "aria-label",
+      mode === "collapsed" ? "現場投稿を開く" : "現場投稿を折りたたむ"
+    );
+  }
+}
+
 function renderThemeEvaluation() {
   if (!els.themeEvaluationPanel) return;
   const query = state.themeSearch?.query?.trim();
@@ -1720,6 +1744,18 @@ function toggleCollapseEncounter() {
   state.ui.encounterPanel = state.ui.encounterPanel === "collapsed" ? "compact" : "collapsed";
   saveState();
   renderEncounterPanelState();
+}
+
+function toggleCompactFieldPost() {
+  state.ui.fieldPostPanel = state.ui.fieldPostPanel === "compact" ? "open" : "compact";
+  saveState();
+  renderFieldPostPanelState();
+}
+
+function toggleCollapseFieldPost() {
+  state.ui.fieldPostPanel = state.ui.fieldPostPanel === "collapsed" ? "compact" : "collapsed";
+  saveState();
+  renderFieldPostPanelState();
 }
 
 window.toggleCompactEvents = toggleCompactEvents;
@@ -2148,6 +2184,7 @@ function render() {
   renderSpots();
   renderEventList();
   renderEncounter();
+  renderFieldPostPanelState();
   renderFieldPosts();
   renderInterests();
   renderActivity();
@@ -3398,6 +3435,8 @@ els.centerSearchButton?.addEventListener("click", centerGoogleMapOnSearch);
 els.currentLocationButton?.addEventListener("click", centerOnCurrentLocation);
 els.compactEncounterButton?.addEventListener("click", toggleCompactEncounter);
 els.collapseEncounterButton?.addEventListener("click", toggleCollapseEncounter);
+els.compactFieldPostButton?.addEventListener("click", toggleCompactFieldPost);
+els.collapseFieldPostButton?.addEventListener("click", toggleCollapseFieldPost);
 els.fieldPostPhoto?.addEventListener("change", handleFieldPhotoChange);
 els.usePostLocationButton?.addEventListener("click", attachFieldPostLocation);
 els.saveFieldPostButton?.addEventListener("click", saveFieldPost);

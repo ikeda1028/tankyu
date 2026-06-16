@@ -1900,6 +1900,10 @@ textarea {
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.94);
   box-shadow: 0 10px 32px rgba(30, 48, 36, 0.09);
+  transition:
+    width 180ms ease,
+    max-height 180ms ease,
+    padding 180ms ease;
 }
 
 .field-post-panel label {
@@ -2035,6 +2039,45 @@ textarea {
   line-height: 1.45;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+}
+
+.field-post-panel.compact {
+  width: min(260px, calc(100% - 36px));
+  max-height: 280px;
+}
+
+.field-post-panel.compact .field-post-target,
+.field-post-panel.compact .field-photo-preview,
+.field-post-panel.compact .field-post-list,
+.field-post-panel.compact label[for="field-post-photo"],
+.field-post-panel.compact #field-post-photo {
+  display: none;
+}
+
+.field-post-panel.compact textarea {
+  min-height: 74px;
+}
+
+.field-post-panel.compact .field-post-actions {
+  grid-template-columns: 1fr;
+}
+
+.field-post-panel.collapsed {
+  width: min(230px, calc(100% - 36px));
+  max-height: 58px;
+  padding: 10px;
+  overflow: hidden;
+}
+
+.field-post-panel.collapsed .field-post-target,
+.field-post-panel.collapsed label,
+.field-post-panel.collapsed input,
+.field-post-panel.collapsed textarea,
+.field-post-panel.collapsed .field-photo-preview,
+.field-post-panel.collapsed .field-post-actions,
+.field-post-panel.collapsed .field-post-status,
+.field-post-panel.collapsed .field-post-list {
+  display: none;
 }
 
 .character-card {
@@ -2337,6 +2380,14 @@ textarea {
     width: auto;
     max-height: none;
     margin: 12px;
+  }
+
+  .field-post-panel.compact {
+    max-height: 280px;
+  }
+
+  .field-post-panel.collapsed {
+    max-height: 58px;
   }
 
   .event-admin-view {
