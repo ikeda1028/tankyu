@@ -135,6 +135,7 @@ const defaultState = {
     encounterPanel: "open",
     fieldPostPanel: "open",
     memberEditing: false,
+    editingEventId: "",
   },
   selectedReflection: "",
   streak: 0,
@@ -291,6 +292,8 @@ const els = {
     document.querySelector("#event-q4"),
     document.querySelector("#event-q5"),
   ],
+  eventSubmitButton: document.querySelector("#event-submit-button"),
+  cancelEventEditButton: document.querySelector("#cancel-event-edit-button"),
   sampleEventButton: document.querySelector("#sample-event-button"),
   searchAiEventsButton: document.querySelector("#search-ai-events-button"),
   registerAllAiEventsButton: document.querySelector("#register-all-ai-events-button"),
@@ -3281,6 +3284,63 @@ function addEventRecord(eventData) {
   }
 }
 
+function resetEventFormToCreate(status = "新規登録") {
+  state.ui.editingEventId = "";
+  els.eventForm.reset();
+  els.eventIndex.value = 78;
+  els.eventColor.value = "#2f8f63";
+  els.eventType.value = "permanent";
+  els.eventStartDate.value = "";
+  els.eventEndDate.value = "";
+  els.eventLat.value = "";
+  els.eventLng.value = "";
+  if (els.eventCharacterEnabled) els.eventCharacterEnabled.checked = true;
+  if (els.eventSubmitButton) els.eventSubmitButton.textContent = "探究ポイントを登録";
+  els.cancelEventEditButton?.classList.add("hidden");
+  els.eventAdminStatus.textContent = status;
+  saveState();
+}
+
+function populateEventForm(eventData) {
+  els.eventTitle.value = eventData.title || "";
+  els.eventImpact.value = eventData.impact || "";
+  els.eventDescription.value = eventData.description || "";
+  els.eventTags.value = Array.isArray(eventData.tags) ? eventData.tags.join(", ") : "";
+  els.eventKeywords.value = Array.isArray(eventData.keywords) ? eventData.keywords.join(", ") : "";
+  els.eventIndex.value = eventData.index || 78;
+  els.eventColor.value = eventData.color || "#2f8f63";
+  els.eventLocation.value = eventData.locationName || "";
+  els.eventType.value = eventData.eventType || "permanent";
+  els.eventStartDate.value = eventData.startDate || "";
+  els.eventEndDate.value = eventData.endDate || "";
+  const character = eventData.character || {};
+  if (els.eventCharacterEnabled) els.eventCharacterEnabled.checked = Boolean(eventData.character?.localOnly ?? true);
+  if (els.eventCharacterName) els.eventCharacterName.value = character.name || "";
+  if (els.eventCharacterRole) els.eventCharacterRole.value = character.role || "";
+  if (els.eventCharacterMessage) els.eventCharacterMessage.value = character.message || "";
+  const position = hasValidLatLng(eventData.position) ? eventData.position : null;
+  els.eventLat.value = position ? Number(position.lat).toFixed(6) : "";
+  els.eventLng.value = position ? Number(position.lng).toFixed(6) : "";
+  els.eventQuestions.forEach((input, index) => {
+    input.value = Array.isArray(eventData.questionPath) ? eventData.questionPath[index] || "" : "";
+  });
+  if (position) renderEventLocationMarker({ lat: Number(position.lat), lng: Number(position.lng) });
+}
+
+function startEditingEvent(eventId) {
+  const eventData = state.customEvents.find((event) => event.id === eventId);
+  if (!eventData) return;
+  state.ui.editingEventId = eventData.id;
+  state.selected = eventData.id;
+  populateEventForm(eventData);
+  if (els.eventSubmitButton) els.eventSubmitButton.textContent = "変更を保存";
+  els.cancelEventEditButton?.classList.remove("hidden");
+  els.eventAdminStatus.textContent = "編集中";
+  saveState();
+  showMode("event-admin");
+  els.eventTitle.focus();
+}
+
 function registerAllAiSuggestions() {
   const suggestions = Array.isArray(state.aiSuggestions) ? state.aiSuggestions : [];
   if (!suggestions.length) {
@@ -3327,7 +3387,7 @@ function registerEvent(event) {
     "学校や地域で何を試せるか",
   ][index]);
   const eventData = {
-    id: createEventId(title),
+    id: state.ui.editingEventId || createEventId(title),
     title,
     index: clamp(Number(els.eventIndex.value) || 70),
     description,
@@ -3355,11 +3415,31 @@ function registerEvent(event) {
     createdAt: new Date().toISOString(),
   };
 
-  els.eventForm.reset();
-  els.eventIndex.value = 78;
-  els.eventColor.value = "#2f8f63";
-  els.eventType.value = "permanent";
-  if (els.eventCharacterEnabled) els.eventCharacterEnabled.checked = true;
+  if (state.ui.editingEventId) {
+    const targetIndex = state.customEvents.findIndex((customEvent) => customEvent.id === state.ui.editingEventId);
+    if (targetIndex >= 0) {
+      const previous = state.customEvents[targetIndex];
+      state.customEvents[targetIndex] = {
+        ...previous,
+        ...eventData,
+        id: previous.id,
+        createdAt: previous.createdAt || eventData.createdAt,
+        updatedAt: new Date().toISOString(),
+      };
+      state.selected = previous.id;
+      addActivity(`${title}を更新`);
+      resetEventFormToCreate("更新済み");
+      saveState();
+      render();
+      showMode("event-admin");
+      if (getDriveUrl()) {
+        postToDrive("events", eventToDriveRecord(state.customEvents[targetIndex]));
+      }
+      return;
+    }
+  }
+
+  resetEventFormToCreate();
   addEventRecord(eventData);
 }
 
@@ -3409,6 +3489,10 @@ function renderRegisteredEvents() {
             <strong>${event.title}</strong>
             <span>${[event.impact, event.locationName, getEventPeriodLabel(event)].filter(Boolean).join(" / ")}</span>
             <em>${event.index}</em>
+            <span class="registered-event-actions">
+              <span>${state.ui.editingEventId === event.id ? "編集中" : "詳細を見る"}</span>
+              <span class="registered-edit-control" data-edit-id="${event.id}">編集</span>
+            </span>
           </button>`
         )
         .join("")
@@ -3419,6 +3503,12 @@ function renderRegisteredEvents() {
       saveState();
       render();
       showMode("quest");
+    });
+  });
+  els.registeredEventList.querySelectorAll(".registered-edit-control").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      startEditingEvent(button.dataset.editId);
     });
   });
 }
@@ -3442,6 +3532,7 @@ els.backLoginButton.addEventListener("click", () => {
 els.editMemberButton.addEventListener("click", showMemberForm);
 els.logoutButton.addEventListener("click", logout);
 els.eventForm.addEventListener("submit", registerEvent);
+els.cancelEventEditButton?.addEventListener("click", () => resetEventFormToCreate());
 els.sampleEventButton.addEventListener("click", registerSampleEvent);
 els.searchAiEventsButton.addEventListener("click", searchAiEventSuggestions);
 els.aiSearchWord?.addEventListener("keydown", (event) => {
