@@ -248,6 +248,8 @@ const els = {
   eventCharacterName: document.querySelector("#event-character-name"),
   eventCharacterRole: document.querySelector("#event-character-role"),
   eventCharacterMessage: document.querySelector("#event-character-message"),
+  suggestCharacterButton: document.querySelector("#suggest-character-button"),
+  characterSuggestionStatus: document.querySelector("#character-suggestion-status"),
   eventLat: document.querySelector("#event-lat"),
   eventLng: document.querySelector("#event-lng"),
   useMapCenterButton: document.querySelector("#use-map-center-button"),
@@ -1226,6 +1228,13 @@ function getGenerateImageApiPath() {
     return `${PUBLIC_API_BASE}/api/generate-image`;
   }
   return "/api/generate-image";
+}
+
+function getSuggestCharacterApiPath() {
+  if (location.protocol === "file:" || location.hostname === "127.0.0.1" || location.hostname === "localhost") {
+    return `${PUBLIC_API_BASE}/api/suggest-character`;
+  }
+  return "/api/suggest-character";
 }
 
 function getDepth() {
@@ -2517,6 +2526,61 @@ async function generateEventImage() {
   }
 }
 
+async function suggestEventCharacter() {
+  if (!els.suggestCharacterButton || !els.characterSuggestionStatus) return;
+  const title = els.eventTitle.value.trim();
+  const impact = els.eventImpact.value.trim();
+  const description = els.eventDescription.value.trim();
+  if (!title && !impact && !description) {
+    els.characterSuggestionStatus.textContent = "先にイベント名・社会課題・内容を少し入力してください";
+    return;
+  }
+
+  const previousText = els.suggestCharacterButton.textContent;
+  els.suggestCharacterButton.disabled = true;
+  els.suggestCharacterButton.textContent = "作成中";
+  els.characterSuggestionStatus.textContent = "AIで現地限定キャラクターを作成中...";
+
+  try {
+    const response = await fetch(getSuggestCharacterApiPath(), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title,
+        impact,
+        description,
+        locationName: els.eventLocation.value.trim(),
+        tags: splitList(els.eventTags.value),
+        grade: state.member.grade,
+      }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data.error || `HTTP ${response.status}`);
+    }
+    els.eventCharacterEnabled.checked = true;
+    els.eventCharacterName.value = data.name || "";
+    els.eventCharacterRole.value = data.role || "現地案内人";
+    els.eventCharacterMessage.value = data.message || "";
+    if (els.eventImagePrompt && data.visualPrompt) {
+      els.eventImagePrompt.value = data.visualPrompt;
+    }
+    els.characterSuggestionStatus.textContent = data.personality
+      ? `作成しました: ${data.personality}`
+      : "キャラクターを作成しました";
+  } catch (error) {
+    const localHint =
+      location.hostname === "127.0.0.1" || location.hostname === "localhost"
+        ? "公開版でOPENAI_API_KEYを設定すると使えます"
+        : "VercelのOPENAI_API_KEYを確認してください";
+    els.characterSuggestionStatus.textContent = `キャラクターを作成できません: ${localHint}`;
+    console.error(error);
+  } finally {
+    els.suggestCharacterButton.disabled = false;
+    els.suggestCharacterButton.textContent = previousText;
+  }
+}
+
 function getEventPosition() {
   const latValue = els.eventLat.value.trim();
   const lngValue = els.eventLng.value.trim();
@@ -2753,6 +2817,7 @@ els.aiSearchWord?.addEventListener("keydown", (event) => {
   searchAiEventSuggestions();
 });
 els.generateEventImageButton?.addEventListener("click", generateEventImage);
+els.suggestCharacterButton?.addEventListener("click", suggestEventCharacter);
 els.registerAllAiEventsButton?.addEventListener("click", registerAllAiSuggestions);
 els.useMapCenterButton.addEventListener("click", useMapCenterForEvent);
 els.openLocationMapButton.addEventListener("click", initializeEventLocationMap);

@@ -368,7 +368,11 @@
                 <label for="event-end-date">終了日</label>
                 <input id="event-end-date" type="date" />
                 <fieldset class="character-fieldset">
-                  <legend>現地限定キャラクター</legend>
+                  <div class="fieldset-head">
+                    <legend>現地限定キャラクター</legend>
+                    <button id="suggest-character-button" class="secondary-button mini-action" type="button">AIでキャラ作成</button>
+                  </div>
+                  <p id="character-suggestion-status" class="character-suggestion-status">イベント内容から現地で会えるキャラクターを作れます。</p>
                   <div class="character-toggle-row">
                     <label for="event-character-enabled">現場に行った時だけ会える</label>
                     <input id="event-character-enabled" type="checkbox" checked />

@@ -1141,6 +1141,25 @@ textarea {
   background: #f6faf7;
 }
 
+.fieldset-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.fieldset-head legend {
+  float: left;
+}
+
+.character-suggestion-status {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.5;
+}
+
 .character-toggle-row {
   display: flex;
   align-items: center;
