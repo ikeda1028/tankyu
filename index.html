@@ -52,6 +52,22 @@
           </div>
           <label for="member-interest">最初のワクワク</label>
           <textarea id="member-interest" rows="3" placeholder="例：AI、海洋ごみ、地域の居場所、文化祭で社会課題展示"></textarea>
+          <label for="member-hero-role">自分の冒険者タイプ</label>
+          <select id="member-hero-role">
+            <option value="ヒーロー">ヒーロー</option>
+            <option value="ヒロイン">ヒロイン</option>
+            <option value="探究リーダー">探究リーダー</option>
+            <option value="問いの発見者">問いの発見者</option>
+          </select>
+          <fieldset class="party-fieldset">
+            <legend>パーティーに必要な役割</legend>
+            <p>探究を一人で終わらせず、仲間に任せたい役割を作ります。</p>
+            <div id="member-party-roles" class="party-role-list"></div>
+            <div class="party-role-add">
+              <input id="member-party-role-input" type="text" placeholder="例：記録係、現地インタビュアー、データ分析係" />
+              <button id="add-party-role-button" class="secondary-button" type="button">追加</button>
+            </div>
+          </fieldset>
           <button class="primary-button" type="submit">会員情報を保存</button>
           <p id="member-form-status" class="member-save-status" aria-live="polite"></p>
           <button id="back-login-button" class="secondary-button" type="button">ログインに戻る</button>
@@ -78,6 +94,7 @@
             <strong id="member-summary-name">未設定</strong>
             <span id="member-summary-meta">学年・学校未設定</span>
           </div>
+          <div id="member-party-summary" class="party-summary"></div>
           <p id="member-summary-status" class="member-save-status" aria-live="polite"></p>
           <button id="logout-button" class="secondary-button db-button" type="button">ログアウト</button>
         </section>

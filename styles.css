@@ -581,6 +581,96 @@ textarea {
   line-height: 1.45;
 }
 
+.party-summary {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.hero-role-badge {
+  width: fit-content;
+  padding: 6px 9px;
+  border: 1px solid rgba(47, 111, 179, 0.18);
+  border-radius: 8px;
+  background: #eef6ff;
+  color: #214f86;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.party-role-chips,
+.party-role-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.party-role-chips span,
+.party-role-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfdf9;
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.party-role-pill button {
+  display: grid;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(200, 93, 114, 0.12);
+  color: var(--rose);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.party-fieldset {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f8fbf5;
+}
+
+.party-fieldset legend {
+  padding: 0 4px;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.party-fieldset p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.party-role-add {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.party-role-add .secondary-button {
+  min-height: 38px;
+  padding: 0 12px;
+}
+
 .member-save-status {
   min-height: 16px;
   margin: 6px 0 0;

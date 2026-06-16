@@ -90,6 +90,8 @@ const defaultState = {
     grade: "中1",
     region: "",
     initialInterest: "",
+    heroRole: "ヒーロー",
+    partyRoles: ["問いを深める人", "現地を記録する人", "社会とつなぐ人"],
   },
   quest: 72,
   joy: 84,
@@ -254,9 +256,14 @@ const els = {
   memberGrade: document.querySelector("#member-grade"),
   memberRegion: document.querySelector("#member-region"),
   memberInterest: document.querySelector("#member-interest"),
+  memberHeroRole: document.querySelector("#member-hero-role"),
+  memberPartyRoles: document.querySelector("#member-party-roles"),
+  memberPartyRoleInput: document.querySelector("#member-party-role-input"),
+  addPartyRoleButton: document.querySelector("#add-party-role-button"),
   memberFormStatus: document.querySelector("#member-form-status"),
   memberSummaryName: document.querySelector("#member-summary-name"),
   memberSummaryMeta: document.querySelector("#member-summary-meta"),
+  memberPartySummary: document.querySelector("#member-party-summary"),
   memberSummaryStatus: document.querySelector("#member-summary-status"),
   editMemberButton: document.querySelector("#edit-member-button"),
   logoutButton: document.querySelector("#logout-button"),
@@ -322,6 +329,7 @@ state.firebase = { ...defaultState.firebase, ...(state.firebase || {}) };
 state.maps = { ...defaultState.maps, ...(state.maps || {}) };
 state.auth = { ...defaultState.auth, ...(state.auth || {}) };
 state.member = { ...defaultState.member, ...(state.member || {}) };
+state.member.partyRoles = normalizePartyRoles(state.member.partyRoles);
 state.ui = { ...defaultState.ui, ...(state.ui || {}) };
 state.joyActions = Array.isArray(state.joyActions) ? state.joyActions : [];
 state.visitedCharacters = Array.isArray(state.visitedCharacters) ? state.visitedCharacters : [];
@@ -344,6 +352,14 @@ let eventIndexEvaluateToken = 0;
 let lastEventIndexEvaluationKey = "";
 let pendingFieldPostImage = null;
 let pendingFieldPostLocation = null;
+
+function normalizePartyRoles(roles) {
+  const fallback = defaultState.member.partyRoles;
+  const normalized = (Array.isArray(roles) ? roles : String(roles || "").split(/[、,\n]/))
+    .map((role) => String(role || "").trim())
+    .filter(Boolean);
+  return [...new Set(normalized.length ? normalized : fallback)].slice(0, 8);
+}
 
 function getEncounters() {
   return [...seedEncounters, ...state.customEvents];
@@ -725,6 +741,7 @@ async function loadFirebaseSnapshot() {
     state.maps = { ...defaultState.maps, ...(state.maps || {}) };
     state.auth = { ...defaultState.auth, ...(state.auth || {}) };
     state.member = { ...defaultState.member, ...(state.member || {}) };
+    state.member.partyRoles = normalizePartyRoles(state.member.partyRoles);
     state.ui = { ...defaultState.ui, ...(state.ui || {}) };
     state.fieldPosts = Array.isArray(state.fieldPosts) ? state.fieldPosts : [];
     dedupeCustomEvents();
@@ -2267,6 +2284,13 @@ function renderMemberSummary() {
   els.memberSummaryName.textContent = state.member.name || "未設定";
   const meta = [state.member.grade, state.member.school, state.member.region].filter(Boolean).join(" / ");
   els.memberSummaryMeta.textContent = meta || "学年・学校未設定";
+  const heroRole = state.member.heroRole || "ヒーロー";
+  const roles = normalizePartyRoles(state.member.partyRoles);
+  if (els.memberPartySummary) {
+    els.memberPartySummary.innerHTML = `<div class="hero-role-badge">${escapeHtml(heroRole)}として登録</div>
+      <div class="party-role-chips">${roles.map((role) => `<span>${escapeHtml(role)}</span>`).join("")}</div>`;
+  }
+  renderPartyRoleEditor();
 }
 
 function setMemberStatus(message, isError = false) {
@@ -2287,7 +2311,43 @@ function showMemberForm() {
   els.memberGrade.value = state.member.grade || "中1";
   els.memberRegion.value = state.member.region || "";
   els.memberInterest.value = state.member.initialInterest || "";
+  els.memberHeroRole.value = state.member.heroRole || "ヒーロー";
+  state.member.partyRoles = normalizePartyRoles(state.member.partyRoles);
+  renderPartyRoleEditor();
   setMemberStatus("");
+}
+
+function renderPartyRoleEditor() {
+  if (!els.memberPartyRoles) return;
+  const roles = normalizePartyRoles(state.member.partyRoles);
+  els.memberPartyRoles.innerHTML = roles
+    .map(
+      (role, index) => `<span class="party-role-pill">
+        ${escapeHtml(role)}
+        <button type="button" aria-label="${escapeHtml(role)}を外す" data-role-index="${index}">×</button>
+      </span>`
+    )
+    .join("");
+  els.memberPartyRoles.querySelectorAll("button").forEach((button) => {
+    button.addEventListener("click", () => {
+      const index = Number(button.dataset.roleIndex);
+      state.member.partyRoles = roles.filter((_, roleIndex) => roleIndex !== index);
+      renderPartyRoleEditor();
+    });
+  });
+}
+
+function addPartyRole() {
+  const role = els.memberPartyRoleInput.value.trim();
+  if (!role) {
+    setMemberStatus("追加したい役割を入力してください", true);
+    return;
+  }
+  const roles = normalizePartyRoles(state.member.partyRoles);
+  state.member.partyRoles = [...new Set([...roles, role])].slice(0, 8);
+  els.memberPartyRoleInput.value = "";
+  setMemberStatus("");
+  renderPartyRoleEditor();
 }
 
 function handleLogin(event) {
@@ -2328,6 +2388,8 @@ function saveMemberInfo(event) {
     grade: els.memberGrade.value,
     region: els.memberRegion.value.trim(),
     initialInterest: interestText,
+    heroRole: els.memberHeroRole.value || "ヒーロー",
+    partyRoles: normalizePartyRoles(state.member.partyRoles),
   };
   if (interestText) {
     state.interests = [...new Set([...extractInterests(interestText), ...state.interests])].slice(0, 10);
@@ -2458,6 +2520,8 @@ function memberToDriveRecord() {
     id: state.auth.email || "local-user",
     display_name: state.member.name || "中高生ユーザー",
     role: "student",
+    hero_role: state.member.heroRole || "ヒーロー",
+    party_roles: normalizePartyRoles(state.member.partyRoles).join(","),
     school: state.member.school,
     grade: state.member.grade,
     region: state.member.region,
@@ -3599,6 +3663,12 @@ document.querySelector("#thanks-button").addEventListener("click", receiveThanks
 els.loginForm.addEventListener("submit", handleLogin);
 els.demoLoginButton.addEventListener("click", handleDemoLogin);
 els.memberForm.addEventListener("submit", saveMemberInfo);
+els.addPartyRoleButton?.addEventListener("click", addPartyRole);
+els.memberPartyRoleInput?.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter") return;
+  event.preventDefault();
+  addPartyRole();
+});
 els.backLoginButton.addEventListener("click", () => {
   if (state.auth.loggedIn) {
     state.ui.memberEditing = false;
