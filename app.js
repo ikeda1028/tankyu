@@ -239,6 +239,7 @@ const els = {
   eventTags: document.querySelector("#event-tags"),
   eventKeywords: document.querySelector("#event-keywords"),
   eventIndex: document.querySelector("#event-index"),
+  eventIndexStatus: document.querySelector("#event-index-status"),
   eventColor: document.querySelector("#event-color"),
   eventLocation: document.querySelector("#event-location"),
   eventType: document.querySelector("#event-type"),
@@ -304,6 +305,9 @@ let googleMapFocusToken = 0;
 let publicMapsAutoLoadStarted = false;
 let eventLocationMap = null;
 let eventLocationMarker = null;
+let eventIndexEvaluateTimer = null;
+let eventIndexEvaluateToken = 0;
+let lastEventIndexEvaluationKey = "";
 
 function getEncounters() {
   return [...seedEncounters, ...state.customEvents];
@@ -1235,6 +1239,13 @@ function getSuggestCharacterApiPath() {
     return `${PUBLIC_API_BASE}/api/suggest-character`;
   }
   return "/api/suggest-character";
+}
+
+function getEvaluateIndexApiPath() {
+  if (location.protocol === "file:" || location.hostname === "127.0.0.1" || location.hostname === "localhost") {
+    return `${PUBLIC_API_BASE}/api/evaluate-index`;
+  }
+  return "/api/evaluate-index";
 }
 
 function getDepth() {
@@ -2581,6 +2592,68 @@ async function suggestEventCharacter() {
   }
 }
 
+function getEventIndexPayload() {
+  return {
+    title: els.eventTitle.value.trim(),
+    impact: els.eventImpact.value.trim(),
+    description: els.eventDescription.value.trim(),
+    locationName: els.eventLocation.value.trim(),
+    tags: splitList(els.eventTags.value),
+    keywords: splitList(els.eventKeywords.value),
+    grade: state.member.grade,
+  };
+}
+
+function getEventIndexEvaluationKey(payload) {
+  return JSON.stringify(payload);
+}
+
+function scheduleEventIndexEvaluation() {
+  if (!els.eventIndexStatus) return;
+  window.clearTimeout(eventIndexEvaluateTimer);
+  eventIndexEvaluateTimer = window.setTimeout(evaluateEventIndexFromInput, 1200);
+}
+
+async function evaluateEventIndexFromInput() {
+  if (!els.eventIndex || !els.eventIndexStatus) return;
+  const payload = getEventIndexPayload();
+  const textLength = `${payload.title}${payload.impact}${payload.description}`.trim().length;
+  if (textLength < 12) {
+    els.eventIndexStatus.textContent = "イベント名・社会課題・内容を入力するとAIが評価します。";
+    return;
+  }
+  const key = getEventIndexEvaluationKey(payload);
+  if (key === lastEventIndexEvaluationKey) return;
+  lastEventIndexEvaluationKey = key;
+  eventIndexEvaluateToken += 1;
+  const token = eventIndexEvaluateToken;
+  els.eventIndexStatus.textContent = "AIが探究指数を評価中...";
+
+  try {
+    const response = await fetch(getEvaluateIndexApiPath(), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data.error || `HTTP ${response.status}`);
+    }
+    if (token !== eventIndexEvaluateToken) return;
+    const score = clamp(data.score || 70);
+    els.eventIndex.value = score;
+    els.eventIndexStatus.textContent = `AI評価 ${score}: 魅力${data.charm || "-"} / 深さ${data.depth || "-"} / インパクト${data.impact || "-"} / 動機${data.motivation || "-"}。${data.reason || ""}`;
+  } catch (error) {
+    if (token !== eventIndexEvaluateToken) return;
+    const localHint =
+      location.hostname === "127.0.0.1" || location.hostname === "localhost"
+        ? "公開版でOPENAI_API_KEYを設定すると使えます"
+        : "VercelのOPENAI_API_KEYを確認してください";
+    els.eventIndexStatus.textContent = `AI評価できません: ${localHint}`;
+    console.error(error);
+  }
+}
+
 function getEventPosition() {
   const latValue = els.eventLat.value.trim();
   const lngValue = els.eventLng.value.trim();
@@ -2819,6 +2892,14 @@ els.aiSearchWord?.addEventListener("keydown", (event) => {
 els.generateEventImageButton?.addEventListener("click", generateEventImage);
 els.suggestCharacterButton?.addEventListener("click", suggestEventCharacter);
 els.registerAllAiEventsButton?.addEventListener("click", registerAllAiSuggestions);
+[
+  els.eventTitle,
+  els.eventImpact,
+  els.eventDescription,
+  els.eventTags,
+  els.eventKeywords,
+  els.eventLocation,
+].forEach((input) => input?.addEventListener("input", scheduleEventIndexEvaluation));
 els.useMapCenterButton.addEventListener("click", useMapCenterForEvent);
 els.openLocationMapButton.addEventListener("click", initializeEventLocationMap);
 els.eventLat.addEventListener("input", syncEventLocationMarkerFromInputs);
