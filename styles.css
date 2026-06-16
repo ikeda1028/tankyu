@@ -26,6 +26,7 @@ body {
   background:
     linear-gradient(120deg, rgba(47, 143, 99, 0.12), rgba(47, 111, 179, 0.08)),
     var(--paper);
+  -webkit-font-smoothing: antialiased;
 }
 
 button,
@@ -178,6 +179,14 @@ h2 {
   border-radius: 8px;
   background: var(--panel);
   box-shadow: 0 10px 32px rgba(30, 48, 36, 0.08);
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+button:focus-visible {
+  outline: 3px solid rgba(47, 111, 179, 0.22);
+  outline-offset: 2px;
 }
 
 .panel {
@@ -601,6 +610,8 @@ textarea {
   grid-template-columns: minmax(220px, 1fr) auto;
   gap: 12px;
   padding: 10px;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(14px);
 }
 
 .search-pill {
@@ -659,12 +670,14 @@ textarea {
 .hero-stream {
   position: absolute;
   z-index: 8;
-  top: 92px;
+  top: 88px;
   left: 18px;
   right: 18px;
   display: grid;
-  gap: 8px;
-  padding: 10px 0 10px 12px;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0 8px 12px;
   overflow: hidden;
   border: 1px solid rgba(223, 230, 222, 0.88);
   border-radius: 8px;
@@ -673,16 +686,17 @@ textarea {
 }
 
 .hero-stream-head {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px;
+  min-width: 150px;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding-right: 12px;
 }
 
 .hero-stream-head h2 {
+  grid-column: 1 / -1;
   margin: 0;
-  font-size: 16px;
+  font-size: 14px;
 }
 
 .hero-stream-window {
@@ -702,11 +716,11 @@ textarea {
 
 .hero-stream-card {
   display: grid;
-  grid-template-columns: 72px 190px;
-  gap: 10px;
-  width: 286px;
-  min-height: 88px;
-  padding: 8px;
+  grid-template-columns: 56px 166px;
+  gap: 9px;
+  width: 244px;
+  min-height: 68px;
+  padding: 6px;
   border: 1px solid var(--line);
   border-radius: 8px;
   color: var(--ink);
@@ -727,8 +741,8 @@ textarea {
 
 .hero-stream-card img,
 .stream-avatar {
-  width: 72px;
-  height: 72px;
+  width: 56px;
+  height: 56px;
   border-radius: 8px;
 }
 
@@ -741,7 +755,7 @@ textarea {
   place-items: center;
   color: white;
   background: linear-gradient(135deg, var(--green), var(--blue));
-  font-size: 26px;
+  font-size: 21px;
   font-weight: 900;
 }
 
@@ -757,7 +771,7 @@ textarea {
   display: block;
   margin: 3px 0;
   overflow: hidden;
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -825,10 +839,10 @@ textarea {
 }
 
 .map-controls {
-  position: fixed;
-  z-index: 40;
+  position: absolute;
+  z-index: 18;
   right: 18px;
-  bottom: 18px;
+  top: 178px;
   display: flex;
   gap: 8px;
 }
@@ -847,14 +861,14 @@ textarea {
 
 .event-drawer {
   position: absolute;
-  z-index: 6;
-  top: 244px;
+  z-index: 10;
+  top: 178px;
   left: 18px;
-  width: min(300px, calc(100% - 36px));
+  width: min(320px, calc(100% - 36px));
   min-width: 180px;
   min-height: 54px;
   max-width: min(560px, calc(100% - 36px));
-  max-height: min(72vh, 520px);
+  max-height: min(30vh, 260px);
   padding: 12px;
   overflow: hidden;
   resize: both;
@@ -868,16 +882,20 @@ textarea {
     background 180ms ease;
 }
 
+.event-drawer .section-head h2 {
+  white-space: nowrap;
+}
+
 .theme-evaluation {
   position: absolute;
   z-index: 7;
-  top: 244px;
-  right: 18px;
+  top: 178px;
+  right: 454px;
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 10px 12px;
-  width: min(380px, calc(100% - 36px));
-  max-height: min(72vh, 620px);
+  width: min(340px, calc(100% - 36px));
+  max-height: min(48vh, 420px);
   padding: 12px;
   overflow-y: auto;
   border: 1px solid rgba(223, 230, 222, 0.9);
@@ -1179,6 +1197,10 @@ textarea {
   min-height: 100%;
 }
 
+.event-admin-shell {
+  grid-template-columns: minmax(460px, 1fr) minmax(300px, 360px);
+}
+
 .feedback-main,
 .feedback-side,
 .event-admin-main,
@@ -1191,20 +1213,22 @@ textarea {
 
 .feedback-main,
 .event-admin-main {
-  padding: 18px;
+  padding: 20px;
 }
 
 .feedback-side,
 .event-admin-side {
   display: grid;
   align-content: start;
-  gap: 14px;
-  padding: 16px;
+  gap: 16px;
+  padding: 18px;
+  overflow: hidden auto;
 }
 
 .feedback-main h2,
 .event-admin-main h2 {
   font-size: 22px;
+  letter-spacing: 0;
 }
 
 .feedback-main h3,
@@ -1212,6 +1236,26 @@ textarea {
 .event-admin-side h3 {
   margin: 0 0 10px;
   font-size: 15px;
+}
+
+.event-admin-side > section + section {
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.event-admin-side .section-head {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.event-admin-side .section-head h3 {
+  margin-bottom: 0;
+  line-height: 1.35;
+}
+
+.event-admin-side .section-head .small-badge {
+  align-self: flex-start;
 }
 
 .mini-action {
@@ -1222,12 +1266,14 @@ textarea {
 
 .event-form {
   display: grid;
-  gap: 12px;
-  margin-top: 16px;
+  gap: 14px;
+  margin-top: 18px;
 }
 
 .event-form label,
 .event-form legend {
+  display: block;
+  margin-bottom: 6px;
   color: var(--muted);
   font-size: 12px;
   font-weight: 900;
@@ -1237,12 +1283,37 @@ textarea {
 .event-form select,
 .event-form textarea {
   width: 100%;
-  min-height: 40px;
-  padding: 10px;
+  min-height: 42px;
+  padding: 10px 11px;
   border: 1px solid var(--line);
   border-radius: 8px;
   outline: 0;
-  background: #fbfdf9;
+  background: rgba(251, 253, 249, 0.96);
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    background 150ms ease;
+}
+
+.event-form input:hover,
+.event-form select:hover,
+.event-form textarea:hover,
+.ai-detail-settings input:hover,
+.ai-detail-settings select:hover,
+.ai-detail-settings textarea:hover {
+  border-color: #c7d6cb;
+  background: white;
+}
+
+.event-form input:focus,
+.event-form select:focus,
+.event-form textarea:focus,
+.ai-detail-settings input:focus,
+.ai-detail-settings select:focus,
+.ai-detail-settings textarea:focus {
+  border-color: rgba(47, 143, 99, 0.48);
+  background: white;
+  box-shadow: 0 0 0 4px rgba(47, 143, 99, 0.1);
 }
 
 .event-form textarea {
@@ -1294,22 +1365,22 @@ textarea {
 
 .question-fieldset {
   display: grid;
-  gap: 8px;
+  gap: 9px;
   margin: 0;
-  padding: 12px;
+  padding: 14px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fbfdf9;
+  background: rgba(251, 253, 249, 0.92);
 }
 
 .character-fieldset {
   display: grid;
-  gap: 10px;
+  gap: 12px;
   margin: 0;
-  padding: 12px;
+  padding: 14px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #f6faf7;
+  background: linear-gradient(180deg, rgba(246, 250, 247, 0.96), rgba(255, 255, 255, 0.88));
 }
 
 .fieldset-head {
@@ -1352,7 +1423,7 @@ textarea {
 .ai-bulk-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 7px;
   justify-content: flex-end;
 }
 
@@ -1375,12 +1446,12 @@ textarea {
 
 .ai-detail-settings {
   display: grid;
-  gap: 8px;
-  margin: 0 0 12px;
-  padding: 10px;
+  gap: 10px;
+  margin: 0 0 14px;
+  padding: 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fbfdf9;
+  background: rgba(251, 253, 249, 0.94);
 }
 
 .ai-detail-settings label {
@@ -1393,8 +1464,8 @@ textarea {
 .ai-detail-settings select,
 .ai-detail-settings textarea {
   width: 100%;
-  min-height: 34px;
-  padding: 8px;
+  min-height: 36px;
+  padding: 8px 9px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: white;
@@ -1408,12 +1479,12 @@ textarea {
 
 .image-generation-box {
   display: grid;
-  gap: 8px;
+  gap: 10px;
   margin-bottom: 14px;
-  padding: 10px;
+  padding: 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fbfdf9;
+  background: rgba(251, 253, 249, 0.94);
 }
 
 .image-generation-box label {
@@ -1472,7 +1543,8 @@ textarea {
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fbfdf9;
+  background: white;
+  box-shadow: 0 5px 16px rgba(30, 48, 36, 0.05);
 }
 
 .ai-suggestion-card strong {
@@ -1522,9 +1594,20 @@ textarea {
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fbfdf9;
+  background: white;
   color: var(--ink);
   text-align: left;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    transform 150ms ease;
+}
+
+.registered-event-card:hover,
+.registered-event-card:focus-visible {
+  border-color: rgba(47, 143, 99, 0.42);
+  box-shadow: 0 8px 20px rgba(30, 48, 36, 0.1);
+  transform: translateY(-1px);
 }
 
 .registered-event-card strong {
@@ -1792,14 +1875,16 @@ textarea {
 }
 
 .encounter-panel {
-  position: fixed;
-  z-index: 30;
+  position: absolute;
+  z-index: 14;
   right: 18px;
   bottom: 18px;
+  top: 222px;
   display: grid;
-  grid-template-columns: 150px minmax(300px, 460px);
-  width: min(660px, calc(100% - 36px));
-  max-height: calc(100vh - 128px);
+  grid-template-columns: 1fr;
+  grid-template-rows: 92px minmax(0, 1fr);
+  width: min(418px, calc(100% - 36px));
+  max-height: none;
   overflow: hidden;
   transition:
     width 180ms ease,
@@ -1808,7 +1893,7 @@ textarea {
 }
 
 .encounter-media {
-  min-height: 190px;
+  min-height: 92px;
   background:
     linear-gradient(135deg, rgba(47, 143, 99, 0.15), rgba(200, 93, 114, 0.22)),
     var(--media);
@@ -1818,7 +1903,7 @@ textarea {
 
 .encounter-body {
   overflow-y: auto;
-  padding: 16px;
+  padding: 14px;
 }
 
 .encounter-title-actions {
@@ -1829,19 +1914,21 @@ textarea {
 
 #encounter-index {
   display: grid;
-  min-width: 58px;
-  height: 58px;
+  min-width: 48px;
+  height: 48px;
   place-items: center;
   border-radius: 8px;
   color: white;
   background: var(--green);
-  font-size: 22px;
+  font-size: 19px;
 }
 
 .encounter-panel.compact {
   grid-template-columns: 1fr;
-  width: min(360px, calc(100% - 36px));
-  max-height: min(58vh, 430px);
+  grid-template-rows: minmax(0, 1fr);
+  width: min(310px, calc(100% - 36px));
+  top: auto;
+  max-height: min(48vh, 380px);
 }
 
 .encounter-panel.compact .encounter-media {
@@ -1866,8 +1953,10 @@ textarea {
 
 .encounter-panel.collapsed {
   grid-template-columns: 1fr;
-  width: min(330px, calc(100% - 36px));
-  max-height: 86px;
+  grid-template-rows: 1fr;
+  top: auto;
+  width: min(300px, calc(100% - 36px));
+  max-height: 70px;
 }
 
 .encounter-panel.collapsed .encounter-media,
@@ -1900,13 +1989,13 @@ textarea {
 
 .field-post-panel {
   position: fixed;
-  z-index: 31;
+  z-index: 22;
   left: calc(clamp(320px, 28vw, 380px) + 18px);
   bottom: 18px;
   display: grid;
   gap: 8px;
-  width: min(330px, calc(100% - 36px));
-  max-height: min(62vh, 520px);
+  width: min(290px, calc(100% - 36px));
+  max-height: min(34vh, 280px);
   padding: 12px;
   overflow-y: auto;
   border: 1px solid rgba(223, 230, 222, 0.9);
@@ -2345,6 +2434,14 @@ textarea {
     grid-template-columns: 1fr;
   }
 
+  .map-controls {
+    position: relative;
+    top: auto;
+    right: auto;
+    justify-content: flex-end;
+    margin: 12px;
+  }
+
   .hero-stream {
     position: relative;
     top: auto;
@@ -2377,6 +2474,16 @@ textarea {
     top: auto;
     right: auto;
     width: auto;
+    margin: 12px;
+  }
+
+  .encounter-panel {
+    position: relative;
+    top: auto;
+    right: auto;
+    bottom: auto;
+    width: auto;
+    max-height: none;
     margin: 12px;
   }
 
@@ -2428,13 +2535,12 @@ textarea {
 
   .encounter-panel {
     grid-template-columns: 1fr;
-    right: 12px;
-    bottom: 12px;
-    width: min(360px, calc(100% - 24px));
+    grid-template-rows: 86px minmax(0, 1fr);
+    width: auto;
   }
 
   .encounter-media {
-    min-height: 130px;
+    min-height: 86px;
   }
 
   .encounter-panel.compact,
@@ -2447,8 +2553,6 @@ textarea {
   }
 
   .map-controls {
-    right: 12px;
-    bottom: 12px;
     gap: 6px;
   }
 
