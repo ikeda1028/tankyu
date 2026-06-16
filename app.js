@@ -2537,6 +2537,35 @@ async function generateEventImage() {
   }
 }
 
+function buildFallbackCharacter({ title, impact, description, locationName, tags }) {
+  const source = tags[0] || impact || title || "探究";
+  const shortName = source.replace(/\s+/g, "").slice(0, 8) || "探究";
+  const placeText = locationName || "この場所";
+  return {
+    name: `${shortName}ナビ`,
+    role: "現地案内人",
+    message: `${placeText}で見えるものを3つ集めて、「なぜここで起きているのか」を問いにしてみよう。`,
+    personality: description ? "イベント内容から簡易作成しました" : "入力内容から簡易作成しました",
+    visualPrompt: `${title || source}の現地案内キャラクター。中高生向け、親しみやすい、観察と問いづくりを促す、文字やロゴなし。`,
+    fallback: true,
+  };
+}
+
+function applyCharacterSuggestion(data) {
+  els.eventCharacterEnabled.checked = true;
+  els.eventCharacterName.value = data.name || "";
+  els.eventCharacterRole.value = data.role || "現地案内人";
+  els.eventCharacterMessage.value = data.message || "";
+  if (els.eventImagePrompt && data.visualPrompt) {
+    els.eventImagePrompt.value = data.visualPrompt;
+  }
+  els.characterSuggestionStatus.textContent = data.fallback
+    ? `簡易作成しました: ${data.personality || "Vercel API反映後はAI生成に切り替わります"}`
+    : data.personality
+      ? `作成しました: ${data.personality}`
+      : "キャラクターを作成しました";
+}
+
 async function suggestEventCharacter() {
   if (!els.suggestCharacterButton || !els.characterSuggestionStatus) return;
   const title = els.eventTitle.value.trim();
@@ -2551,40 +2580,37 @@ async function suggestEventCharacter() {
   els.suggestCharacterButton.disabled = true;
   els.suggestCharacterButton.textContent = "作成中";
   els.characterSuggestionStatus.textContent = "AIで現地限定キャラクターを作成中...";
+  const payload = {
+    title,
+    impact,
+    description,
+    locationName: els.eventLocation.value.trim(),
+    tags: splitList(els.eventTags.value),
+    grade: state.member.grade,
+  };
 
   try {
     const response = await fetch(getSuggestCharacterApiPath(), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title,
-        impact,
-        description,
-        locationName: els.eventLocation.value.trim(),
-        tags: splitList(els.eventTags.value),
-        grade: state.member.grade,
-      }),
+      body: JSON.stringify(payload),
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
+      if (response.status === 404) {
+        applyCharacterSuggestion(buildFallbackCharacter(payload));
+        return;
+      }
       throw new Error(data.error || `HTTP ${response.status}`);
     }
-    els.eventCharacterEnabled.checked = true;
-    els.eventCharacterName.value = data.name || "";
-    els.eventCharacterRole.value = data.role || "現地案内人";
-    els.eventCharacterMessage.value = data.message || "";
-    if (els.eventImagePrompt && data.visualPrompt) {
-      els.eventImagePrompt.value = data.visualPrompt;
-    }
-    els.characterSuggestionStatus.textContent = data.personality
-      ? `作成しました: ${data.personality}`
-      : "キャラクターを作成しました";
+    applyCharacterSuggestion(data);
   } catch (error) {
-    const localHint =
-      location.hostname === "127.0.0.1" || location.hostname === "localhost"
-        ? "公開版でOPENAI_API_KEYを設定すると使えます"
-        : "VercelのOPENAI_API_KEYを確認してください";
-    els.characterSuggestionStatus.textContent = `キャラクターを作成できません: ${localHint}`;
+    if (location.hostname === "127.0.0.1" || location.hostname === "localhost") {
+      applyCharacterSuggestion(buildFallbackCharacter(payload));
+      console.error(error);
+      return;
+    }
+    els.characterSuggestionStatus.textContent = `キャラクターを作成できません: ${error.message || "VercelのOPENAI_API_KEYを確認してください"}`;
     console.error(error);
   } finally {
     els.suggestCharacterButton.disabled = false;
