@@ -170,6 +170,8 @@ const els = {
   impactField: document.querySelector("#impact-field"),
   mapSearch: document.querySelector("#map-search"),
   mapSearchButton: document.querySelector("#map-search-button"),
+  heroStreamTrack: document.querySelector("#hero-stream-track"),
+  heroStreamCount: document.querySelector("#hero-stream-count"),
   explorationDepth: document.querySelector("#exploration-depth"),
   explorationDepthOutput: document.querySelector("#exploration-depth-output"),
   bestDepth: document.querySelector("#best-depth"),
@@ -2054,10 +2056,95 @@ function renderActivity() {
     .join("");
 }
 
+function createFallbackCharacter(encounter) {
+  const words = String(encounter.impact || encounter.title || "探究").split(/[・\s、,]+/).filter(Boolean);
+  const theme = words[0] || "探究";
+  return {
+    name: `${theme}ナビ`,
+    role: "探究案内人",
+    message: getEncounterQuestions(encounter)[0] || "この場所で見える事実から、次の問いを探してみよう。",
+    localOnly: true,
+  };
+}
+
+function getHeroStreamItems() {
+  const photoItems = (state.fieldPosts || [])
+    .filter((post) => post.image?.dataUrl || post.image?.downloadUrl)
+    .slice(0, 8)
+    .map((post) => ({
+      type: "photo",
+      id: `photo-${post.id}`,
+      title: post.eventTitle || "現場投稿",
+      subtitle: post.text || "写真から問いを広げる",
+      imageSrc: post.image.dataUrl || post.image.downloadUrl,
+      meta: post.location ? "位置つき投稿" : "現場写真",
+      at: post.at || "",
+    }));
+
+  const characterItems = getEncounters()
+    .map((encounter) => ({
+      encounter,
+      character: getEventCharacter(encounter) || createFallbackCharacter(encounter),
+    }))
+    .filter((item) => item.character?.name)
+    .slice(0, 10)
+    .map(({ encounter, character }) => ({
+      type: "character",
+      id: `character-${encounter.id}`,
+      title: character.name,
+      subtitle: character.role,
+      message: character.message,
+      eventTitle: encounter.title,
+      locked: character.localOnly && !hasVisitedCharacter(encounter.id),
+    }));
+
+  const items = [];
+  const maxLength = Math.max(photoItems.length, characterItems.length);
+  for (let index = 0; index < maxLength; index += 1) {
+    if (photoItems[index]) items.push(photoItems[index]);
+    if (characterItems[index]) items.push(characterItems[index]);
+  }
+  return items.slice(0, 16);
+}
+
+function renderHeroStream() {
+  if (!els.heroStreamTrack || !els.heroStreamCount) return;
+  const items = getHeroStreamItems();
+  els.heroStreamCount.textContent = `${items.length}件`;
+  if (!items.length) {
+    els.heroStreamTrack.innerHTML = "<article class=\"hero-stream-card empty\"><strong>探究ライブ準備中</strong><span>現場投稿やキャラクターがここに流れます</span></article>";
+    return;
+  }
+  const repeated = [...items, ...items];
+  els.heroStreamTrack.innerHTML = repeated
+    .map((item) => {
+      if (item.type === "photo") {
+        return `<article class="hero-stream-card photo-card">
+          <img src="${escapeHtml(item.imageSrc)}" alt="${escapeHtml(item.title)}の投稿写真" />
+          <div>
+            <span>${escapeHtml(item.meta)}</span>
+            <strong>${escapeHtml(item.title)}</strong>
+            <p>${escapeHtml(item.subtitle)}</p>
+          </div>
+        </article>`;
+      }
+      return `<article class="hero-stream-card character-stream-card${item.locked ? " locked" : ""}">
+        <div class="stream-avatar">${escapeHtml(item.title.slice(0, 1))}</div>
+        <div>
+          <span>${item.locked ? "現地で会えるAIキャラ" : "出会ったAIキャラ"}</span>
+          <strong>${escapeHtml(item.title)}</strong>
+          <p>${escapeHtml(item.eventTitle)} / ${escapeHtml(item.subtitle)}</p>
+        </div>
+      </article>`;
+    })
+    .join("");
+}
+
 function render() {
   renderAuth();
   renderMemberSummary();
   renderStats();
+  renderHeroStream();
   renderSpots();
   renderEventList();
   renderEncounter();
