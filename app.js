@@ -147,6 +147,9 @@ const defaultState = {
 
 const els = {
   questScore: document.querySelector("#quest-score"),
+  heroHpMax: document.querySelector("#hero-hp-max"),
+  dimensionValue: document.querySelector("#dimension-value"),
+  heroStage: document.querySelector("#hero-stage"),
   scoreDelta: document.querySelector("#score-delta"),
   questMeter: document.querySelector("#quest-meter"),
   joy: document.querySelector("#joy-value"),
@@ -359,6 +362,30 @@ function normalizePartyRoles(roles) {
     .map((role) => String(role || "").trim())
     .filter(Boolean);
   return [...new Set(normalized.length ? normalized : fallback)].slice(0, 8);
+}
+
+function getPartyPower() {
+  return normalizePartyRoles(state.member.partyRoles).length;
+}
+
+function getHeroDimension() {
+  return Math.min(5, Math.max(1, Math.ceil((getPartyPower() + 1) / 2)));
+}
+
+function getHeroHpMax() {
+  return 100 + (getHeroDimension() - 1) * 25 + getPartyPower() * 5;
+}
+
+function getHeroStageLabel() {
+  const dimension = getHeroDimension();
+  const labels = {
+    1: "ソロ探究",
+    2: "役割分担",
+    3: "チーム探究",
+    4: "社会接続",
+    5: "越境パーティー",
+  };
+  return labels[dimension] || "越境パーティー";
 }
 
 function getEncounters() {
@@ -1500,12 +1527,20 @@ function getSelectedEncounter() {
 }
 
 function renderStats(delta = 0) {
+  const hpMax = getHeroHpMax();
+  const dimension = getHeroDimension();
   els.questScore.textContent = state.quest;
+  if (els.heroHpMax) els.heroHpMax.textContent = `/ ${hpMax}`;
+  if (els.dimensionValue) els.dimensionValue.textContent = `${dimension}D`;
   els.scoreDelta.textContent = delta > 0 ? `+${delta}` : "+0";
-  els.questMeter.style.width = `${Math.min(100, state.quest)}%`;
+  els.questMeter.style.width = `${Math.min(100, Math.round((state.quest / hpMax) * 100))}%`;
   els.joy.textContent = state.joy;
   els.drive.textContent = state.drive;
   els.thanks.textContent = state.thanks;
+  if (els.heroStage) {
+    els.heroStage.innerHTML = `<strong>${escapeHtml(getHeroStageLabel())}</strong>
+      <span>パーティー役割 ${getPartyPower()}人 / 次元 ${dimension}D</span>`;
+  }
   els.curiosity.style.width = `${clamp((state.joy + Math.min(100, state.quest)) / 2)}%`;
   els.collab.style.width = `${clamp((state.drive + state.thanks * 2) / 2)}%`;
   els.trust.style.width = `${clamp(state.thanks * 3)}%`;
@@ -2288,6 +2323,7 @@ function renderMemberSummary() {
   const roles = normalizePartyRoles(state.member.partyRoles);
   if (els.memberPartySummary) {
     els.memberPartySummary.innerHTML = `<div class="hero-role-badge">${escapeHtml(heroRole)}として登録</div>
+      <div class="party-dimension-badge">${escapeHtml(getHeroStageLabel())} / ${getHeroDimension()}D</div>
       <div class="party-role-chips">${roles.map((role) => `<span>${escapeHtml(role)}</span>`).join("")}</div>`;
   }
   renderPartyRoleEditor();
@@ -2333,6 +2369,8 @@ function renderPartyRoleEditor() {
       const index = Number(button.dataset.roleIndex);
       state.member.partyRoles = roles.filter((_, roleIndex) => roleIndex !== index);
       renderPartyRoleEditor();
+      renderMemberSummary();
+      renderStats();
     });
   });
 }
@@ -2348,6 +2386,8 @@ function addPartyRole() {
   els.memberPartyRoleInput.value = "";
   setMemberStatus("");
   renderPartyRoleEditor();
+  renderMemberSummary();
+  renderStats();
 }
 
 function handleLogin(event) {

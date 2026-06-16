@@ -204,6 +204,13 @@ button:focus-visible {
   line-height: 1;
 }
 
+.hp-max {
+  margin-left: 4px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 900;
+}
+
 .delta {
   display: grid;
   min-width: 48px;
@@ -235,7 +242,7 @@ button:focus-visible {
 
 .mini-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 8px;
   margin-top: 14px;
 }
@@ -257,6 +264,29 @@ button:focus-visible {
 
 .mini-grid strong {
   font-size: 20px;
+}
+
+.hero-stage {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 9px 10px;
+  border: 1px solid rgba(47, 143, 99, 0.18);
+  border-radius: 8px;
+  background: #f2fbf4;
+}
+
+.hero-stage strong {
+  color: var(--green);
+  font-size: 13px;
+}
+
+.hero-stage span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
 }
 
 .section-head,
@@ -594,6 +624,17 @@ textarea {
   border-radius: 8px;
   background: #eef6ff;
   color: #214f86;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.party-dimension-badge {
+  width: fit-content;
+  padding: 6px 9px;
+  border: 1px solid rgba(47, 143, 99, 0.18);
+  border-radius: 8px;
+  background: #f2fbf4;
+  color: var(--green);
   font-size: 11px;
   font-weight: 900;
 }
@@ -2779,6 +2820,15 @@ textarea {
 
   .form-grid {
     grid-template-columns: 1fr;
+  }
+
+  .mini-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .hero-stage {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .theme-evaluation {
