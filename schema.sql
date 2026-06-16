@@ -77,6 +77,22 @@ create table reflections (
   created_at timestamptz not null default now()
 );
 
+create table field_posts (
+  id uuid primary key default gen_random_uuid(),
+  user_id text not null references users(id) on delete cascade,
+  event_id text not null references events(id) on delete cascade,
+  body text,
+  has_photo boolean not null default false,
+  photo_name text,
+  latitude numeric,
+  longitude numeric,
+  accuracy numeric,
+  depth integer not null default 1 check (depth between 1 and 5),
+  quest_delta integer not null default 0,
+  joy_delta integer not null default 0,
+  created_at timestamptz not null default now()
+);
+
 create table mentor_feedbacks (
   id uuid primary key default gen_random_uuid(),
   reflection_id uuid references reflections(id) on delete cascade,
@@ -100,5 +116,7 @@ create index idx_sparks_user_created_at on sparks(user_id, created_at desc);
 create index idx_events_created_by on events(created_by, created_at desc);
 create index idx_participations_user_event on event_participations(user_id, event_id);
 create index idx_reflections_user_created_at on reflections(user_id, created_at desc);
+create index idx_field_posts_user_created_at on field_posts(user_id, created_at desc);
+create index idx_field_posts_event_created_at on field_posts(event_id, created_at desc);
 create index idx_feedbacks_student_created_at on mentor_feedbacks(student_id, created_at desc);
 create index idx_activity_logs_user_created_at on activity_logs(user_id, created_at desc);

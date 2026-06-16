@@ -1,5 +1,5 @@
 const DB_NAME = "wakuwakuQuestDB";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const USER_ID = "demo-student";
 
 const STORE_NAMES = [
@@ -10,6 +10,7 @@ const STORE_NAMES = [
   "participations",
   "reflections",
   "feedbacks",
+  "fieldPosts",
   "meta",
 ];
 
@@ -39,6 +40,9 @@ function openDatabase() {
       }
       if (!db.objectStoreNames.contains("feedbacks")) {
         db.createObjectStore("feedbacks", { keyPath: "id" });
+      }
+      if (!db.objectStoreNames.contains("fieldPosts")) {
+        db.createObjectStore("fieldPosts", { keyPath: "id" });
       }
       if (!db.objectStoreNames.contains("meta")) {
         db.createObjectStore("meta", { keyPath: "key" });
@@ -142,13 +146,14 @@ function fromProfile(defaultState, profile) {
 async function readState(db, defaultState) {
   const profileTx = db.transaction("profiles", "readonly");
   const profile = await requestToPromise(profileTx.objectStore("profiles").get(USER_ID));
-  const [events, sparks, activities, participations, reflections, feedbacks] = await Promise.all([
+  const [events, sparks, activities, participations, reflections, feedbacks, fieldPosts] = await Promise.all([
     getAll(db, "events"),
     getAll(db, "sparks"),
     getAll(db, "activities"),
     getAll(db, "participations"),
     getAll(db, "reflections"),
     getAll(db, "feedbacks"),
+    getAll(db, "fieldPosts"),
   ]);
 
   return {
@@ -159,6 +164,7 @@ async function readState(db, defaultState) {
     completed: participations.sort(sortByAtDesc).map((item) => item.eventId),
     reflections: reflections.sort(sortByAtDesc),
     feedbacks: feedbacks.sort(sortByAtDesc),
+    fieldPosts: fieldPosts.sort(sortByAtDesc),
   };
 }
 
@@ -200,6 +206,7 @@ async function writeState(db, state, events) {
     ),
     clearAndPut(db, "reflections", normalizeRecords(state.reflections, "reflection")),
     clearAndPut(db, "feedbacks", normalizeRecords(state.feedbacks, "feedback")),
+    clearAndPut(db, "fieldPosts", normalizeRecords(state.fieldPosts || [], "field-post")),
   ]);
 }
 

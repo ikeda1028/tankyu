@@ -1,5 +1,5 @@
 const SPREADSHEET_ID = "1dvOAeZ8dTSuS2HMQt1hsIcFC806qtzVTv7O495n6mPA";
-const ALLOWED_SHEETS = ["events", "users", "sparks", "reflections", "feedbacks"];
+const ALLOWED_SHEETS = ["events", "users", "sparks", "reflections", "feedbacks", "field_posts"];
 const HEADERS = {
   events: [
     "id",
@@ -39,6 +39,21 @@ const HEADERS = {
   sparks: ["id", "user_id", "text", "source", "created_at"],
   reflections: ["id", "user_id", "event_id", "depth", "depth_label", "reflection", "hypothesis", "quest_delta", "created_at"],
   feedbacks: ["id", "reflection_id", "student_id", "mentor_id", "kind", "comment", "next_question", "created_at"],
+  field_posts: [
+    "id",
+    "user_id",
+    "event_id",
+    "event_title",
+    "text",
+    "has_photo",
+    "photo_name",
+    "latitude",
+    "longitude",
+    "accuracy",
+    "quest_delta",
+    "joy_delta",
+    "created_at",
+  ],
 };
 
 function doGet(e) {

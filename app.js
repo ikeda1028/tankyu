@@ -103,6 +103,7 @@ const defaultState = {
   visitedCharacters: [],
   reflections: [],
   feedbacks: [],
+  fieldPosts: [],
   customEvents: [],
   aiSuggestions: [],
   themeSearch: {
@@ -177,6 +178,16 @@ const els = {
   characterCard: document.querySelector("#character-card"),
   reflectionInput: document.querySelector("#reflection-input"),
   hypothesisInput: document.querySelector("#hypothesis-input"),
+  fieldPostPanel: document.querySelector(".field-post-panel"),
+  fieldPostCount: document.querySelector("#field-post-count"),
+  fieldPostTarget: document.querySelector("#field-post-target"),
+  fieldPostPhoto: document.querySelector("#field-post-photo"),
+  fieldPhotoPreview: document.querySelector("#field-photo-preview"),
+  fieldPostText: document.querySelector("#field-post-text"),
+  usePostLocationButton: document.querySelector("#use-post-location-button"),
+  saveFieldPostButton: document.querySelector("#save-field-post-button"),
+  fieldPostStatus: document.querySelector("#field-post-status"),
+  fieldPostList: document.querySelector("#field-post-list"),
   questViews: document.querySelectorAll(".quest-view"),
   feedbackView: document.querySelector(".feedback-view"),
   feedbackStatus: document.querySelector("#feedback-status"),
@@ -294,6 +305,7 @@ state.member = { ...defaultState.member, ...(state.member || {}) };
 state.ui = { ...defaultState.ui, ...(state.ui || {}) };
 state.joyActions = Array.isArray(state.joyActions) ? state.joyActions : [];
 state.visitedCharacters = Array.isArray(state.visitedCharacters) ? state.visitedCharacters : [];
+state.fieldPosts = Array.isArray(state.fieldPosts) ? state.fieldPosts : [];
 state.aiSuggestions = Array.isArray(state.aiSuggestions) ? state.aiSuggestions : [];
 state.themeSearch = { ...defaultState.themeSearch, ...(state.themeSearch || {}) };
 let appDb = null;
@@ -310,6 +322,8 @@ let eventLocationMarker = null;
 let eventIndexEvaluateTimer = null;
 let eventIndexEvaluateToken = 0;
 let lastEventIndexEvaluationKey = "";
+let pendingFieldPostImage = null;
+let pendingFieldPostLocation = null;
 
 function getEncounters() {
   return [...seedEncounters, ...state.customEvents];
@@ -1614,6 +1628,177 @@ function renderCharacterCard(encounter) {
       </div>`;
 }
 
+function setFieldPostStatus(message, isError = false) {
+  if (!els.fieldPostStatus) return;
+  els.fieldPostStatus.textContent = message;
+  els.fieldPostStatus.classList.toggle("error", isError);
+}
+
+function getSelectedFieldPosts() {
+  return state.fieldPosts
+    .filter((post) => post.eventId === state.selected)
+    .sort((a, b) => String(b.at || "").localeCompare(String(a.at || "")));
+}
+
+function renderFieldPhotoPreview() {
+  if (!els.fieldPhotoPreview) return;
+  if (!pendingFieldPostImage?.dataUrl) {
+    els.fieldPhotoPreview.classList.add("hidden");
+    els.fieldPhotoPreview.innerHTML = "";
+    return;
+  }
+  els.fieldPhotoPreview.classList.remove("hidden");
+  els.fieldPhotoPreview.innerHTML = `<img src="${pendingFieldPostImage.dataUrl}" alt="投稿予定の写真" />`;
+}
+
+function renderFieldPosts() {
+  if (!els.fieldPostPanel) return;
+  const encounter = getSelectedEncounter();
+  const posts = getSelectedFieldPosts();
+  els.fieldPostTarget.textContent = encounter.title;
+  els.fieldPostCount.textContent = `${posts.length}件`;
+  els.fieldPostList.innerHTML = posts.length
+    ? posts
+        .slice(0, 4)
+        .map(
+          (post) => `<article class="field-post-card">
+            ${post.image?.dataUrl ? `<img src="${post.image.dataUrl}" alt="${escapeHtml(post.eventTitle)}の現場写真" />` : ""}
+            <div>
+              <time>${formatTime(new Date(post.at))}</time>
+              <p>${escapeHtml(post.text || "写真のみの投稿")}</p>
+              <small>${post.location ? `位置 ${Number(post.location.lat).toFixed(5)}, ${Number(post.location.lng).toFixed(5)}` : "位置なし"}</small>
+            </div>
+          </article>`
+        )
+        .join("")
+    : "<p class=\"empty-note\">まだ現場投稿はありません。</p>";
+}
+
+function compressImageFile(file) {
+  return new Promise((resolve, reject) => {
+    if (!file || !file.type.startsWith("image/")) {
+      reject(new Error("画像ファイルを選んでください"));
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("写真を読み込めませんでした"));
+    reader.onload = () => {
+      const image = new Image();
+      image.onerror = () => reject(new Error("写真を処理できませんでした"));
+      image.onload = () => {
+        const maxSide = 1280;
+        const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(image.width * scale));
+        canvas.height = Math.max(1, Math.round(image.height * scale));
+        const context = canvas.getContext("2d");
+        if (!context) {
+          reject(new Error("写真を処理できませんでした"));
+          return;
+        }
+        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.78);
+        if (dataUrl.length > 1800000) {
+          reject(new Error("写真が大きすぎます。少し小さい画像で試してください"));
+          return;
+        }
+        resolve({
+          name: file.name,
+          type: "image/jpeg",
+          size: dataUrl.length,
+          dataUrl,
+        });
+      };
+      image.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function handleFieldPhotoChange(event) {
+  const file = event.target.files?.[0];
+  if (!file) {
+    pendingFieldPostImage = null;
+    renderFieldPhotoPreview();
+    return;
+  }
+
+  setFieldPostStatus("写真を読み込み中...");
+  try {
+    pendingFieldPostImage = await compressImageFile(file);
+    renderFieldPhotoPreview();
+    setFieldPostStatus("写真を追加しました");
+  } catch (error) {
+    pendingFieldPostImage = null;
+    renderFieldPhotoPreview();
+    setFieldPostStatus(error.message || "写真を追加できませんでした", true);
+  }
+}
+
+function attachFieldPostLocation() {
+  if (!navigator.geolocation) {
+    setFieldPostStatus("このブラウザでは現在地を取得できません", true);
+    return;
+  }
+  setFieldPostStatus("現在地を取得中...");
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      pendingFieldPostLocation = {
+        lat: position.coords.latitude,
+        lng: position.coords.longitude,
+        accuracy: Math.round(position.coords.accuracy || 0),
+      };
+      setFieldPostStatus("現在地を添付しました");
+    },
+    () => setFieldPostStatus("現在地を取得できませんでした", true),
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+  );
+}
+
+function saveFieldPost() {
+  const encounter = getSelectedEncounter();
+  const text = els.fieldPostText.value.trim();
+  if (!text && !pendingFieldPostImage?.dataUrl) {
+    setFieldPostStatus("写真か文章を入れてください", true);
+    return;
+  }
+
+  const depth = getDepth();
+  const questDelta = Math.max(3, depth * 3 + (pendingFieldPostImage ? 2 : 0) + (pendingFieldPostLocation ? 2 : 0));
+  const joyDelta = Math.max(2, 2 + depth + (pendingFieldPostImage ? 1 : 0));
+  const post = {
+    id: `field-post-${Date.now()}`,
+    eventId: encounter.id,
+    eventTitle: encounter.title,
+    text,
+    image: pendingFieldPostImage,
+    location: pendingFieldPostLocation,
+    depth,
+    questDelta,
+    joyDelta,
+    at: new Date().toISOString(),
+  };
+
+  state.fieldPosts = [post, ...state.fieldPosts].slice(0, 80);
+  addQuest(questDelta);
+  state.joy = clamp(state.joy + joyDelta);
+  state.drive = clamp(state.drive + depth + (pendingFieldPostLocation ? 2 : 0));
+  addActivity(`${encounter.title}に現場投稿。探究値 +${questDelta} / ワクワク +${joyDelta}`);
+
+  els.fieldPostText.value = "";
+  els.fieldPostPhoto.value = "";
+  pendingFieldPostImage = null;
+  pendingFieldPostLocation = null;
+  renderFieldPhotoPreview();
+  setFieldPostStatus("現場投稿を保存しました");
+  saveState();
+  render();
+  if (getDriveUrl()) {
+    postToDrive("field_posts", fieldPostToDriveRecord(post));
+  }
+}
+
 function renderGrowthPath() {
   const labels = ["事象に出会う", "背景を調べる", "構造をつかむ", "別領域へ越境", "小さく実装"];
   const maxDepth = getBestDepth();
@@ -1718,6 +1903,7 @@ function render() {
   renderSpots();
   renderEventList();
   renderEncounter();
+  renderFieldPosts();
   renderInterests();
   renderActivity();
   renderGrowthPath();
@@ -1863,6 +2049,7 @@ async function renderDatabaseStatus() {
         ["events", getEncounters().length],
         ["reflections", state.reflections.length],
         ["feedbacks", state.feedbacks.length],
+        ["field", state.fieldPosts.length],
       ]
         .map(([label, count]) => `<div><span>${label}</span><strong>${count}</strong></div>`)
         .join("");
@@ -1879,6 +2066,7 @@ async function renderDatabaseStatus() {
     ["logs", counts.activities || 0],
     ["explore", counts.reflections || 0],
     ["feedback", counts.feedbacks || 0],
+    ["field", counts.fieldPosts || 0],
   ]
     .map(([label, count]) => `<div><span>${label}</span><strong>${count}</strong></div>`)
     .join("");
@@ -1978,6 +2166,24 @@ function feedbackToDriveRecord(feedback) {
   };
 }
 
+function fieldPostToDriveRecord(post) {
+  return {
+    id: post.id,
+    user_id: state.auth.email || "local-user",
+    event_id: post.eventId,
+    event_title: post.eventTitle,
+    text: post.text,
+    has_photo: Boolean(post.image?.dataUrl),
+    photo_name: post.image?.name || "",
+    latitude: post.location?.lat || "",
+    longitude: post.location?.lng || "",
+    accuracy: post.location?.accuracy || "",
+    quest_delta: post.questDelta || 0,
+    joy_delta: post.joyDelta || 0,
+    created_at: post.at || new Date().toISOString(),
+  };
+}
+
 async function syncAllToDrive() {
   if (!getDriveUrl()) {
     setDriveStatus("Apps Script URLを入力してください");
@@ -1997,6 +2203,9 @@ async function syncAllToDrive() {
   }
   for (const feedback of state.feedbacks.slice(0, 10)) {
     await postToDrive("feedbacks", feedbackToDriveRecord(feedback));
+  }
+  for (const post of state.fieldPosts.slice(0, 10)) {
+    await postToDrive("field_posts", fieldPostToDriveRecord(post));
   }
   state.driveSync.lastSyncAt = new Date().toISOString();
   setDriveStatus("Drive同期完了");
@@ -2940,6 +3149,9 @@ els.centerSearchButton?.addEventListener("click", centerGoogleMapOnSearch);
 els.currentLocationButton?.addEventListener("click", centerOnCurrentLocation);
 els.compactEncounterButton?.addEventListener("click", toggleCompactEncounter);
 els.collapseEncounterButton?.addEventListener("click", toggleCollapseEncounter);
+els.fieldPostPhoto?.addEventListener("change", handleFieldPhotoChange);
+els.usePostLocationButton?.addEventListener("click", attachFieldPostLocation);
+els.saveFieldPostButton?.addEventListener("click", saveFieldPost);
 els.saveFeedbackButton.addEventListener("click", saveMentorFeedback);
 els.quickFeedbackButtons.forEach((button) => {
   button.addEventListener("click", () => saveQuickFeedback(button.dataset.template));

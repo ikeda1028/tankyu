@@ -306,6 +306,28 @@
           </div>
         </article>
 
+        <section class="field-post-panel quest-view" aria-label="現場投稿">
+          <div class="section-head">
+            <h2>現場投稿</h2>
+            <span id="field-post-count" class="small-badge">0件</span>
+          </div>
+          <div class="field-post-target">
+            <span>投稿先</span>
+            <strong id="field-post-target">選択中の探究ポイント</strong>
+          </div>
+          <label for="field-post-photo">写真</label>
+          <input id="field-post-photo" type="file" accept="image/*" capture="environment" />
+          <div id="field-photo-preview" class="field-photo-preview hidden"></div>
+          <label for="field-post-text">気づき・問い・次の一歩</label>
+          <textarea id="field-post-text" rows="3" placeholder="例：看板の言葉が気になった。なぜこの場所に人が集まるのか調べたい。"></textarea>
+          <div class="field-post-actions">
+            <button id="use-post-location-button" class="secondary-button" type="button">現在地を添付</button>
+            <button id="save-field-post-button" class="primary-button" type="button">投稿する</button>
+          </div>
+          <p id="field-post-status" class="field-post-status"></p>
+          <div id="field-post-list" class="field-post-list"></div>
+        </section>
+
         <section class="event-admin-view hidden" aria-label="探究ポイント登録">
           <div class="event-admin-shell">
             <section class="event-admin-main">

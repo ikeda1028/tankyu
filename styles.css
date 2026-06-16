@@ -1735,6 +1735,158 @@ textarea {
   white-space: nowrap;
 }
 
+.field-post-panel {
+  position: fixed;
+  z-index: 31;
+  left: calc(clamp(320px, 28vw, 380px) + 18px);
+  bottom: 18px;
+  display: grid;
+  gap: 8px;
+  width: min(330px, calc(100% - 36px));
+  max-height: min(62vh, 520px);
+  padding: 12px;
+  overflow-y: auto;
+  border: 1px solid rgba(223, 230, 222, 0.9);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 10px 32px rgba(30, 48, 36, 0.09);
+}
+
+.field-post-panel label {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.field-post-panel input[type="file"],
+.field-post-panel textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  font-size: 12px;
+}
+
+.field-post-panel input[type="file"] {
+  padding: 8px;
+}
+
+.field-post-panel textarea {
+  min-height: 78px;
+  padding: 9px;
+  outline: 0;
+  resize: vertical;
+}
+
+.field-post-target {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px;
+  align-items: center;
+  padding: 8px;
+  border-radius: 8px;
+  background: #f6faf7;
+}
+
+.field-post-target span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.field-post-target strong {
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.field-photo-preview {
+  overflow: hidden;
+  border-radius: 8px;
+  background: #eef2ee;
+}
+
+.field-photo-preview img {
+  display: block;
+  width: 100%;
+  max-height: 170px;
+  object-fit: cover;
+}
+
+.field-post-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.field-post-actions .primary-button,
+.field-post-actions .secondary-button {
+  width: 100%;
+  min-height: 36px;
+  margin: 0;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+.field-post-status {
+  min-height: 16px;
+  margin: 0;
+  color: var(--green);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.field-post-status.error {
+  color: var(--rose);
+}
+
+.field-post-list {
+  display: grid;
+  gap: 8px;
+}
+
+.field-post-card {
+  display: grid;
+  grid-template-columns: 58px 1fr;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfdf9;
+}
+
+.field-post-card img {
+  width: 58px;
+  height: 58px;
+  border-radius: 7px;
+  object-fit: cover;
+}
+
+.field-post-card:not(:has(img)) {
+  grid-template-columns: 1fr;
+}
+
+.field-post-card time,
+.field-post-card small {
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.field-post-card p {
+  display: -webkit-box;
+  margin: 3px 0;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
 .character-card {
   display: grid;
   grid-template-columns: 48px 1fr;
@@ -2007,6 +2159,15 @@ textarea {
     position: relative;
     inset: auto;
     margin: 96px 12px 12px;
+  }
+
+  .field-post-panel {
+    position: relative;
+    left: auto;
+    bottom: auto;
+    width: auto;
+    max-height: none;
+    margin: 12px;
   }
 
   .event-admin-view {
