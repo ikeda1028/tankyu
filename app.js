@@ -2325,7 +2325,7 @@ function createPositionFromLatLng(lat, lng, fallbackIndex = 0) {
 }
 
 function suggestionToEventData(suggestion, index = 0) {
-  const title = suggestion.title || "AI候補イベント";
+  const title = suggestion.title || "AI候補探究ポイント";
   const lat = Number(suggestion.lat);
   const lng = Number(suggestion.lng);
   const hasLatLng = Number.isFinite(lat) && Number.isFinite(lng);
@@ -2348,7 +2348,7 @@ function suggestionToEventData(suggestion, index = 0) {
     id: createEventId(title),
     title,
     index: clamp(suggestion.explorationIndex || suggestion.index || 76),
-    description: suggestion.description || "AIが現在のワクワクから生成した探究イベント候補です。",
+    description: suggestion.description || "AIが現在のワクワクから生成した探究ポイント候補です。",
     tags: tags.length ? tags : ["AI候補", "探究"],
     keywords: keywords.length ? keywords : tags,
     impact: suggestion.impact || "探究学習・地域課題",
@@ -2392,7 +2392,7 @@ function renderAiSuggestions() {
           : "";
       return `<article class="ai-suggestion-card">
         <div>
-          <strong>${escapeHtml(suggestion.title || "AI候補イベント")}</strong>
+          <strong>${escapeHtml(suggestion.title || "AI候補探究ポイント")}</strong>
           <span>${escapeHtml([suggestion.impact, suggestion.locationName, `${eventType}${period}`].filter(Boolean).join(" / "))}</span>
         </div>
         <em>${escapeHtml(suggestion.explorationIndex || 76)}</em>
@@ -2473,15 +2473,15 @@ function buildEventImagePrompt() {
   const manualPrompt = els.eventImagePrompt?.value.trim();
   if (manualPrompt) return manualPrompt;
 
-  const title = els.eventTitle?.value.trim() || getSelectedEncounter().title || "探究イベント";
+  const title = els.eventTitle?.value.trim() || getSelectedEncounter().title || "探究ポイント";
   const impact = els.eventImpact?.value.trim() || getSelectedEncounter().impact || "地域課題";
   const description = els.eventDescription?.value.trim() || getSelectedEncounter().description || "";
   const locationName = els.eventLocation?.value.trim() || getSelectedEncounter().locationName || state.member.region || "日本の地域";
   const tags = splitList(els.eventTags?.value || "").slice(0, 4).join("、");
 
   return [
-    "中高生向け探究イベントのキービジュアルを作る。",
-    `イベント名: ${title}`,
+    "中高生向け探究ポイントのキービジュアルを作る。",
+    `探究ポイント名: ${title}`,
     `社会課題: ${impact}`,
     `場所: ${locationName}`,
     tags ? `タグ: ${tags}` : "",
@@ -2545,7 +2545,7 @@ function buildFallbackCharacter({ title, impact, description, locationName, tags
     name: `${shortName}ナビ`,
     role: "現地案内人",
     message: `${placeText}で見えるものを3つ集めて、「なぜここで起きているのか」を問いにしてみよう。`,
-    personality: description ? "イベント内容から簡易作成しました" : "入力内容から簡易作成しました",
+    personality: description ? "探究ポイント内容から簡易作成しました" : "入力内容から簡易作成しました",
     visualPrompt: `${title || source}の現地案内キャラクター。中高生向け、親しみやすい、観察と問いづくりを促す、文字やロゴなし。`,
     fallback: true,
   };
@@ -2572,7 +2572,7 @@ async function suggestEventCharacter() {
   const impact = els.eventImpact.value.trim();
   const description = els.eventDescription.value.trim();
   if (!title && !impact && !description) {
-    els.characterSuggestionStatus.textContent = "先にイベント名・社会課題・内容を少し入力してください";
+    els.characterSuggestionStatus.textContent = "先に探究ポイント名・社会課題・内容を少し入力してください";
     return;
   }
 
@@ -2645,7 +2645,7 @@ async function evaluateEventIndexFromInput() {
   const payload = getEventIndexPayload();
   const textLength = `${payload.title}${payload.impact}${payload.description}`.trim().length;
   if (textLength < 12) {
-    els.eventIndexStatus.textContent = "イベント名・社会課題・内容を入力するとAIが評価します。";
+    els.eventIndexStatus.textContent = "探究ポイント名・社会課題・内容を入力するとAIが評価します。";
     return;
   }
   const key = getEventIndexEvaluationKey(payload);
@@ -2737,7 +2737,7 @@ function addEventRecord(eventData) {
   state.customEvents.unshift(eventData);
   dedupeCustomEvents();
   state.selected = eventData.id;
-  addActivity(`${eventData.title}をイベント登録`);
+  addActivity(`${eventData.title}を探究ポイント登録`);
   els.eventAdminStatus.textContent = "登録済み";
   saveState();
   render();
@@ -2878,7 +2878,7 @@ function renderRegisteredEvents() {
           </button>`
         )
         .join("")
-    : "<p class=\"empty-note\">まだ登録イベントはありません。</p>";
+    : "<p class=\"empty-note\">まだ登録済み探究ポイントはありません。</p>";
   els.registeredEventList.querySelectorAll(".registered-event-card").forEach((card) => {
     card.addEventListener("click", () => {
       state.selected = card.dataset.id;

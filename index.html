@@ -206,7 +206,7 @@
           </div>
           <div class="mode-tabs" role="tablist" aria-label="表示モード">
             <button class="active" type="button" data-mode="quest" onclick="window.setQuestMode && window.setQuestMode('quest')">探究</button>
-            <button type="button" data-mode="event-admin" onclick="window.setQuestMode && window.setQuestMode('event-admin')">イベント登録</button>
+            <button type="button" data-mode="event-admin" onclick="window.setQuestMode && window.setQuestMode('event-admin')">探究ポイント登録</button>
             <button type="button" data-mode="feedback" onclick="window.setQuestMode && window.setQuestMode('feedback')">フィードバック</button>
             <button type="button" data-mode="capital" onclick="window.setQuestMode && window.setQuestMode('capital')">成長</button>
           </div>
@@ -306,13 +306,13 @@
           </div>
         </article>
 
-        <section class="event-admin-view hidden" aria-label="イベント登録">
+        <section class="event-admin-view hidden" aria-label="探究ポイント登録">
           <div class="event-admin-shell">
             <section class="event-admin-main">
               <div class="section-head">
                 <div>
                   <p class="eyebrow">主催者・先生画面</p>
-                  <h2>イベント登録</h2>
+                  <h2>探究ポイント登録</h2>
                 </div>
                 <span id="event-admin-status" class="small-badge">未登録</span>
               </div>
@@ -320,8 +320,8 @@
               <form id="event-form" class="event-form">
                 <div class="form-grid">
                   <div>
-                    <label for="event-title">イベント名</label>
-                    <input id="event-title" type="text" placeholder="例：商店街インタビュー探究" required />
+                    <label for="event-title">探究ポイント名</label>
+                    <input id="event-title" type="text" placeholder="例：商店街インタビュー探究ポイント" required />
                   </div>
                   <div>
                     <label for="event-impact">社会課題</label>
@@ -329,7 +329,7 @@
                   </div>
                 </div>
                 <label for="event-description">内容</label>
-                <textarea id="event-description" rows="4" placeholder="中高生がどんな事象に出会い、どんな問いへ広げられるイベントかを書いてください。" required></textarea>
+                <textarea id="event-description" rows="4" placeholder="中高生がどんな事象に出会い、どんな問いへ広げられる探究ポイントかを書いてください。" required></textarea>
                 <div class="form-grid">
                   <div>
                     <label for="event-tags">タグ</label>
@@ -373,7 +373,7 @@
                     <legend>現地限定キャラクター</legend>
                     <button id="suggest-character-button" class="secondary-button mini-action" type="button">AIでキャラ作成</button>
                   </div>
-                  <p id="character-suggestion-status" class="character-suggestion-status">イベント内容から現地で会えるキャラクターを作れます。</p>
+                  <p id="character-suggestion-status" class="character-suggestion-status">探究ポイント内容から現地で会えるキャラクターを作れます。</p>
                   <div class="character-toggle-row">
                     <label for="event-character-enabled">現場に行った時だけ会える</label>
                     <input id="event-character-enabled" type="checkbox" checked />
@@ -416,7 +416,7 @@
                   <input id="event-q5" type="text" placeholder="実装: 学校や地域で何を試せるか" />
                 </fieldset>
                 <div class="action-row">
-                  <button class="primary-button" type="submit">イベントを登録</button>
+                  <button class="primary-button" type="submit">探究ポイントを登録</button>
                   <button id="sample-event-button" class="secondary-button" type="button">サンプルを登録</button>
                 </div>
               </form>
@@ -425,7 +425,7 @@
             <aside class="event-admin-side">
               <section>
                 <div class="section-head">
-                  <h3>AI候補イベント</h3>
+                  <h3>AI候補探究ポイント</h3>
                   <div class="ai-bulk-actions">
                     <label for="ai-suggestion-count">生成数</label>
                     <input id="ai-suggestion-count" type="number" min="3" max="30" step="1" value="12" />
@@ -482,10 +482,10 @@
                   <h3>AI画像生成</h3>
                   <button id="generate-event-image-button" class="secondary-button mini-action" type="button">画像生成</button>
                 </div>
-                <p id="generated-image-status" class="ai-suggestion-status">イベント内容からキービジュアルを生成できます。</p>
+                <p id="generated-image-status" class="ai-suggestion-status">探究ポイント内容からキービジュアルを生成できます。</p>
                 <div class="image-generation-box">
                   <label for="event-image-prompt">画像プロンプト</label>
-                  <textarea id="event-image-prompt" rows="4" placeholder="空欄なら左のイベント名・社会課題・内容から自動で作ります"></textarea>
+                  <textarea id="event-image-prompt" rows="4" placeholder="空欄なら左の探究ポイント名・社会課題・内容から自動で作ります"></textarea>
                   <div id="generated-image-preview" class="generated-image-preview">
                     <span>まだ画像はありません</span>
                   </div>
@@ -494,7 +494,7 @@
 
               <section>
                 <div class="section-head">
-                  <h3>登録済みイベント</h3>
+                  <h3>登録済み探究ポイント</h3>
                   <span id="registered-event-count" class="small-badge">0件</span>
                 </div>
                 <div id="registered-event-list" class="registered-event-list"></div>

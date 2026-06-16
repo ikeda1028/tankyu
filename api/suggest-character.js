@@ -42,7 +42,7 @@ function normalizeCharacter(data) {
     role: normalizeText(data.role, "現地案内人").slice(0, 40),
     message: normalizeText(data.message, "この場所で見つけた違和感を、次の問いに変えてみよう。").slice(0, 180),
     personality: normalizeText(data.personality, "やさしく、少し冒険心がある").slice(0, 120),
-    visualPrompt: normalizeText(data.visualPrompt, "中高生向け探究イベントの現地案内キャラクター").slice(0, 300),
+    visualPrompt: normalizeText(data.visualPrompt, "中高生向け探究ポイントの現地案内キャラクター").slice(0, 300),
   };
 }
 
@@ -67,7 +67,7 @@ export default async function handler(request, response) {
   try {
     const body = request.body || {};
     const payload = {
-      title: normalizeText(body.title, "探究イベント").slice(0, 80),
+      title: normalizeText(body.title, "探究ポイント").slice(0, 80),
       impact: normalizeText(body.impact, "地域課題").slice(0, 80),
       description: normalizeText(body.description).slice(0, 360),
       locationName: normalizeText(body.locationName, "現地フィールド").slice(0, 80),
@@ -84,7 +84,7 @@ export default async function handler(request, response) {
       body: JSON.stringify({
         model: process.env.OPENAI_MODEL || DEFAULT_MODEL,
         instructions:
-          "あなたは中高生向け探究イベントのキャラクターデザイナーです。現地に行った時だけ会える案内キャラクターを作ります。年齢に適し、安全で、学習の問いを広げる存在にしてください。返答はJSONだけにしてください。",
+          "あなたは中高生向け探究ポイントのキャラクターデザイナーです。現地に行った時だけ会える案内キャラクターを作ります。年齢に適し、安全で、学習の問いを広げる存在にしてください。返答はJSONだけにしてください。",
         input: [
           {
             role: "user",

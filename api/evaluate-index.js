@@ -103,14 +103,14 @@ export default async function handler(request, response) {
       body: JSON.stringify({
         model: process.env.OPENAI_MODEL || DEFAULT_MODEL,
         instructions:
-          "あなたは中高生向け探究イベントの評価者です。イベント文言から、学習者をどれほどモチベートし、探究行動へ促すかを評価します。安全で年齢に適した観点で、返答はJSONだけにしてください。",
+          "あなたは中高生向け探究ポイントの評価者です。登録文言から、学習者をどれほどモチベートし、探究行動へ促すかを評価します。安全で年齢に適した観点で、返答はJSONだけにしてください。",
         input: [
           {
             role: "user",
             content: [
               {
                 type: "input_text",
-                text: `次のイベント登録文から探究指数を評価してください。
+                text: `次の探究ポイント登録文から探究指数を評価してください。
 
 評価観点:
 - charm: 学習者が「面白そう」「行ってみたい」と感じる魅力

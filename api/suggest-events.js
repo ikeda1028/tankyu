@@ -37,7 +37,7 @@ function normalizeEvent(event, index) {
   const endDate = eventType === "limited" ? normalizeFutureDate(event.endDate, today) : "";
 
   return {
-    title: normalizeText(event.title, `探究イベント ${index + 1}`).slice(0, 48),
+    title: normalizeText(event.title, `探究ポイント ${index + 1}`).slice(0, 48),
     impact: normalizeText(event.impact, "地域課題・探究学習").slice(0, 64),
     description: normalizeText(event.description, "中高生が事象に出会い、問いを広げるイベントです。"),
     tags: normalizeList(event.tags, 4),
@@ -122,7 +122,7 @@ export default async function handler(request, response) {
       body: JSON.stringify({
         model: process.env.OPENAI_MODEL || DEFAULT_MODEL,
         instructions:
-          "あなたは中高生向け探究イベントの推薦プランナーです。実在イベント検索ではなく、学校・地域で企画できる候補イベントを作ります。安全で年齢に適した内容にし、特定個人情報や過度に危険な行為は含めません。返答はJSONだけにしてください。",
+          "あなたは中高生向け探究ポイントの推薦プランナーです。実在イベント検索ではなく、学校・地域で企画できる候補の探究ポイントを作ります。安全で年齢に適した内容にし、特定個人情報や過度に危険な行為は含めません。返答はJSONだけにしてください。",
         input: [
           {
             role: "user",
