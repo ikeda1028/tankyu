@@ -709,7 +709,20 @@ textarea {
   padding: 8px;
   border: 1px solid var(--line);
   border-radius: 8px;
+  color: var(--ink);
   background: #fbfdf9;
+  text-align: left;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.hero-stream-card:hover,
+.hero-stream-card:focus-visible {
+  border-color: rgba(47, 143, 99, 0.45);
+  box-shadow: 0 8px 22px rgba(30, 48, 36, 0.12);
+  transform: translateY(-1px);
 }
 
 .hero-stream-card img,

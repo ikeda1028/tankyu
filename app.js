@@ -2103,6 +2103,23 @@ function createFallbackCharacter(encounter) {
   };
 }
 
+function getNearestEncounterId(location) {
+  if (!hasValidLatLng(location)) return "";
+  const nearest = getEncounters()
+    .filter((encounter) => hasValidLatLng(encounter.position))
+    .map((encounter) => ({
+      id: encounter.id,
+      distance: getDistanceMeters(location, encounter.position),
+    }))
+    .sort((a, b) => a.distance - b.distance)[0];
+  return nearest?.id || "";
+}
+
+function getFieldPostTargetId(post) {
+  if (post?.eventId && getEncounters().some((encounter) => encounter.id === post.eventId)) return post.eventId;
+  return getNearestEncounterId(post?.location);
+}
+
 function getHeroStreamItems() {
   const photoItems = (state.fieldPosts || [])
     .filter((post) => post.image?.dataUrl || post.image?.downloadUrl)
@@ -2110,6 +2127,7 @@ function getHeroStreamItems() {
     .map((post) => ({
       type: "photo",
       id: `photo-${post.id}`,
+      eventId: getFieldPostTargetId(post),
       title: post.eventTitle || "現場投稿",
       subtitle: post.text || "写真から問いを広げる",
       imageSrc: post.image.dataUrl || post.image.downloadUrl,
@@ -2127,6 +2145,7 @@ function getHeroStreamItems() {
     .map(({ encounter, character }) => ({
       type: "character",
       id: `character-${encounter.id}`,
+      eventId: encounter.id,
       title: character.name,
       subtitle: character.role,
       message: character.message,
@@ -2143,6 +2162,25 @@ function getHeroStreamItems() {
   return items.slice(0, 16);
 }
 
+function openHeroStreamTarget(eventId) {
+  const encounter = getEncounters().find((item) => item.id === eventId);
+  if (!encounter) return;
+  state.selected = encounter.id;
+  state.ui.encounterPanel = state.ui.encounterPanel === "collapsed" ? "compact" : state.ui.encounterPanel || "open";
+  saveState();
+  render();
+  if (hasValidLatLng(encounter.position)) {
+    focusGoogleMapPoint({ lat: Number(encounter.position.lat), lng: Number(encounter.position.lng) }, 12);
+  }
+}
+
+function attachHeroStreamHandlers() {
+  if (!els.heroStreamTrack) return;
+  els.heroStreamTrack.querySelectorAll("[data-event-id]").forEach((card) => {
+    card.addEventListener("click", () => openHeroStreamTarget(card.dataset.eventId));
+  });
+}
+
 function renderHeroStream() {
   if (!els.heroStreamTrack || !els.heroStreamCount) return;
   const items = getHeroStreamItems();
@@ -2154,26 +2192,28 @@ function renderHeroStream() {
   const repeated = [...items, ...items];
   els.heroStreamTrack.innerHTML = repeated
     .map((item) => {
+      const target = item.eventId ? ` data-event-id="${escapeHtml(item.eventId)}"` : "";
       if (item.type === "photo") {
-        return `<article class="hero-stream-card photo-card">
+        return `<button class="hero-stream-card photo-card" type="button"${target}>
           <img src="${escapeHtml(item.imageSrc)}" alt="${escapeHtml(item.title)}の投稿写真" />
           <div>
             <span>${escapeHtml(item.meta)}</span>
             <strong>${escapeHtml(item.title)}</strong>
             <p>${escapeHtml(item.subtitle)}</p>
           </div>
-        </article>`;
+        </button>`;
       }
-      return `<article class="hero-stream-card character-stream-card${item.locked ? " locked" : ""}">
+      return `<button class="hero-stream-card character-stream-card${item.locked ? " locked" : ""}" type="button"${target}>
         <div class="stream-avatar">${escapeHtml(item.title.slice(0, 1))}</div>
         <div>
           <span>${item.locked ? "現地で会えるAIキャラ" : "出会ったAIキャラ"}</span>
           <strong>${escapeHtml(item.title)}</strong>
           <p>${escapeHtml(item.eventTitle)} / ${escapeHtml(item.subtitle)}</p>
         </div>
-      </article>`;
+      </button>`;
     })
     .join("");
+  attachHeroStreamHandlers();
 }
 
 function render() {
