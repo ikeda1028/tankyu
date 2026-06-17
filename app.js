@@ -95,6 +95,9 @@ const defaultState = {
       symbol: "星",
       color: "#2f8f63",
       aura: "探究",
+      imageDataUrl: "",
+      generatedAt: "",
+      generationStage: "simple",
     },
     partyRoles: ["問いを深める人", "現地を記録する人", "社会とつなぐ人"],
   },
@@ -269,6 +272,8 @@ const els = {
   memberAvatarSymbol: document.querySelector("#member-avatar-symbol"),
   memberAvatarColor: document.querySelector("#member-avatar-color"),
   memberAvatarAura: document.querySelector("#member-avatar-aura"),
+  generateMemberAvatarButton: document.querySelector("#generate-member-avatar-button"),
+  memberAvatarStatus: document.querySelector("#member-avatar-status"),
   memberPartyRoles: document.querySelector("#member-party-roles"),
   memberPartyRoleInput: document.querySelector("#member-party-role-input"),
   addPartyRoleButton: document.querySelector("#add-party-role-button"),
@@ -378,10 +383,14 @@ function normalizePartyRoles(roles) {
 function normalizeAvatar(avatar) {
   const fallback = defaultState.member.avatar;
   const color = String(avatar?.color || fallback.color).trim();
+  const imageDataUrl = String(avatar?.imageDataUrl || "").trim();
   return {
     symbol: String(avatar?.symbol || fallback.symbol).trim().slice(0, 2) || fallback.symbol,
     color: /^#[0-9a-f]{6}$/i.test(color) ? color : fallback.color,
     aura: String(avatar?.aura || fallback.aura).trim().slice(0, 16) || fallback.aura,
+    imageDataUrl: imageDataUrl.startsWith("data:image/") ? imageDataUrl : "",
+    generatedAt: String(avatar?.generatedAt || "").trim(),
+    generationStage: String(avatar?.generationStage || fallback.generationStage || "simple").trim(),
   };
 }
 
@@ -2360,7 +2369,9 @@ function renderMemberSummary() {
 
 function renderAvatarElement(element, avatar) {
   if (!element) return;
-  element.textContent = avatar.symbol;
+  element.innerHTML = avatar.imageDataUrl
+    ? `<img src="${escapeHtml(avatar.imageDataUrl)}" alt="${escapeHtml(avatar.aura)}オーラのアバター" />`
+    : escapeHtml(avatar.symbol);
   element.style.setProperty("--avatar-bg", getAvatarGradient(avatar.color));
   element.style.setProperty("--avatar-color", avatar.color);
   element.setAttribute("title", `${avatar.symbol} / ${avatar.aura}オーラ`);
@@ -2396,10 +2407,14 @@ function showMemberForm() {
 }
 
 function getAvatarFromEditor() {
+  const current = normalizeAvatar(state.member.avatar);
   return normalizeAvatar({
     symbol: els.memberAvatarSymbol?.value,
     color: els.memberAvatarColor?.value,
     aura: els.memberAvatarAura?.value,
+    imageDataUrl: current.imageDataUrl,
+    generatedAt: current.generatedAt,
+    generationStage: current.generationStage,
   });
 }
 
@@ -2413,6 +2428,97 @@ function updateAvatarFromEditor() {
   state.member.avatar = getAvatarFromEditor();
   renderAvatarEditor();
   renderMemberSummary();
+}
+
+function buildMemberAvatarPrompt() {
+  const avatar = getAvatarFromEditor();
+  const heroRole = els.memberHeroRole?.value || state.member.heroRole || "ヒーロー";
+  const firstInterest = els.memberInterest?.value.trim() || state.member.initialInterest || state.interests.join("、") || "探究";
+  const dimension = getHeroDimension();
+  const stage = dimension <= 2 ? "まだ小さくシンプルで、成長前の相棒キャラクター" : "少し成長した探究ヒーローの相棒キャラクター";
+  return [
+    "中高生向け探究育成ゲームのプレイヤーアバターを1体生成する。",
+    `役割: ${heroRole}`,
+    `シンボル: ${avatar.symbol}`,
+    `メインカラー: ${avatar.color}`,
+    `オーラ: ${avatar.aura}`,
+    `興味: ${firstInterest}`,
+    `成長段階: ${stage}`,
+    "最初の姿なので、形はシンプル。丸みがあり、親しみやすい小さなキャラクター。",
+    "全身が見える。背景は透明または白に近いシンプルな背景。",
+    "武器や攻撃表現は入れない。学び、観察、発見、冒険の印象にする。",
+    "文字、ロゴ、読める記号は入れない。",
+    "安全で年齢に適した、明るいキャラクターデザイン。",
+  ].join("\n");
+}
+
+function compressGeneratedAvatarImage(dataUrl) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onerror = () => reject(new Error("生成画像を読み込めませんでした"));
+    image.onload = () => {
+      const maxSide = 520;
+      const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(image.width * scale));
+      canvas.height = Math.max(1, Math.round(image.height * scale));
+      const context = canvas.getContext("2d");
+      if (!context) {
+        reject(new Error("生成画像を処理できませんでした"));
+        return;
+      }
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL("image/jpeg", 0.82));
+    };
+    image.src = dataUrl;
+  });
+}
+
+async function generateMemberAvatar() {
+  if (!els.generateMemberAvatarButton || !els.memberAvatarStatus) return;
+  const previousText = els.generateMemberAvatarButton.textContent;
+  els.generateMemberAvatarButton.disabled = true;
+  els.generateMemberAvatarButton.textContent = "生成中";
+  els.memberAvatarStatus.textContent = "AIでシンプルな初期アバターを生成中...";
+  els.memberAvatarStatus.classList.remove("error");
+
+  try {
+    const response = await fetch(getGenerateImageApiPath(), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt: buildMemberAvatarPrompt() }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data.error || `HTTP ${response.status}`);
+    }
+    if (!data.imageDataUrl) {
+      throw new Error("画像データが空です");
+    }
+    const compressedImage = await compressGeneratedAvatarImage(data.imageDataUrl);
+    state.member.avatar = {
+      ...getAvatarFromEditor(),
+      imageDataUrl: compressedImage,
+      generatedAt: new Date().toISOString(),
+      generationStage: "simple",
+    };
+    saveState();
+    renderMemberSummary();
+    renderStats();
+    els.memberAvatarStatus.textContent = `${data.model || "gpt-image-2"}で初期アバターを生成しました`;
+    addActivity("AIで自分の初期アバターを生成");
+  } catch (error) {
+    const localHint =
+      location.hostname === "127.0.0.1" || location.hostname === "localhost"
+        ? "公開版でOPENAI_API_KEYを設定すると使えます"
+        : "VercelのOPENAI_API_KEYと画像モデルの利用権限を確認してください";
+    els.memberAvatarStatus.textContent = `アバターを生成できません: ${localHint}`;
+    els.memberAvatarStatus.classList.add("error");
+    console.error(error);
+  } finally {
+    els.generateMemberAvatarButton.disabled = false;
+    els.generateMemberAvatarButton.textContent = previousText;
+  }
 }
 
 function renderPartyRoleEditor() {
@@ -2627,6 +2733,8 @@ function memberToDriveRecord() {
     avatar_symbol: normalizeAvatar(state.member.avatar).symbol,
     avatar_color: normalizeAvatar(state.member.avatar).color,
     avatar_aura: normalizeAvatar(state.member.avatar).aura,
+    avatar_generated: Boolean(normalizeAvatar(state.member.avatar).imageDataUrl),
+    avatar_generation_stage: normalizeAvatar(state.member.avatar).generationStage,
     party_roles: normalizePartyRoles(state.member.partyRoles).join(","),
     school: state.member.school,
     grade: state.member.grade,
@@ -3774,6 +3882,7 @@ els.memberForm.addEventListener("submit", saveMemberInfo);
   els.memberAvatarColor,
   els.memberAvatarAura,
 ].forEach((input) => input?.addEventListener("input", updateAvatarFromEditor));
+els.generateMemberAvatarButton?.addEventListener("click", generateMemberAvatar);
 els.addPartyRoleButton?.addEventListener("click", addPartyRole);
 els.memberPartyRoleInput?.addEventListener("keydown", (event) => {
   if (event.key !== "Enter") return;
