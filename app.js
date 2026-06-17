@@ -809,10 +809,53 @@ function saveFirebaseConfig() {
 
 function createFirebaseSnapshot() {
   const snapshot = JSON.parse(JSON.stringify(state));
+  snapshot.stats = {
+    quest: state.quest,
+    hp: state.quest,
+    joy: state.joy,
+    drive: state.drive,
+    thanks: state.thanks,
+    streak: state.streak,
+    dimension: getHeroDimension(),
+    hpMax: getHeroHpMax(),
+  };
   snapshot.maps = { ...(snapshot.maps || {}), apiKey: "", lastStatus: snapshot.maps?.lastStatus || "" };
   snapshot.driveSync = { ...(snapshot.driveSync || {}), apiUrl: "", lastStatus: snapshot.driveSync?.lastStatus || "" };
   snapshot.firebase = { ...defaultState.firebase, lastStatus: "cloud snapshot" };
   return snapshot;
+}
+
+function coerceFirebaseNumber(...values) {
+  for (const value of values) {
+    const numberValue = Number(value);
+    if (Number.isFinite(numberValue)) return Math.round(numberValue);
+  }
+  return null;
+}
+
+function applyFirebaseNumericFields(targetState, firebaseResult) {
+  const sources = [
+    firebaseResult?.snapshot?.stats,
+    firebaseResult?.stats,
+    firebaseResult?.snapshot,
+    firebaseResult,
+  ].filter(Boolean);
+  const fieldMap = {
+    quest: ["quest", "hp", "heroHp", "hero_hp", "探究値", "HP"],
+    joy: ["joy", "wakuwaku", "ワクワク"],
+    drive: ["drive", "explorationDistance", "exploration_distance", "探究力", "探究距離"],
+    thanks: ["thanks", "reflectionPower", "reflection_power", "振り返り"],
+    streak: ["streak", "連続日数"],
+  };
+  const applied = [];
+  Object.entries(fieldMap).forEach(([stateKey, aliases]) => {
+    const values = sources.flatMap((source) => aliases.map((alias) => source?.[alias]));
+    const numericValue = coerceFirebaseNumber(...values);
+    if (numericValue === null) return;
+    targetState[stateKey] = stateKey === "quest" ? Math.max(0, Math.min(999, numericValue)) : clamp(numericValue);
+    applied.push(stateKey);
+  });
+  return applied;
 }
 
 async function syncFirebase() {
@@ -857,16 +900,20 @@ async function loadFirebaseSnapshot() {
     setFirebaseStatus("Firebase読込中...");
     const savedConfig = state.firebase;
     const result = await window.WakuwakuFirebase.loadSnapshot(config, state);
-    if (!result?.snapshot) {
-      setFirebaseStatus("Firebaseに保存データがありません", true);
+    if (!result?.snapshot && !result?.stats) {
+      setFirebaseStatus("Firebaseに保存データまたは数値がありません", true);
       return;
     }
-    Object.assign(state, { ...defaultState, ...result.snapshot });
+    const loadedSnapshot = result.snapshot ? { ...defaultState, ...result.snapshot } : { ...state };
+    const appliedNumericFields = applyFirebaseNumericFields(loadedSnapshot, result);
+    Object.assign(state, loadedSnapshot);
     state.firebase = {
       ...defaultState.firebase,
       ...savedConfig,
       lastSyncAt: new Date().toISOString(),
-      lastStatus: `Firestore読込完了: ${result.userId}`,
+      lastStatus: appliedNumericFields.length
+        ? `Firestore読込完了: ${result.userId} / 数値 ${appliedNumericFields.length}件`
+        : `Firestore読込完了: ${result.userId}`,
     };
     state.driveSync = { ...defaultState.driveSync, ...(state.driveSync || {}) };
     state.maps = { ...defaultState.maps, ...(state.maps || {}) };

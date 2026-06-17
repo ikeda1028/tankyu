@@ -101,12 +101,21 @@ async function saveSnapshot(config, state, snapshot) {
   const userId = getFirebaseUserId(state);
   const ref = firestore.doc(db, FIREBASE_COLLECTION, userId);
   const uploadedSnapshot = await uploadFieldPostImages(firebase, userId, snapshot);
+  const stats = {
+    quest: Number(state?.quest || 0),
+    hp: Number(state?.quest || 0),
+    joy: Number(state?.joy || 0),
+    drive: Number(state?.drive || 0),
+    thanks: Number(state?.thanks || 0),
+    streak: Number(state?.streak || 0),
+  };
   await firestore.setDoc(
     ref,
     {
       userId,
       email: state?.auth?.email || "",
       displayName: state?.member?.name || "",
+      stats,
       snapshot: uploadedSnapshot,
       updatedAt: firestore.serverTimestamp(),
     },
