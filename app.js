@@ -91,6 +91,11 @@ const defaultState = {
     region: "",
     initialInterest: "",
     heroRole: "ヒーロー",
+    avatar: {
+      symbol: "星",
+      color: "#2f8f63",
+      aura: "探究",
+    },
     partyRoles: ["問いを深める人", "現地を記録する人", "社会とつなぐ人"],
   },
   quest: 72,
@@ -260,12 +265,17 @@ const els = {
   memberRegion: document.querySelector("#member-region"),
   memberInterest: document.querySelector("#member-interest"),
   memberHeroRole: document.querySelector("#member-hero-role"),
+  memberAvatarPreview: document.querySelector("#member-avatar-preview"),
+  memberAvatarSymbol: document.querySelector("#member-avatar-symbol"),
+  memberAvatarColor: document.querySelector("#member-avatar-color"),
+  memberAvatarAura: document.querySelector("#member-avatar-aura"),
   memberPartyRoles: document.querySelector("#member-party-roles"),
   memberPartyRoleInput: document.querySelector("#member-party-role-input"),
   addPartyRoleButton: document.querySelector("#add-party-role-button"),
   memberFormStatus: document.querySelector("#member-form-status"),
   memberSummaryName: document.querySelector("#member-summary-name"),
   memberSummaryMeta: document.querySelector("#member-summary-meta"),
+  memberAvatarSummary: document.querySelector("#member-avatar-summary"),
   memberPartySummary: document.querySelector("#member-party-summary"),
   memberSummaryStatus: document.querySelector("#member-summary-status"),
   editMemberButton: document.querySelector("#edit-member-button"),
@@ -332,6 +342,7 @@ state.firebase = { ...defaultState.firebase, ...(state.firebase || {}) };
 state.maps = { ...defaultState.maps, ...(state.maps || {}) };
 state.auth = { ...defaultState.auth, ...(state.auth || {}) };
 state.member = { ...defaultState.member, ...(state.member || {}) };
+state.member.avatar = normalizeAvatar(state.member.avatar);
 state.member.partyRoles = normalizePartyRoles(state.member.partyRoles);
 state.ui = { ...defaultState.ui, ...(state.ui || {}) };
 state.joyActions = Array.isArray(state.joyActions) ? state.joyActions : [];
@@ -362,6 +373,20 @@ function normalizePartyRoles(roles) {
     .map((role) => String(role || "").trim())
     .filter(Boolean);
   return [...new Set(normalized.length ? normalized : fallback)].slice(0, 8);
+}
+
+function normalizeAvatar(avatar) {
+  const fallback = defaultState.member.avatar;
+  const color = String(avatar?.color || fallback.color).trim();
+  return {
+    symbol: String(avatar?.symbol || fallback.symbol).trim().slice(0, 2) || fallback.symbol,
+    color: /^#[0-9a-f]{6}$/i.test(color) ? color : fallback.color,
+    aura: String(avatar?.aura || fallback.aura).trim().slice(0, 16) || fallback.aura,
+  };
+}
+
+function getAvatarGradient(color) {
+  return `radial-gradient(circle at 30% 20%, rgba(255,255,255,.7), transparent 28%), linear-gradient(140deg, ${color}, #17211b)`;
 }
 
 function getPartyPower() {
@@ -768,6 +793,7 @@ async function loadFirebaseSnapshot() {
     state.maps = { ...defaultState.maps, ...(state.maps || {}) };
     state.auth = { ...defaultState.auth, ...(state.auth || {}) };
     state.member = { ...defaultState.member, ...(state.member || {}) };
+    state.member.avatar = normalizeAvatar(state.member.avatar);
     state.member.partyRoles = normalizePartyRoles(state.member.partyRoles);
     state.ui = { ...defaultState.ui, ...(state.ui || {}) };
     state.fieldPosts = Array.isArray(state.fieldPosts) ? state.fieldPosts : [];
@@ -2320,13 +2346,24 @@ function renderMemberSummary() {
   const meta = [state.member.grade, state.member.school, state.member.region].filter(Boolean).join(" / ");
   els.memberSummaryMeta.textContent = meta || "学年・学校未設定";
   const heroRole = state.member.heroRole || "ヒーロー";
+  const avatar = normalizeAvatar(state.member.avatar);
   const roles = normalizePartyRoles(state.member.partyRoles);
+  renderAvatarElement(els.memberAvatarSummary, avatar);
   if (els.memberPartySummary) {
-    els.memberPartySummary.innerHTML = `<div class="hero-role-badge">${escapeHtml(heroRole)}として登録</div>
+    els.memberPartySummary.innerHTML = `<div class="hero-role-badge">${escapeHtml(heroRole)}として登録 / ${escapeHtml(avatar.aura)}オーラ</div>
       <div class="party-dimension-badge">${escapeHtml(getHeroStageLabel())} / ${getHeroDimension()}D</div>
       <div class="party-role-chips">${roles.map((role) => `<span>${escapeHtml(role)}</span>`).join("")}</div>`;
   }
   renderPartyRoleEditor();
+  renderAvatarEditor();
+}
+
+function renderAvatarElement(element, avatar) {
+  if (!element) return;
+  element.textContent = avatar.symbol;
+  element.style.setProperty("--avatar-bg", getAvatarGradient(avatar.color));
+  element.style.setProperty("--avatar-color", avatar.color);
+  element.setAttribute("title", `${avatar.symbol} / ${avatar.aura}オーラ`);
 }
 
 function setMemberStatus(message, isError = false) {
@@ -2348,9 +2385,34 @@ function showMemberForm() {
   els.memberRegion.value = state.member.region || "";
   els.memberInterest.value = state.member.initialInterest || "";
   els.memberHeroRole.value = state.member.heroRole || "ヒーロー";
+  state.member.avatar = normalizeAvatar(state.member.avatar);
+  if (els.memberAvatarSymbol) els.memberAvatarSymbol.value = state.member.avatar.symbol;
+  if (els.memberAvatarColor) els.memberAvatarColor.value = state.member.avatar.color;
+  if (els.memberAvatarAura) els.memberAvatarAura.value = state.member.avatar.aura;
   state.member.partyRoles = normalizePartyRoles(state.member.partyRoles);
+  renderAvatarEditor();
   renderPartyRoleEditor();
   setMemberStatus("");
+}
+
+function getAvatarFromEditor() {
+  return normalizeAvatar({
+    symbol: els.memberAvatarSymbol?.value,
+    color: els.memberAvatarColor?.value,
+    aura: els.memberAvatarAura?.value,
+  });
+}
+
+function renderAvatarEditor() {
+  if (!els.memberAvatarPreview) return;
+  const avatar = getAvatarFromEditor();
+  renderAvatarElement(els.memberAvatarPreview, avatar);
+}
+
+function updateAvatarFromEditor() {
+  state.member.avatar = getAvatarFromEditor();
+  renderAvatarEditor();
+  renderMemberSummary();
 }
 
 function renderPartyRoleEditor() {
@@ -2429,6 +2491,7 @@ function saveMemberInfo(event) {
     region: els.memberRegion.value.trim(),
     initialInterest: interestText,
     heroRole: els.memberHeroRole.value || "ヒーロー",
+    avatar: getAvatarFromEditor(),
     partyRoles: normalizePartyRoles(state.member.partyRoles),
   };
   if (interestText) {
@@ -2561,6 +2624,9 @@ function memberToDriveRecord() {
     display_name: state.member.name || "中高生ユーザー",
     role: "student",
     hero_role: state.member.heroRole || "ヒーロー",
+    avatar_symbol: normalizeAvatar(state.member.avatar).symbol,
+    avatar_color: normalizeAvatar(state.member.avatar).color,
+    avatar_aura: normalizeAvatar(state.member.avatar).aura,
     party_roles: normalizePartyRoles(state.member.partyRoles).join(","),
     school: state.member.school,
     grade: state.member.grade,
@@ -3703,6 +3769,11 @@ document.querySelector("#thanks-button").addEventListener("click", receiveThanks
 els.loginForm.addEventListener("submit", handleLogin);
 els.demoLoginButton.addEventListener("click", handleDemoLogin);
 els.memberForm.addEventListener("submit", saveMemberInfo);
+[
+  els.memberAvatarSymbol,
+  els.memberAvatarColor,
+  els.memberAvatarAura,
+].forEach((input) => input?.addEventListener("input", updateAvatarFromEditor));
 els.addPartyRoleButton?.addEventListener("click", addPartyRole);
 els.memberPartyRoleInput?.addEventListener("keydown", (event) => {
   if (event.key !== "Enter") return;

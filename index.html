@@ -59,6 +59,35 @@
             <option value="探究リーダー">探究リーダー</option>
             <option value="問いの発見者">問いの発見者</option>
           </select>
+          <fieldset class="avatar-fieldset">
+            <legend>自分のアバター</legend>
+            <div class="avatar-editor">
+              <div id="member-avatar-preview" class="member-avatar-preview">?</div>
+              <div class="avatar-controls">
+                <label for="member-avatar-symbol">シンボル</label>
+                <select id="member-avatar-symbol">
+                  <option value="星">星</option>
+                  <option value="炎">炎</option>
+                  <option value="水">水</option>
+                  <option value="森">森</option>
+                  <option value="雷">雷</option>
+                  <option value="光">光</option>
+                  <option value="知">知</option>
+                  <option value="翼">翼</option>
+                </select>
+                <label for="member-avatar-color">メインカラー</label>
+                <input id="member-avatar-color" type="color" value="#2f8f63" />
+                <label for="member-avatar-aura">オーラ</label>
+                <select id="member-avatar-aura">
+                  <option value="探究">探究</option>
+                  <option value="勇気">勇気</option>
+                  <option value="共創">共創</option>
+                  <option value="発明">発明</option>
+                  <option value="観察">観察</option>
+                </select>
+              </div>
+            </div>
+          </fieldset>
           <fieldset class="party-fieldset">
             <legend>パーティーに必要な役割</legend>
             <p>探究を一人で終わらせず、仲間に任せたい役割を作ります。</p>
@@ -91,8 +120,11 @@
             <button id="edit-member-button" class="text-button" type="button">編集</button>
           </div>
           <div class="member-summary">
-            <strong id="member-summary-name">未設定</strong>
-            <span id="member-summary-meta">学年・学校未設定</span>
+            <div id="member-avatar-summary" class="member-avatar-summary">?</div>
+            <div>
+              <strong id="member-summary-name">未設定</strong>
+              <span id="member-summary-meta">学年・学校未設定</span>
+            </div>
           </div>
           <div id="member-party-summary" class="party-summary"></div>
           <p id="member-summary-status" class="member-save-status" aria-live="polite"></p>
