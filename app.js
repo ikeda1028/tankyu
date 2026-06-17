@@ -215,6 +215,17 @@ const els = {
   fieldPostStatus: document.querySelector("#field-post-status"),
   fieldPostList: document.querySelector("#field-post-list"),
   questViews: document.querySelectorAll(".quest-view"),
+  heroGrowthView: document.querySelector(".hero-growth-view"),
+  heroGrowthTitle: document.querySelector("#hero-growth-title"),
+  heroGrowthDimension: document.querySelector("#hero-growth-dimension"),
+  heroLargeAvatar: document.querySelector("#hero-large-avatar"),
+  heroGrowthHp: document.querySelector("#hero-growth-hp"),
+  heroGrowthStage: document.querySelector("#hero-growth-stage"),
+  heroGrowthParty: document.querySelector("#hero-growth-party"),
+  heroEvolutionTrack: document.querySelector("#hero-evolution-track"),
+  heroEquipmentCount: document.querySelector("#hero-equipment-count"),
+  heroEquipmentGrid: document.querySelector("#hero-equipment-grid"),
+  heroNextEvolution: document.querySelector("#hero-next-evolution"),
   feedbackView: document.querySelector(".feedback-view"),
   feedbackStatus: document.querySelector("#feedback-status"),
   feedbackQuestScore: document.querySelector("#feedback-quest-score"),
@@ -426,6 +437,59 @@ function getHeroStageLabel() {
     5: "越境パーティー",
   };
   return labels[dimension] || "越境パーティー";
+}
+
+function getHeroEquipment() {
+  const partyPower = getPartyPower();
+  const bestDepth = getBestDepth();
+  return [
+    {
+      name: "問いのコンパス",
+      slot: "手",
+      unlocked: state.sparks.length > 0 || Boolean(state.member.initialInterest),
+      detail: "ワクワクを記録すると装備",
+    },
+    {
+      name: "観察レンズ",
+      slot: "目",
+      unlocked: state.fieldPosts.length > 0,
+      detail: "現場投稿をすると装備",
+    },
+    {
+      name: "記録ノート",
+      slot: "道具",
+      unlocked: state.reflections.length > 0,
+      detail: "探究を記録すると装備",
+    },
+    {
+      name: "共創バッジ",
+      slot: "胸",
+      unlocked: partyPower >= 3,
+      detail: "パーティー役割3つで装備",
+    },
+    {
+      name: "越境マント",
+      slot: "背中",
+      unlocked: bestDepth >= 4,
+      detail: "越境まで探究すると装備",
+    },
+    {
+      name: "実装コア",
+      slot: "中心",
+      unlocked: bestDepth >= 5 || state.quest >= 160,
+      detail: "実装まで到達、またはHP160で装備",
+    },
+  ];
+}
+
+function getNextEvolutionTasks() {
+  const tasks = [];
+  if (getPartyPower() < 3) tasks.push("パーティー役割を3つ以上にする");
+  if (!state.fieldPosts.length) tasks.push("現場投稿を1件行い、観察レンズを解放する");
+  if (!state.reflections.length) tasks.push("探究を記録して、記録ノートを解放する");
+  if (getBestDepth() < 4) tasks.push("探究距離を越境まで伸ばす");
+  if (state.quest < getHeroHpMax()) tasks.push("探究ポイントに参加してHPを上げる");
+  return tasks.length ? tasks.slice(0, 4) : ["次の探究ポイントで実装まで進み、最終装備を強化する"];
 }
 
 function getEncounters() {
@@ -2334,6 +2398,7 @@ function render() {
   renderEncounter();
   renderFieldPostPanelState();
   renderFieldPosts();
+  renderHeroGrowth();
   renderInterests();
   renderActivity();
   renderGrowthPath();
@@ -2381,6 +2446,41 @@ function renderAvatarElement(element, avatar) {
   element.style.setProperty("--avatar-bg", getAvatarGradient(avatar.color));
   element.style.setProperty("--avatar-color", avatar.color);
   element.setAttribute("title", `${avatar.symbol} / ${avatar.aura}オーラ`);
+}
+
+function renderHeroGrowth() {
+  if (!els.heroGrowthView) return;
+  const avatar = normalizeAvatar(state.member.avatar);
+  const hpMax = getHeroHpMax();
+  const dimension = getHeroDimension();
+  const equipment = getHeroEquipment();
+  const unlockedCount = equipment.filter((item) => item.unlocked).length;
+  els.heroGrowthTitle.textContent = `${state.member.name || "マイヒーロー"}の進化`;
+  els.heroGrowthDimension.textContent = `${dimension}D`;
+  renderAvatarElement(els.heroLargeAvatar, avatar);
+  els.heroGrowthHp.textContent = `${state.quest} / ${hpMax}`;
+  els.heroGrowthStage.textContent = getHeroStageLabel();
+  els.heroGrowthParty.textContent = `${getPartyPower()}役割`;
+  els.heroEquipmentCount.textContent = `${unlockedCount}/${equipment.length}`;
+  els.heroEquipmentGrid.innerHTML = equipment
+    .map(
+      (item) => `<article class="hero-equipment-card${item.unlocked ? " unlocked" : ""}">
+        <span>${escapeHtml(item.slot)}</span>
+        <strong>${escapeHtml(item.name)}</strong>
+        <p>${escapeHtml(item.detail)}</p>
+      </article>`
+    )
+    .join("");
+  els.heroEvolutionTrack.innerHTML = [1, 2, 3, 4, 5]
+    .map((level) => {
+      const active = level <= dimension ? " active" : "";
+      return `<div class="evolution-step${active}">
+        <span>${level}D</span>
+        <strong>${escapeHtml(level === dimension ? getHeroStageLabel() : ["ソロ", "役割", "チーム", "社会", "越境"][level - 1])}</strong>
+      </div>`;
+    })
+    .join("");
+  els.heroNextEvolution.innerHTML = getNextEvolutionTasks().map((task) => `<li>${escapeHtml(task)}</li>`).join("");
 }
 
 function setMemberStatus(message, isError = false) {
@@ -3167,14 +3267,11 @@ function saveQuickFeedback(template) {
 function showMode(mode) {
   const feedback = mode === "feedback";
   const eventAdmin = mode === "event-admin";
-  els.questViews.forEach((view) => view.classList.toggle("hidden", feedback || eventAdmin));
+  const capital = mode === "capital";
+  els.questViews.forEach((view) => view.classList.toggle("hidden", feedback || eventAdmin || capital));
   els.feedbackView.classList.toggle("hidden", !feedback);
   els.eventAdminView.classList.toggle("hidden", !eventAdmin);
-  if (mode === "capital") {
-    els.questViews.forEach((view) => view.classList.remove("hidden"));
-    els.feedbackView.classList.add("hidden");
-    els.eventAdminView.classList.add("hidden");
-  }
+  els.heroGrowthView?.classList.toggle("hidden", !capital);
   document.querySelectorAll(".mode-tabs button").forEach((item) => {
     item.classList.toggle("active", item.dataset.mode === mode);
   });

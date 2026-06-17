@@ -1405,7 +1405,8 @@ textarea {
   display: none;
 }
 
-.feedback-view {
+.feedback-view,
+.hero-growth-view {
   position: absolute;
   inset: 96px 18px 18px;
   z-index: 7;
@@ -1420,6 +1421,7 @@ textarea {
 }
 
 .feedback-shell,
+.hero-growth-shell,
 .event-admin-shell {
   display: grid;
   grid-template-columns: minmax(420px, 1fr) minmax(260px, 340px);
@@ -1432,7 +1434,9 @@ textarea {
 }
 
 .feedback-main,
+.hero-growth-main,
 .feedback-side,
+.hero-growth-side,
 .event-admin-main,
 .event-admin-side {
   border: 1px solid rgba(223, 230, 222, 0.9);
@@ -1442,11 +1446,13 @@ textarea {
 }
 
 .feedback-main,
+.hero-growth-main,
 .event-admin-main {
   padding: 20px;
 }
 
 .feedback-side,
+.hero-growth-side,
 .event-admin-side {
   display: grid;
   align-content: start;
@@ -1456,12 +1462,14 @@ textarea {
 }
 
 .feedback-main h2,
+.hero-growth-main h2,
 .event-admin-main h2 {
   font-size: 22px;
   letter-spacing: 0;
 }
 
 .feedback-main h3,
+.hero-growth-side h3,
 .feedback-side h3,
 .event-admin-side h3 {
   margin: 0 0 10px;
@@ -1486,6 +1494,149 @@ textarea {
 
 .event-admin-side .section-head .small-badge {
   align-self: flex-start;
+}
+
+.hero-showcase {
+  display: grid;
+  grid-template-columns: minmax(220px, 360px) minmax(240px, 1fr);
+  align-items: stretch;
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.hero-large-avatar {
+  display: grid;
+  min-height: 380px;
+  overflow: hidden;
+  place-items: center;
+  border: 1px solid rgba(47, 143, 99, 0.22);
+  border-radius: 8px;
+  background: var(--avatar-bg, linear-gradient(140deg, var(--green), #17211b));
+  box-shadow: inset 0 0 0 10px rgba(255, 255, 255, 0.42);
+  color: #fff;
+  font-size: clamp(56px, 12vw, 118px);
+  font-weight: 900;
+}
+
+.hero-large-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.hero-showcase-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.hero-showcase-stats div {
+  display: grid;
+  align-content: center;
+  gap: 8px;
+  min-height: 112px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfdf9;
+}
+
+.hero-showcase-stats span,
+.hero-equipment-card span,
+.hero-next-evolution li {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.hero-showcase-stats strong {
+  font-size: 22px;
+  line-height: 1.15;
+}
+
+.hero-evolution-track {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.evolution-step {
+  min-height: 78px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f6faf7;
+  opacity: 0.72;
+}
+
+.evolution-step.active {
+  border-color: rgba(47, 143, 99, 0.36);
+  background: #eaf8ef;
+  opacity: 1;
+}
+
+.evolution-step span {
+  display: block;
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.evolution-step strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.hero-equipment-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.hero-equipment-card {
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f7f8f6;
+  opacity: 0.64;
+}
+
+.hero-equipment-card.unlocked {
+  border-color: rgba(47, 111, 179, 0.24);
+  background: #eef6ff;
+  opacity: 1;
+}
+
+.hero-equipment-card strong {
+  font-size: 14px;
+}
+
+.hero-equipment-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.hero-next-evolution {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hero-next-evolution li {
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfdf9;
+  line-height: 1.45;
 }
 
 .mini-action {
@@ -2809,7 +2960,8 @@ textarea {
     margin: 12px;
   }
 
-  .feedback-view {
+  .feedback-view,
+  .hero-growth-view {
     position: relative;
     inset: auto;
     margin: 96px 12px 12px;
@@ -2840,8 +2992,14 @@ textarea {
 
   .feedback-shell,
   .feedback-grid,
+  .hero-growth-shell,
+  .hero-showcase,
   .event-admin-shell {
     grid-template-columns: 1fr;
+  }
+
+  .hero-large-avatar {
+    min-height: 300px;
   }
 
   .student-summary {
