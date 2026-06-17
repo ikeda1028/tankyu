@@ -1781,6 +1781,10 @@ function renderEventList() {
       grantJoy(3, `${getEventTitle(card.dataset.id)}の詳細を開いた`, `event-view:${card.dataset.id}`);
       saveState();
       render();
+      const selected = getSelectedEncounter();
+      if (googleMap && hasValidLatLng(selected.position)) {
+        focusGoogleMapPoint({ lat: Number(selected.position.lat), lng: Number(selected.position.lng) }, Math.max(googleMap.getZoom(), 10));
+      }
     });
   });
 }
