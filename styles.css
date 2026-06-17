@@ -680,6 +680,31 @@ textarea {
   resize: vertical;
 }
 
+.avatar-photo-preview {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfdf9;
+}
+
+.avatar-photo-preview img {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.avatar-photo-preview span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1.4;
+}
+
 .avatar-controls .secondary-button {
   width: 100%;
   min-height: 38px;

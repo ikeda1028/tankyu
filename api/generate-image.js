@@ -10,6 +10,46 @@ function setCors(response) {
   response.setHeader("Access-Control-Allow-Headers", "Content-Type");
 }
 
+function dataUrlToBlob(dataUrl) {
+  const match = String(dataUrl || "").match(/^data:(image\/(?:png|jpeg|jpg|webp));base64,(.+)$/i);
+  if (!match) return null;
+  const mimeType = match[1].replace("image/jpg", "image/jpeg");
+  const buffer = Buffer.from(match[2], "base64");
+  return new Blob([buffer], { type: mimeType });
+}
+
+async function requestImageGeneration({ apiKey, prompt }) {
+  return fetch("https://api.openai.com/v1/images/generations", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: process.env.OPENAI_IMAGE_MODEL || DEFAULT_IMAGE_MODEL,
+      prompt,
+    }),
+  });
+}
+
+async function requestImageEdit({ apiKey, prompt, referenceImageDataUrl }) {
+  const imageBlob = dataUrlToBlob(referenceImageDataUrl);
+  if (!imageBlob) {
+    throw new Error("referenceImageDataUrl is invalid");
+  }
+  const formData = new FormData();
+  formData.append("model", process.env.OPENAI_IMAGE_MODEL || DEFAULT_IMAGE_MODEL);
+  formData.append("prompt", prompt);
+  formData.append("image", imageBlob, "avatar-reference.jpg");
+  return fetch("https://api.openai.com/v1/images/edits", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: formData,
+  });
+}
+
 export default async function handler(request, response) {
   setCors(response);
   if (request.method === "OPTIONS") {
@@ -31,22 +71,15 @@ export default async function handler(request, response) {
   try {
     const body = request.body || {};
     const prompt = normalizeText(body.prompt);
+    const referenceImageDataUrl = String(body.referenceImageDataUrl || "").trim();
     if (!prompt) {
       response.status(400).json({ error: "prompt is required" });
       return;
     }
 
-    const openAiResponse = await fetch("https://api.openai.com/v1/images/generations", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: process.env.OPENAI_IMAGE_MODEL || DEFAULT_IMAGE_MODEL,
-        prompt,
-      }),
-    });
+    const openAiResponse = referenceImageDataUrl
+      ? await requestImageEdit({ apiKey, prompt, referenceImageDataUrl })
+      : await requestImageGeneration({ apiKey, prompt });
 
     const responseJson = await openAiResponse.json().catch(() => ({}));
     if (!openAiResponse.ok) {

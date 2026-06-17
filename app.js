@@ -274,6 +274,8 @@ const els = {
   memberAvatarColor: document.querySelector("#member-avatar-color"),
   memberAvatarAura: document.querySelector("#member-avatar-aura"),
   memberAvatarPrompt: document.querySelector("#member-avatar-prompt"),
+  memberAvatarPhoto: document.querySelector("#member-avatar-photo"),
+  memberAvatarPhotoPreview: document.querySelector("#member-avatar-photo-preview"),
   generateMemberAvatarButton: document.querySelector("#generate-member-avatar-button"),
   memberAvatarStatus: document.querySelector("#member-avatar-status"),
   memberPartyRoles: document.querySelector("#member-party-roles"),
@@ -371,6 +373,7 @@ let eventLocationMarker = null;
 let eventIndexEvaluateTimer = null;
 let eventIndexEvaluateToken = 0;
 let lastEventIndexEvaluationKey = "";
+let pendingAvatarReferenceImage = null;
 let pendingFieldPostImage = null;
 let pendingFieldPostLocation = null;
 
@@ -2448,6 +2451,7 @@ function buildMemberAvatarPrompt() {
     `メインカラー: ${avatar.color}`,
     `オーラ: ${avatar.aura}`,
     avatar.prompt ? `ユーザーのテキスト指示: ${avatar.prompt}` : "",
+    pendingAvatarReferenceImage ? "本人写真が参考画像として添付されている。顔立ち、髪型、雰囲気、表情の特徴を、写実ではなく安全で親しみやすいゲームアバターに抽象化して反映する。" : "",
     `興味: ${firstInterest}`,
     `成長段階: ${stage}`,
     "最初の姿なので、形はシンプル。丸みがあり、親しみやすい小さなキャラクター。",
@@ -2481,6 +2485,79 @@ function compressGeneratedAvatarImage(dataUrl) {
   });
 }
 
+function compressAvatarReferencePhoto(file) {
+  return new Promise((resolve, reject) => {
+    if (!file || !file.type.startsWith("image/")) {
+      reject(new Error("画像ファイルを選んでください"));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("写真を読み込めませんでした"));
+    reader.onload = () => {
+      const image = new Image();
+      image.onerror = () => reject(new Error("写真を処理できませんでした"));
+      image.onload = () => {
+        const maxSide = 900;
+        const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(image.width * scale));
+        canvas.height = Math.max(1, Math.round(image.height * scale));
+        const context = canvas.getContext("2d");
+        if (!context) {
+          reject(new Error("写真を処理できませんでした"));
+          return;
+        }
+        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+        resolve({
+          name: file.name,
+          dataUrl: canvas.toDataURL("image/jpeg", 0.82),
+        });
+      };
+      image.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function renderAvatarPhotoPreview() {
+  if (!els.memberAvatarPhotoPreview) return;
+  if (!pendingAvatarReferenceImage?.dataUrl) {
+    els.memberAvatarPhotoPreview.classList.add("hidden");
+    els.memberAvatarPhotoPreview.innerHTML = "";
+    return;
+  }
+  els.memberAvatarPhotoPreview.classList.remove("hidden");
+  els.memberAvatarPhotoPreview.innerHTML = `<img src="${escapeHtml(pendingAvatarReferenceImage.dataUrl)}" alt="アバター生成に使う本人写真" />
+    <span>この写真は生成の参考にだけ使います</span>`;
+}
+
+async function handleAvatarPhotoChange(event) {
+  const file = event.target.files?.[0];
+  if (!file) {
+    pendingAvatarReferenceImage = null;
+    renderAvatarPhotoPreview();
+    return;
+  }
+  if (els.memberAvatarStatus) {
+    els.memberAvatarStatus.textContent = "本人写真を読み込み中...";
+    els.memberAvatarStatus.classList.remove("error");
+  }
+  try {
+    pendingAvatarReferenceImage = await compressAvatarReferencePhoto(file);
+    renderAvatarPhotoPreview();
+    if (els.memberAvatarStatus) {
+      els.memberAvatarStatus.textContent = "本人写真を参考画像として追加しました";
+    }
+  } catch (error) {
+    pendingAvatarReferenceImage = null;
+    renderAvatarPhotoPreview();
+    if (els.memberAvatarStatus) {
+      els.memberAvatarStatus.textContent = error.message || "本人写真を追加できませんでした";
+      els.memberAvatarStatus.classList.add("error");
+    }
+  }
+}
+
 async function generateMemberAvatar() {
   if (!els.generateMemberAvatarButton || !els.memberAvatarStatus) return;
   const previousText = els.generateMemberAvatarButton.textContent;
@@ -2493,7 +2570,10 @@ async function generateMemberAvatar() {
     const response = await fetch(getGenerateImageApiPath(), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt: buildMemberAvatarPrompt() }),
+      body: JSON.stringify({
+        prompt: buildMemberAvatarPrompt(),
+        referenceImageDataUrl: pendingAvatarReferenceImage?.dataUrl || "",
+      }),
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
@@ -3891,6 +3971,7 @@ els.memberForm.addEventListener("submit", saveMemberInfo);
   els.memberAvatarAura,
   els.memberAvatarPrompt,
 ].forEach((input) => input?.addEventListener("input", updateAvatarFromEditor));
+els.memberAvatarPhoto?.addEventListener("change", handleAvatarPhotoChange);
 els.generateMemberAvatarButton?.addEventListener("click", generateMemberAvatar);
 els.addPartyRoleButton?.addEventListener("click", addPartyRole);
 els.memberPartyRoleInput?.addEventListener("keydown", (event) => {

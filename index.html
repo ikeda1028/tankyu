@@ -87,6 +87,9 @@
                 </select>
                 <label for="member-avatar-prompt">テキスト指示</label>
                 <textarea id="member-avatar-prompt" rows="3" placeholder="例：丸くて水色。虫眼鏡を持った、やさしい探偵の相棒キャラ。"></textarea>
+                <label for="member-avatar-photo">本人写真から作る</label>
+                <input id="member-avatar-photo" type="file" accept="image/*" />
+                <div id="member-avatar-photo-preview" class="avatar-photo-preview hidden"></div>
                 <button id="generate-member-avatar-button" class="secondary-button" type="button">AIで生成</button>
                 <p id="member-avatar-status" class="member-save-status" aria-live="polite">最初はシンプルなキャラクターとして生成します。</p>
               </div>
