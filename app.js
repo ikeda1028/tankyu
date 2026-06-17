@@ -383,7 +383,7 @@ let googleMapsLoadPromise = null;
 let googleMapMarkers = [];
 let currentLocationMarker = null;
 let googleMapFocusToken = 0;
-let publicMapsAutoLoadStarted = false;
+let mapsAutoLoadKey = "";
 let eventLocationMap = null;
 let eventLocationMarker = null;
 let eventIndexEvaluateTimer = null;
@@ -1014,8 +1014,9 @@ function saveMapsKey() {
   state.maps = {
     ...(state.maps || {}),
     apiKey,
-    lastStatus: apiKey ? "キー保存済み / 地図表示を押してください" : "未設定",
+    lastStatus: apiKey ? "キー保存済み / 地図を自動読み込み中" : "未設定",
   };
+  mapsAutoLoadKey = "";
   saveState();
   renderMapsSettings();
 }
@@ -1024,21 +1025,21 @@ function renderMapsSettings() {
   if (!els.mapsApiKey || !els.mapsStatus) return;
   const source = getMapsKeySource();
   const publicKeyEnabled = source === "public";
+  const apiKey = getMapsKey();
   els.mapsApiKey.value = publicKeyEnabled ? "" : getMapsKey();
   els.mapsApiKey.placeholder = publicKeyEnabled ? "公開設定から読み込み中" : "ブラウザ内だけに保存";
   els.mapsApiKey.disabled = publicKeyEnabled;
   els.saveMapsKeyButton.disabled = publicKeyEnabled;
   if (isFilePage()) {
     els.mapsStatus.textContent = "file://ではGoogle Map不可 / HTTPで開くを押してください";
-  } else if (publicKeyEnabled) {
-    els.mapsStatus.textContent = state.maps?.lastStatus || "公開設定のキーを使用中";
-    if (!googleMap && !googleMapsLoadPromise && !publicMapsAutoLoadStarted) {
-      publicMapsAutoLoadStarted = true;
-      els.mapsStatus.textContent = "公開設定のキーを使用中 / 地図を自動読み込み中";
+  } else if (apiKey) {
+    const label = publicKeyEnabled ? "公開設定のキーを使用中" : "ブラウザ保存キーを使用中";
+    els.mapsStatus.textContent = googleMap ? "Google Map表示中" : state.maps?.lastStatus || `${label} / 地図を自動読み込み中`;
+    if (!googleMap && !googleMapsLoadPromise && mapsAutoLoadKey !== apiKey) {
+      mapsAutoLoadKey = apiKey;
+      els.mapsStatus.textContent = `${label} / 地図を自動読み込み中`;
       window.setTimeout(initializeGoogleMap, 0);
     }
-  } else if (source === "saved") {
-    els.mapsStatus.textContent = state.maps?.lastStatus || "ブラウザ保存キーを使用中";
   } else {
     els.mapsStatus.textContent = `公開設定未設定 / キーを入力してください / 許可URL ${getMapsReferrerHint()}`;
   }
@@ -1101,6 +1102,7 @@ async function initializeGoogleMap() {
     saveState();
   } catch (error) {
     els.mapCanvas.classList.remove("google-map-enabled");
+    mapsAutoLoadKey = "";
     setMapsStatus(error.message || getMapsTroubleshootingMessage("読み込みエラー"));
     saveState();
     console.error(error);
