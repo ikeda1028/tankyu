@@ -597,12 +597,15 @@ textarea {
 .member-summary {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-top: 10px;
+  gap: 8px;
+  min-height: 46px;
+  margin-top: 8px;
 }
 
 .member-summary strong {
-  font-size: 18px;
+  display: block;
+  font-size: 17px;
+  line-height: 1.2;
 }
 
 .member-summary span {
@@ -619,10 +622,10 @@ textarea {
   flex: 0 0 auto;
   overflow: hidden;
   place-items: center;
-  border: 2px solid rgba(255, 255, 255, 0.9);
+  border: 2px solid rgba(255, 255, 255, 0.95);
   border-radius: 50%;
   background: var(--avatar-bg, linear-gradient(140deg, var(--green), #17211b));
-  box-shadow: 0 10px 22px rgba(23, 33, 27, 0.18);
+  box-shadow: 0 8px 18px rgba(23, 33, 27, 0.16);
   color: #fff;
   font-weight: 900;
 }
@@ -635,9 +638,9 @@ textarea {
 }
 
 .member-avatar-summary {
-  width: 54px;
-  height: 54px;
-  font-size: 18px;
+  width: 42px;
+  height: 42px;
+  font-size: 15px;
 }
 
 .member-avatar-preview {
