@@ -149,6 +149,7 @@ const defaultState = {
     themePanel: "compact",
     memberEditing: false,
     editingEventId: "",
+    aiCandidateSource: null,
   },
   selectedReflection: "",
   streak: 0,
@@ -3567,10 +3568,17 @@ function renderAiSuggestions() {
           }
         </div>
         ${suggestion.verificationNote ? `<p class="ai-verification-note">${escapeHtml(suggestion.verificationNote)}</p>` : ""}
-        <button class="secondary-button" type="button" data-ai-index="${index}"${verified ? "" : " disabled"}>${verified ? "候補を登録" : "登録不可"}</button>
+        <div class="ai-suggestion-actions">
+          <button class="secondary-button" type="button" data-ai-edit-index="${index}"${verified ? "" : " disabled"}>${verified ? "編集して登録" : "編集不可"}</button>
+          <button class="secondary-button" type="button" data-ai-index="${index}"${verified ? "" : " disabled"}>${verified ? "そのまま登録" : "登録不可"}</button>
+        </div>
       </article>`;
     })
     .join("");
+
+  els.aiSuggestionList.querySelectorAll("[data-ai-edit-index]").forEach((button) => {
+    button.addEventListener("click", () => editAiSuggestion(button.dataset.aiEditIndex));
+  });
 
   els.aiSuggestionList.querySelectorAll("[data-ai-index]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -3926,6 +3934,7 @@ function addEventRecord(eventData) {
 
 function resetEventFormToCreate(status = "新規登録") {
   state.ui.editingEventId = "";
+  state.ui.aiCandidateSource = null;
   els.eventForm.reset();
   els.eventIndex.value = 78;
   els.eventColor.value = "#2f8f63";
@@ -3939,6 +3948,18 @@ function resetEventFormToCreate(status = "新規登録") {
   els.cancelEventEditButton?.classList.add("hidden");
   els.eventAdminStatus.textContent = status;
   saveState();
+}
+
+function getAiCandidateSourceFields(suggestion) {
+  return {
+    aiGenerated: true,
+    sourceUrl: normalizeExternalUrl(suggestion.sourceUrl),
+    sourceTitle: suggestion.sourceTitle || "",
+    sourceType: suggestion.sourceType || "",
+    verificationNote: suggestion.verificationNote || "",
+    verificationLevel: suggestion.verificationLevel || "",
+    verifiedAt: suggestion.verifiedAt || "",
+  };
 }
 
 function populateEventForm(eventData) {
@@ -3967,10 +3988,31 @@ function populateEventForm(eventData) {
   if (position) renderEventLocationMarker({ lat: Number(position.lat), lng: Number(position.lng) });
 }
 
+function editAiSuggestion(index) {
+  const suggestion = state.aiSuggestions[Number(index)];
+  if (!suggestion) return;
+  if (!isVerifiedAiSuggestion(suggestion)) {
+    els.aiSuggestionStatus.textContent = "厳格な実在確認ができていないAI候補は編集登録できません";
+    return;
+  }
+  const eventData = suggestionToEventData(suggestion, Number(index));
+  state.ui.editingEventId = "";
+  state.ui.aiCandidateSource = getAiCandidateSourceFields(suggestion);
+  populateEventForm(eventData);
+  if (els.eventSubmitButton) els.eventSubmitButton.textContent = "編集して登録";
+  els.cancelEventEditButton?.classList.remove("hidden");
+  els.eventAdminStatus.textContent = "AI候補を編集中";
+  els.eventIndexStatus.textContent = "AI候補をフォームに読み込みました。内容を確認して登録できます。";
+  saveState();
+  showMode("event-admin");
+  els.eventTitle.focus();
+}
+
 function startEditingEvent(eventId) {
   const eventData = state.customEvents.find((event) => event.id === eventId);
   if (!eventData) return;
   state.ui.editingEventId = eventData.id;
+  state.ui.aiCandidateSource = null;
   state.selected = eventData.id;
   populateEventForm(eventData);
   if (els.eventSubmitButton) els.eventSubmitButton.textContent = "変更を保存";
@@ -4084,6 +4126,7 @@ function registerEvent(event) {
     boost: { joy: 4, distance: 4, reflection: 3 },
     userCreated: true,
     createdAt: new Date().toISOString(),
+    ...(state.ui.aiCandidateSource || {}),
   };
 
   if (state.ui.editingEventId) {
