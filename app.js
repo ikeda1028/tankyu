@@ -275,6 +275,9 @@ const els = {
   authScreen: document.querySelector("#auth-screen"),
   loginForm: document.querySelector("#login-form"),
   memberForm: document.querySelector("#member-form"),
+  memberFormTitle: document.querySelector("#member-form-title"),
+  memberFormIntro: document.querySelector("#member-form-intro"),
+  memberSubmitButton: document.querySelector("#member-submit-button"),
   loginEmail: document.querySelector("#login-email"),
   loginPassword: document.querySelector("#login-password"),
   demoLoginButton: document.querySelector("#demo-login-button"),
@@ -2532,7 +2535,18 @@ function renderAuth() {
   els.authScreen.classList.toggle("hidden", state.auth.loggedIn && !showMember);
   els.loginForm.classList.toggle("hidden", state.auth.loggedIn);
   els.memberForm.classList.toggle("hidden", !showMember);
-  els.backLoginButton.textContent = state.auth.loggedIn ? "閉じる" : "ログインに戻る";
+  if (els.memberFormTitle) {
+    els.memberFormTitle.textContent = needsMember ? "冒険の準備をしよう" : "会員情報編集";
+  }
+  if (els.memberFormIntro) {
+    els.memberFormIntro.innerHTML = needsMember
+      ? `<strong>最初の相棒アバターを作ると、Wakuwaku Questが始まります。</strong><span>名前、最初のワクワク、冒険者タイプを入れて、あなたの探究の一歩目を登録しましょう。</span>`
+      : `<strong>冒険者プロフィールを更新できます。</strong><span>アバター、ワクワク、パーティー役割を変えると、成長画面にも反映されます。</span>`;
+  }
+  if (els.memberSubmitButton) {
+    els.memberSubmitButton.textContent = needsMember ? "冒険を始める" : "会員情報を保存";
+  }
+  els.backLoginButton.textContent = needsMember ? "ログインに戻る" : state.auth.loggedIn ? "閉じる" : "ログインに戻る";
 }
 
 function renderMemberSummary() {
@@ -2898,6 +2912,7 @@ function handleDemoLogin() {
 
 function saveMemberInfo(event) {
   event.preventDefault();
+  const isFirstMemberSetup = !state.member.name;
   const interestText = els.memberInterest.value.trim();
   state.member = {
     name: els.memberName.value.trim() || "中高生ユーザー",
@@ -2914,11 +2929,18 @@ function saveMemberInfo(event) {
     state.sparks.unshift({ text: interestText, source: "member-profile", at: new Date().toISOString() });
     state.sparks = state.sparks.slice(0, 20);
   }
-  addActivity(`${state.member.name}の会員情報を保存`);
+  addActivity(isFirstMemberSetup ? `${state.member.name}が冒険を開始` : `${state.member.name}の会員情報を保存`);
   state.ui.memberEditing = false;
   const saved = saveState();
   render();
-  setMemberStatus(saved ? "会員情報を保存しました" : "ブラウザ保存に失敗しました。ローカルサーバーで開き直してください。", !saved);
+  setMemberStatus(
+    saved
+      ? isFirstMemberSetup
+        ? "冒険を開始しました。最初の探究ポイントへ向かいましょう。"
+        : "会員情報を保存しました"
+      : "ブラウザ保存に失敗しました。ローカルサーバーで開き直してください。",
+    !saved
+  );
   if (getDriveUrl()) {
     postToDrive("users", memberToDriveRecord());
   }
@@ -4260,6 +4282,10 @@ els.memberPartyRoleInput?.addEventListener("keydown", (event) => {
 });
 els.backLoginButton.addEventListener("click", () => {
   if (state.auth.loggedIn) {
+    if (!state.member.name) {
+      logout();
+      return;
+    }
     state.ui.memberEditing = false;
     saveState();
     render();

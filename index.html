@@ -28,7 +28,8 @@
         </form>
 
         <form id="member-form" class="auth-form hidden">
-          <h2>会員情報入力</h2>
+          <h2 id="member-form-title">会員情報入力</h2>
+          <div id="member-form-intro" class="member-onboarding-copy"></div>
           <label for="member-name">名前</label>
           <input id="member-name" type="text" placeholder="山田 はる" required />
           <label for="member-school">学校名</label>
@@ -104,7 +105,7 @@
               <button id="add-party-role-button" class="secondary-button" type="button">追加</button>
             </div>
           </fieldset>
-          <button class="primary-button" type="submit">会員情報を保存</button>
+          <button id="member-submit-button" class="primary-button" type="submit">会員情報を保存</button>
           <p id="member-form-status" class="member-save-status" aria-live="polite"></p>
           <button id="back-login-button" class="secondary-button" type="button">ログインに戻る</button>
         </form>
