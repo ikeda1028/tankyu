@@ -675,6 +675,11 @@ textarea {
   gap: 6px;
 }
 
+.avatar-controls textarea {
+  min-height: 70px;
+  resize: vertical;
+}
+
 .avatar-controls .secondary-button {
   width: 100%;
   min-height: 38px;

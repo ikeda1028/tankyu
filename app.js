@@ -95,6 +95,7 @@ const defaultState = {
       symbol: "星",
       color: "#2f8f63",
       aura: "探究",
+      prompt: "",
       imageDataUrl: "",
       generatedAt: "",
       generationStage: "simple",
@@ -272,6 +273,7 @@ const els = {
   memberAvatarSymbol: document.querySelector("#member-avatar-symbol"),
   memberAvatarColor: document.querySelector("#member-avatar-color"),
   memberAvatarAura: document.querySelector("#member-avatar-aura"),
+  memberAvatarPrompt: document.querySelector("#member-avatar-prompt"),
   generateMemberAvatarButton: document.querySelector("#generate-member-avatar-button"),
   memberAvatarStatus: document.querySelector("#member-avatar-status"),
   memberPartyRoles: document.querySelector("#member-party-roles"),
@@ -388,6 +390,7 @@ function normalizeAvatar(avatar) {
     symbol: String(avatar?.symbol || fallback.symbol).trim().slice(0, 2) || fallback.symbol,
     color: /^#[0-9a-f]{6}$/i.test(color) ? color : fallback.color,
     aura: String(avatar?.aura || fallback.aura).trim().slice(0, 16) || fallback.aura,
+    prompt: String(avatar?.prompt || "").trim().slice(0, 220),
     imageDataUrl: imageDataUrl.startsWith("data:image/") ? imageDataUrl : "",
     generatedAt: String(avatar?.generatedAt || "").trim(),
     generationStage: String(avatar?.generationStage || fallback.generationStage || "simple").trim(),
@@ -2400,6 +2403,7 @@ function showMemberForm() {
   if (els.memberAvatarSymbol) els.memberAvatarSymbol.value = state.member.avatar.symbol;
   if (els.memberAvatarColor) els.memberAvatarColor.value = state.member.avatar.color;
   if (els.memberAvatarAura) els.memberAvatarAura.value = state.member.avatar.aura;
+  if (els.memberAvatarPrompt) els.memberAvatarPrompt.value = state.member.avatar.prompt;
   state.member.partyRoles = normalizePartyRoles(state.member.partyRoles);
   renderAvatarEditor();
   renderPartyRoleEditor();
@@ -2412,6 +2416,7 @@ function getAvatarFromEditor() {
     symbol: els.memberAvatarSymbol?.value,
     color: els.memberAvatarColor?.value,
     aura: els.memberAvatarAura?.value,
+    prompt: els.memberAvatarPrompt?.value,
     imageDataUrl: current.imageDataUrl,
     generatedAt: current.generatedAt,
     generationStage: current.generationStage,
@@ -2442,14 +2447,16 @@ function buildMemberAvatarPrompt() {
     `シンボル: ${avatar.symbol}`,
     `メインカラー: ${avatar.color}`,
     `オーラ: ${avatar.aura}`,
+    avatar.prompt ? `ユーザーのテキスト指示: ${avatar.prompt}` : "",
     `興味: ${firstInterest}`,
     `成長段階: ${stage}`,
     "最初の姿なので、形はシンプル。丸みがあり、親しみやすい小さなキャラクター。",
+    "ユーザーのテキスト指示がある場合は、その雰囲気、色、持ち物、性格を優先して反映する。",
     "全身が見える。背景は透明または白に近いシンプルな背景。",
     "武器や攻撃表現は入れない。学び、観察、発見、冒険の印象にする。",
     "文字、ロゴ、読める記号は入れない。",
     "安全で年齢に適した、明るいキャラクターデザイン。",
-  ].join("\n");
+  ].filter(Boolean).join("\n");
 }
 
 function compressGeneratedAvatarImage(dataUrl) {
@@ -2733,6 +2740,7 @@ function memberToDriveRecord() {
     avatar_symbol: normalizeAvatar(state.member.avatar).symbol,
     avatar_color: normalizeAvatar(state.member.avatar).color,
     avatar_aura: normalizeAvatar(state.member.avatar).aura,
+    avatar_prompt: normalizeAvatar(state.member.avatar).prompt,
     avatar_generated: Boolean(normalizeAvatar(state.member.avatar).imageDataUrl),
     avatar_generation_stage: normalizeAvatar(state.member.avatar).generationStage,
     party_roles: normalizePartyRoles(state.member.partyRoles).join(","),
@@ -3881,6 +3889,7 @@ els.memberForm.addEventListener("submit", saveMemberInfo);
   els.memberAvatarSymbol,
   els.memberAvatarColor,
   els.memberAvatarAura,
+  els.memberAvatarPrompt,
 ].forEach((input) => input?.addEventListener("input", updateAvatarFromEditor));
 els.generateMemberAvatarButton?.addEventListener("click", generateMemberAvatar);
 els.addPartyRoleButton?.addEventListener("click", addPartyRole);
