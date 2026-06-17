@@ -393,6 +393,10 @@ let eventIndexEvaluateTimer = null;
 let eventIndexEvaluateToken = 0;
 let lastEventIndexEvaluationKey = "";
 let pendingAvatarReferenceImage = null;
+let firebaseAutoSyncTimer = null;
+let firebaseAutoSyncRunning = false;
+let firebaseAutoSyncQueued = false;
+let firebaseAutoSyncReason = "";
 let pendingFieldPostImage = null;
 let pendingFieldPostLocation = null;
 
@@ -876,19 +880,20 @@ function applyFirebaseNumericFields(targetState, firebaseResult) {
   return applied;
 }
 
-async function syncFirebase() {
+async function syncFirebase(options = {}) {
+  const automatic = Boolean(options?.automatic);
   if (!window.WakuwakuFirebase) {
-    setFirebaseStatus("Firebase同期機能を読み込めません", true);
+    if (!automatic) setFirebaseStatus("Firebase同期機能を読み込めません", true);
     return;
   }
   const config = getFirebaseConfig();
   if (!window.WakuwakuFirebase.hasFirebaseConfig(config)) {
-    setFirebaseStatus("Firebase設定を入力してください", true);
+    if (!automatic) setFirebaseStatus("Firebase設定を入力してください", true);
     return;
   }
 
   try {
-    setFirebaseStatus("Firebase同期中...");
+    setFirebaseStatus(automatic ? "Firebase自動同期中..." : "Firebase同期中...");
     const result = await window.WakuwakuFirebase.saveSnapshot(config, state, createFirebaseSnapshot());
     if (Array.isArray(result.snapshot?.fieldPosts)) {
       state.fieldPosts = result.snapshot.fieldPosts;
@@ -897,12 +902,42 @@ async function syncFirebase() {
       state.member.avatar = normalizeAvatar(result.snapshot.member.avatar);
     }
     state.firebase.lastSyncAt = new Date().toISOString();
-    setFirebaseStatus(`Firestore保存完了: ${result.userId}`);
+    setFirebaseStatus(`${automatic ? "自動同期完了" : "Firestore保存完了"}: ${result.userId}`);
     saveState();
     renderFirebaseSettings();
   } catch (error) {
-    setFirebaseStatus("Firebase同期エラー。設定とFirestoreルールを確認してください", true);
+    setFirebaseStatus(`${automatic ? "Firebase自動同期" : "Firebase同期"}エラー。設定とFirestoreルールを確認してください`, true);
     console.error(error);
+  }
+}
+
+function queueFirebaseSync(reason = "更新") {
+  if (!hasFirebaseConfig()) return;
+  firebaseAutoSyncReason = reason;
+  if (firebaseAutoSyncTimer) {
+    window.clearTimeout(firebaseAutoSyncTimer);
+  }
+  firebaseAutoSyncTimer = window.setTimeout(runQueuedFirebaseSync, 900);
+}
+
+async function runQueuedFirebaseSync() {
+  if (firebaseAutoSyncRunning) {
+    firebaseAutoSyncQueued = true;
+    return;
+  }
+  firebaseAutoSyncTimer = null;
+  firebaseAutoSyncRunning = true;
+  firebaseAutoSyncQueued = false;
+  const reason = firebaseAutoSyncReason || "更新";
+  firebaseAutoSyncReason = "";
+  try {
+    await syncFirebase({ automatic: true, reason });
+  } finally {
+    firebaseAutoSyncRunning = false;
+    if (firebaseAutoSyncQueued || firebaseAutoSyncReason) {
+      firebaseAutoSyncQueued = false;
+      queueFirebaseSync(firebaseAutoSyncReason || reason);
+    }
   }
 }
 
@@ -2282,6 +2317,7 @@ function saveFieldPost() {
   if (getDriveUrl()) {
     postToDrive("field_posts", fieldPostToDriveRecord(post));
   }
+  queueFirebaseSync("現場投稿");
 }
 
 function renderGrowthPath() {
@@ -2944,6 +2980,7 @@ function saveMemberInfo(event) {
   if (getDriveUrl()) {
     postToDrive("users", memberToDriveRecord());
   }
+  queueFirebaseSync(isFirstMemberSetup ? "初回会員登録" : "会員情報更新");
 }
 
 function logout() {
@@ -3324,6 +3361,7 @@ async function startAdventure() {
   saveState();
   render();
   renderStats(delta);
+  queueFirebaseSync("探究開始");
 }
 
 function receiveThanks() {
@@ -3356,6 +3394,7 @@ function receiveThanks() {
   if (getDriveUrl()) {
     postToDrive("reflections", reflectionToDriveRecord(reflectionRecord));
   }
+  queueFirebaseSync("振り返り");
 }
 
 function saveMentorFeedback() {
@@ -3388,6 +3427,7 @@ function saveMentorFeedback() {
   if (getDriveUrl()) {
     postToDrive("feedbacks", feedbackToDriveRecord(feedbackRecord));
   }
+  queueFirebaseSync("フィードバック");
 }
 
 function saveQuickFeedback(template) {
@@ -3954,6 +3994,7 @@ function addEventRecord(eventData) {
   if (getDriveUrl()) {
     postToDrive("events", eventToDriveRecord(eventData));
   }
+  queueFirebaseSync("探究ポイント登録");
 }
 
 function resetEventFormToCreate(status = "新規登録") {
@@ -4075,6 +4116,7 @@ function deleteRegisteredEvent(eventId) {
   saveState();
   render();
   showMode("event-admin");
+  queueFirebaseSync("探究ポイント削除");
 }
 
 function registerAllAiSuggestions() {
@@ -4100,6 +4142,7 @@ function registerAllAiSuggestions() {
   saveState();
   render();
   showMode("event-admin");
+  if (added > 0) queueFirebaseSync("AI探究ポイント一括登録");
 }
 
 function registerEvent(event) {
@@ -4173,6 +4216,7 @@ function registerEvent(event) {
       if (getDriveUrl()) {
         postToDrive("events", eventToDriveRecord(state.customEvents[targetIndex]));
       }
+      queueFirebaseSync("探究ポイント更新");
       return;
     }
   }
