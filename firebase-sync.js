@@ -95,12 +95,47 @@ async function uploadFieldPostImages(firebase, userId, snapshot) {
   };
 }
 
+async function uploadMemberAvatar(firebase, userId, snapshot) {
+  const avatar = snapshot?.member?.avatar;
+  if (!avatar?.imageDataUrl) return snapshot;
+
+  const storagePath = `avatars/${userId}/avatar.jpg`;
+  const imageRef = firebase.storage.ref(firebase.storageBucket, storagePath);
+  const blob = dataUrlToBlob(avatar.imageDataUrl);
+  await firebase.storage.uploadBytes(imageRef, blob, {
+    contentType: blob.type || "image/jpeg",
+    customMetadata: {
+      userId,
+      generationStage: avatar.generationStage || "simple",
+      aura: avatar.aura || "",
+    },
+  });
+  const downloadUrl = await firebase.storage.getDownloadURL(imageRef);
+
+  return {
+    ...snapshot,
+    member: {
+      ...(snapshot.member || {}),
+      avatar: {
+        ...avatar,
+        imageDataUrl: "",
+        hasImage: true,
+        storagePath,
+        downloadUrl,
+        uploadedAt: new Date().toISOString(),
+      },
+    },
+  };
+}
+
 async function saveSnapshot(config, state, snapshot) {
   const firebase = await connectFirebase(config);
   const { firestore, db } = firebase;
   const userId = getFirebaseUserId(state);
   const ref = firestore.doc(db, FIREBASE_COLLECTION, userId);
-  const uploadedSnapshot = await uploadFieldPostImages(firebase, userId, snapshot);
+  const avatarSnapshot = await uploadMemberAvatar(firebase, userId, snapshot);
+  const uploadedSnapshot = await uploadFieldPostImages(firebase, userId, avatarSnapshot);
+  const avatar = uploadedSnapshot.member?.avatar || {};
   const stats = {
     quest: Number(state?.quest || 0),
     hp: Number(state?.quest || 0),
@@ -116,6 +151,18 @@ async function saveSnapshot(config, state, snapshot) {
       email: state?.auth?.email || "",
       displayName: state?.member?.name || "",
       stats,
+      avatar: {
+        symbol: avatar.symbol || "",
+        color: avatar.color || "",
+        aura: avatar.aura || "",
+        prompt: avatar.prompt || "",
+        hasImage: Boolean(avatar.downloadUrl || avatar.imageDataUrl),
+        storagePath: avatar.storagePath || "",
+        downloadUrl: avatar.downloadUrl || "",
+        generationStage: avatar.generationStage || "simple",
+        generatedAt: avatar.generatedAt || "",
+        uploadedAt: avatar.uploadedAt || "",
+      },
       snapshot: uploadedSnapshot,
       updatedAt: firestore.serverTimestamp(),
     },

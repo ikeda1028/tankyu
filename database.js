@@ -1,5 +1,5 @@
 const DB_NAME = "wakuwakuQuestDB";
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const USER_ID = "demo-student";
 
 const STORE_NAMES = [
@@ -11,6 +11,7 @@ const STORE_NAMES = [
   "reflections",
   "feedbacks",
   "fieldPosts",
+  "avatars",
   "meta",
 ];
 
@@ -43,6 +44,9 @@ function openDatabase() {
       }
       if (!db.objectStoreNames.contains("fieldPosts")) {
         db.createObjectStore("fieldPosts", { keyPath: "id" });
+      }
+      if (!db.objectStoreNames.contains("avatars")) {
+        db.createObjectStore("avatars", { keyPath: "id" });
       }
       if (!db.objectStoreNames.contains("meta")) {
         db.createObjectStore("meta", { keyPath: "key" });
@@ -123,6 +127,27 @@ function toProfile(state) {
   };
 }
 
+function toAvatarRecord(state) {
+  const avatar = state.member?.avatar || {};
+  return {
+    id: `${USER_ID}-avatar`,
+    userId: USER_ID,
+    displayName: state.member?.name || "",
+    heroRole: state.member?.heroRole || "",
+    symbol: avatar.symbol || "",
+    color: avatar.color || "",
+    aura: avatar.aura || "",
+    prompt: avatar.prompt || "",
+    imageDataUrl: avatar.imageDataUrl || "",
+    downloadUrl: avatar.downloadUrl || "",
+    storagePath: avatar.storagePath || "",
+    generatedAt: avatar.generatedAt || "",
+    generationStage: avatar.generationStage || "simple",
+    at: avatar.generatedAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+}
+
 function fromProfile(defaultState, profile) {
   return profile
     ? {
@@ -146,7 +171,7 @@ function fromProfile(defaultState, profile) {
 async function readState(db, defaultState) {
   const profileTx = db.transaction("profiles", "readonly");
   const profile = await requestToPromise(profileTx.objectStore("profiles").get(USER_ID));
-  const [events, sparks, activities, participations, reflections, feedbacks, fieldPosts] = await Promise.all([
+  const [events, sparks, activities, participations, reflections, feedbacks, fieldPosts, avatars] = await Promise.all([
     getAll(db, "events"),
     getAll(db, "sparks"),
     getAll(db, "activities"),
@@ -154,10 +179,30 @@ async function readState(db, defaultState) {
     getAll(db, "reflections"),
     getAll(db, "feedbacks"),
     getAll(db, "fieldPosts"),
+    getAll(db, "avatars"),
   ]);
+  const profileState = fromProfile(defaultState, profile);
+  const latestAvatar = avatars.sort(sortByAtDesc)[0];
+  if (latestAvatar) {
+    profileState.member = {
+      ...profileState.member,
+      avatar: {
+        ...(profileState.member?.avatar || {}),
+        symbol: latestAvatar.symbol,
+        color: latestAvatar.color,
+        aura: latestAvatar.aura,
+        prompt: latestAvatar.prompt,
+        imageDataUrl: latestAvatar.imageDataUrl,
+        downloadUrl: latestAvatar.downloadUrl,
+        storagePath: latestAvatar.storagePath,
+        generatedAt: latestAvatar.generatedAt,
+        generationStage: latestAvatar.generationStage,
+      },
+    };
+  }
 
   return {
-    ...fromProfile(defaultState, profile),
+    ...profileState,
     customEvents: events.filter((event) => event.userCreated).sort(sortByAtDesc),
     sparks: sparks.sort(sortByAtDesc),
     activity: activities.sort(sortByAtDesc),
@@ -207,6 +252,7 @@ async function writeState(db, state, events) {
     clearAndPut(db, "reflections", normalizeRecords(state.reflections, "reflection")),
     clearAndPut(db, "feedbacks", normalizeRecords(state.feedbacks, "feedback")),
     clearAndPut(db, "fieldPosts", normalizeRecords(state.fieldPosts || [], "field-post")),
+    clearAndPut(db, "avatars", [toAvatarRecord(state)]),
   ]);
 }
 

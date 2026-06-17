@@ -406,6 +406,8 @@ function normalizeAvatar(avatar) {
     aura: String(avatar?.aura || fallback.aura).trim().slice(0, 16) || fallback.aura,
     prompt: String(avatar?.prompt || "").trim().slice(0, 220),
     imageDataUrl: imageDataUrl.startsWith("data:image/") ? imageDataUrl : "",
+    downloadUrl: normalizeExternalUrl(avatar?.downloadUrl),
+    storagePath: String(avatar?.storagePath || "").trim(),
     generatedAt: String(avatar?.generatedAt || "").trim(),
     generationStage: String(avatar?.generationStage || fallback.generationStage || "simple").trim(),
   };
@@ -882,6 +884,9 @@ async function syncFirebase() {
     const result = await window.WakuwakuFirebase.saveSnapshot(config, state, createFirebaseSnapshot());
     if (Array.isArray(result.snapshot?.fieldPosts)) {
       state.fieldPosts = result.snapshot.fieldPosts;
+    }
+    if (result.snapshot?.member?.avatar) {
+      state.member.avatar = normalizeAvatar(result.snapshot.member.avatar);
     }
     state.firebase.lastSyncAt = new Date().toISOString();
     setFirebaseStatus(`Firestore保存完了: ${result.userId}`);
@@ -2495,8 +2500,9 @@ function renderMemberSummary() {
 
 function renderAvatarElement(element, avatar) {
   if (!element) return;
-  element.innerHTML = avatar.imageDataUrl
-    ? `<img src="${escapeHtml(avatar.imageDataUrl)}" alt="${escapeHtml(avatar.aura)}オーラのアバター" />`
+  const imageSrc = avatar.imageDataUrl || avatar.downloadUrl || "";
+  element.innerHTML = imageSrc
+    ? `<img src="${escapeHtml(imageSrc)}" alt="${escapeHtml(avatar.aura)}オーラのアバター" />`
     : escapeHtml(avatar.symbol);
   element.style.setProperty("--avatar-bg", getAvatarGradient(avatar.color));
   element.style.setProperty("--avatar-color", avatar.color);
@@ -2576,6 +2582,8 @@ function getAvatarFromEditor() {
     aura: els.memberAvatarAura?.value,
     prompt: els.memberAvatarPrompt?.value,
     imageDataUrl: current.imageDataUrl,
+    downloadUrl: current.downloadUrl,
+    storagePath: current.storagePath,
     generatedAt: current.generatedAt,
     generationStage: current.generationStage,
   });
@@ -2901,6 +2909,7 @@ async function renderDatabaseStatus() {
         ["reflections", state.reflections.length],
         ["feedbacks", state.feedbacks.length],
         ["field", state.fieldPosts.length],
+        ["avatars", state.member?.avatar ? 1 : 0],
       ]
         .map(([label, count]) => `<div><span>${label}</span><strong>${count}</strong></div>`)
         .join("");
@@ -2918,6 +2927,7 @@ async function renderDatabaseStatus() {
     ["explore", counts.reflections || 0],
     ["feedback", counts.feedbacks || 0],
     ["field", counts.fieldPosts || 0],
+    ["avatars", counts.avatars || 0],
   ]
     .map(([label, count]) => `<div><span>${label}</span><strong>${count}</strong></div>`)
     .join("");
@@ -2977,6 +2987,8 @@ function memberToDriveRecord() {
     avatar_aura: normalizeAvatar(state.member.avatar).aura,
     avatar_prompt: normalizeAvatar(state.member.avatar).prompt,
     avatar_generated: Boolean(normalizeAvatar(state.member.avatar).imageDataUrl),
+    avatar_download_url: normalizeAvatar(state.member.avatar).downloadUrl,
+    avatar_storage_path: normalizeAvatar(state.member.avatar).storagePath,
     avatar_generation_stage: normalizeAvatar(state.member.avatar).generationStage,
     party_roles: normalizePartyRoles(state.member.partyRoles).join(","),
     school: state.member.school,
