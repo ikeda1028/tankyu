@@ -898,23 +898,32 @@ async function syncFirebase() {
   }
 }
 
-async function loadFirebaseSnapshot() {
+function hasLocalAvatarImage() {
+  const avatar = normalizeAvatar(state.member?.avatar);
+  return Boolean(avatar.imageDataUrl || avatar.downloadUrl);
+}
+
+function shouldAutoLoadFirebaseSnapshot() {
+  return hasFirebaseConfig() && !hasLocalAvatarImage() && !state.fieldPosts.length && !state.reflections.length;
+}
+
+async function loadFirebaseSnapshot(options = {}) {
   if (!window.WakuwakuFirebase) {
-    setFirebaseStatus("Firebase同期機能を読み込めません", true);
+    if (!options.silent) setFirebaseStatus("Firebase同期機能を読み込めません", true);
     return;
   }
   const config = getFirebaseConfig();
   if (!window.WakuwakuFirebase.hasFirebaseConfig(config)) {
-    setFirebaseStatus("Firebase設定を入力してください", true);
+    if (!options.silent) setFirebaseStatus("Firebase設定を入力してください", true);
     return;
   }
 
   try {
-    setFirebaseStatus("Firebase読込中...");
+    setFirebaseStatus(options.silent ? "Firebase自動読込中..." : "Firebase読込中...");
     const savedConfig = state.firebase;
     const result = await window.WakuwakuFirebase.loadSnapshot(config, state);
     if (!result?.snapshot && !result?.stats) {
-      setFirebaseStatus("Firebaseに保存データまたは数値がありません", true);
+      if (!options.silent) setFirebaseStatus("Firebaseに保存データまたは数値がありません", true);
       return;
     }
     const loadedSnapshot = result.snapshot ? { ...defaultState, ...result.snapshot } : { ...state };
@@ -2757,6 +2766,11 @@ async function generateMemberAvatar() {
     renderStats();
     els.memberAvatarStatus.textContent = `${data.model || "gpt-image-2"}で初期アバターを生成しました`;
     addActivity("AIで自分の初期アバターを生成");
+    if (hasFirebaseConfig()) {
+      els.memberAvatarStatus.textContent = "アバターをFirebaseへ保存中...";
+      await syncFirebase();
+      els.memberAvatarStatus.textContent = "アバターをFirebaseへ保存しました";
+    }
   } catch (error) {
     const localHint =
       location.hostname === "127.0.0.1" || location.hostname === "localhost"
@@ -2894,6 +2908,9 @@ async function initDatabase() {
     dbReady = true;
     els.dbStatus.textContent = "接続中";
     render();
+    if (shouldAutoLoadFirebaseSnapshot()) {
+      await loadFirebaseSnapshot({ silent: true });
+    }
   } catch (error) {
     els.dbStatus.textContent = "DBエラー";
     console.error(error);
