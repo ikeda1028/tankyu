@@ -3524,7 +3524,13 @@ function suggestionToEventData(suggestion, index = 0) {
 }
 
 function isVerifiedAiSuggestion(suggestion) {
-  return Boolean(normalizeExternalUrl(suggestion?.sourceUrl));
+  const sourceUrl = normalizeExternalUrl(suggestion?.sourceUrl);
+  const sourceType = String(suggestion?.sourceType || "");
+  const verificationLevel = String(suggestion?.verificationLevel || "");
+  const hasEvidence = Boolean(String(suggestion?.sourceTitle || "").trim() && String(suggestion?.verificationNote || "").trim());
+  const sourceTypeOk = ["official", "venue", "municipality"].includes(sourceType) || (sourceType === "maps" && suggestion?.eventType !== "limited");
+  if (!sourceUrl || !hasEvidence || !sourceTypeOk) return false;
+  return verificationLevel === "strict";
 }
 
 function renderAiSuggestions() {
@@ -3553,7 +3559,7 @@ function renderAiSuggestions() {
         <em>${escapeHtml(suggestion.explorationIndex || 76)}</em>
         <p>${escapeHtml(suggestion.reason || suggestion.description || "現在のワクワクから一歩先へ広げる候補です。")}</p>
         <div class="ai-source-row">
-          <span class="${verified ? "verified-source" : "unverified-source"}">${verified ? "実在確認済み" : "出典未確認"}</span>
+          <span class="${verified ? "verified-source" : "unverified-source"}">${verified ? "厳格確認済み" : "厳格確認未完了"}</span>
           ${
             sourceUrl
               ? `<a href="${escapeHtml(sourceUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(suggestion.sourceTitle || "出典を開く")}</a>`
@@ -3571,7 +3577,7 @@ function renderAiSuggestions() {
       const suggestion = state.aiSuggestions[Number(button.dataset.aiIndex)];
       if (!suggestion) return;
       if (!isVerifiedAiSuggestion(suggestion)) {
-        els.aiSuggestionStatus.textContent = "出典URLのないAI候補は登録できません";
+        els.aiSuggestionStatus.textContent = "厳格な実在確認ができていないAI候補は登録できません";
         return;
       }
       addEventRecord(suggestionToEventData(suggestion, Number(button.dataset.aiIndex)));
@@ -3624,6 +3630,9 @@ async function searchAiEventSuggestions() {
     addActivity(`AI探究ポイントを${state.aiSuggestions.length}件生成`);
     saveState();
     renderAiSuggestions();
+    if (!state.aiSuggestions.length) {
+      els.aiSuggestionStatus.textContent = "厳格な実在確認を通過した候補がありません。検索ワードや地域を少し具体的にしてください。";
+    }
   } catch (error) {
     const localHint =
       location.hostname === "127.0.0.1" || location.hostname === "localhost"

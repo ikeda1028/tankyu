@@ -33,6 +33,65 @@ function normalizeUrl(value) {
   return /^https?:\/\//i.test(url) ? url : "";
 }
 
+function getHostname(url) {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "").toLowerCase();
+  } catch {
+    return "";
+  }
+}
+
+function tokenizeForEvidence(...values) {
+  const stopWords = new Set([
+    "イベント",
+    "探究",
+    "ポイント",
+    "体験",
+    "講座",
+    "ワークショップ",
+    "ツアー",
+    "展示",
+    "施設",
+    "会場",
+    "公園",
+    "日本",
+  ]);
+  return values
+    .join(" ")
+    .replace(/[「」『』【】（）()[\]、。・/／,.:：\-_]/g, " ")
+    .split(/\s+/)
+    .map((word) => word.trim())
+    .filter((word) => word.length >= 2 && !stopWords.has(word))
+    .slice(0, 16);
+}
+
+function hasEvidenceToken(event) {
+  const tokens = tokenizeForEvidence(event.title, event.locationName);
+  if (!tokens.length) return false;
+  const evidenceText = `${event.sourceTitle || ""} ${event.verificationNote || ""} ${event.sourceUrl || ""}`.toLowerCase();
+  return tokens.some((token) => evidenceText.includes(token.toLowerCase()));
+}
+
+function isWeakSourceUrl(url) {
+  const hostname = getHostname(url);
+  if (!hostname) return true;
+  return [
+    "google.com/search",
+    "bing.com",
+    "yahoo.co.jp",
+    "duckduckgo.com",
+    "chatgpt.com",
+  ].some((blocked) => `${hostname}${new URL(url).pathname}`.includes(blocked));
+}
+
+function isAllowedSourceType(event) {
+  if (["official", "venue", "municipality"].includes(event.sourceType)) return true;
+  if (event.sourceType === "maps") {
+    return event.eventType === "permanent" && Number.isFinite(event.lat) && Number.isFinite(event.lng);
+  }
+  return false;
+}
+
 function normalizeEvent(event, index) {
   const eventType = event.eventType === "limited" ? "limited" : "permanent";
   const lat = Number(event.lat);
@@ -63,13 +122,64 @@ function normalizeEvent(event, index) {
       ? event.sourceType
       : "other",
     verificationNote: normalizeText(event.verificationNote, "Web検索で実在確認").slice(0, 140),
+    verifiedAt: "",
+    verificationLevel: "unverified",
   };
 }
 
-function isVerifiedRealEvent(event) {
+function isStructurallyVerifiedRealEvent(event) {
   if (!event.sourceUrl) return false;
   if (!event.title || !event.locationName) return false;
+  if (isWeakSourceUrl(event.sourceUrl)) return false;
+  if (!isAllowedSourceType(event)) return false;
+  if (!event.sourceTitle || event.sourceTitle === "実在確認ページ") return false;
+  if (!event.verificationNote || event.verificationNote === "Web検索で実在確認") return false;
+  if (!hasEvidenceToken(event)) return false;
+  if (event.eventType === "limited" && !event.startDate && !event.endDate) return false;
   return true;
+}
+
+async function verifySourceReachable(event) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 4500);
+  try {
+    const response = await fetch(event.sourceUrl, {
+      method: "GET",
+      redirect: "follow",
+      signal: controller.signal,
+      headers: {
+        "User-Agent": "WakuwakuQuestBot/1.0; real-event-verification",
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      },
+    });
+    if (!response.ok) return null;
+    const contentType = response.headers.get("content-type") || "";
+    let matchedEvidence = false;
+    if (contentType.includes("text/html") || contentType.includes("text/plain") || contentType.includes("application/xhtml")) {
+      const text = (await response.text()).slice(0, 90000).toLowerCase();
+      const tokens = tokenizeForEvidence(event.title, event.locationName);
+      matchedEvidence = tokens.some((token) => text.includes(token.toLowerCase()));
+    } else {
+      matchedEvidence = event.sourceType === "maps";
+    }
+    if (!matchedEvidence && event.sourceType !== "maps") return null;
+    return {
+      ...event,
+      verifiedAt: new Date().toISOString(),
+      verificationLevel: "strict",
+      verificationNote: `${event.verificationNote} / URL到達とページ内容を確認`,
+    };
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function strictlyVerifyEvents(events, count) {
+  const structurallyVerified = events.filter(isStructurallyVerifiedRealEvent).slice(0, Math.max(count * 2, count));
+  const verified = await Promise.all(structurallyVerified.map(verifySourceReachable));
+  return verified.filter(Boolean).slice(0, count);
 }
 
 function extractOutputText(responseJson) {
@@ -140,7 +250,7 @@ export default async function handler(request, response) {
       body: JSON.stringify({
         model: process.env.OPENAI_MODEL || DEFAULT_MODEL,
         instructions:
-          "あなたは中高生向け探究ポイントの推薦プランナーです。必ずWeb検索を使い、実在確認できるイベント、施設、展示、博物館、科学館、公共スポット、自治体・大学・NPO等の公式情報に基づく候補だけを返します。架空のイベント名、存在確認できない開催日、推測だけの会場は絶対に含めません。安全で年齢に適した内容にし、返答はJSONだけにしてください。",
+          "あなたは中高生向け探究ポイントの推薦プランナーです。必ずWeb検索を使い、実在確認できるイベント、施設、展示、博物館、科学館、公共スポット、自治体・大学・NPO等の公式情報に基づく候補だけを返します。架空のイベント名、存在確認できない開催日、推測だけの会場は絶対に含めません。検索結果ページやまとめ記事だけを根拠にせず、公式サイト、会場、自治体、大学、NPO、施設ページを優先します。安全で年齢に適した内容にし、返答はJSONだけにしてください。",
         tools: [
           {
             type: "web_search",
@@ -170,6 +280,9 @@ export default async function handler(request, response) {
 - 常設スポットは、公式サイト・自治体・大学・施設ページ・Google Maps等で存在が確認できる場所だけにする
 - 各候補に sourceUrl を必ず入れる。公式ページ、施設ページ、自治体ページ、大学ページ、NPOページ、またはGoogle Mapsで確認できるURLにする
 - sourceUrl が見つからない候補は返さない
+- Google検索結果、SNS投稿、ブログ、まとめサイトだけを出典にしない
+- 期間限定イベントはGoogle Mapsだけを出典にしない。公式・会場・自治体等の開催ページで日付確認できるものだけにする
+- sourceTitle と verificationNote には、候補名または会場名が確認できる根拠を具体的に書く
 - locationName は実在する施設名・会場名・住所にする
 - 緯度経度は確認できる範囲で入れる。推測しかできない場合はnullでもよいが、sourceUrlは必須
 - 既存イベントと重複しない
@@ -227,10 +340,10 @@ ${JSON.stringify(payload, null, 2)}`,
     }
 
     const parsed = parseJsonObject(extractOutputText(responseJson));
-    const events = (Array.isArray(parsed.events) ? parsed.events : [])
+    const normalizedEvents = (Array.isArray(parsed.events) ? parsed.events : [])
       .map(normalizeEvent)
-      .filter(isVerifiedRealEvent)
-      .slice(0, count);
+      .filter(isStructurallyVerifiedRealEvent);
+    const events = await strictlyVerifyEvents(normalizedEvents, count);
     response.status(200).json({ events });
   } catch (error) {
     response.status(500).json({ error: error.message || "AI候補を生成できませんでした" });
