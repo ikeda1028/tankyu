@@ -230,43 +230,6 @@
           <ol id="activity-log" class="activity-log"></ol>
         </section>
 
-        <section class="panel database-panel">
-          <div class="section-head">
-            <h2>データベース</h2>
-            <span id="db-status" class="small-badge">準備中</span>
-          </div>
-          <div id="db-counts" class="db-counts"></div>
-          <button id="export-db-button" class="secondary-button db-button" type="button">DBを書き出す</button>
-          <div class="drive-sync-box">
-            <label for="drive-api-url">Google Drive API URL</label>
-            <input id="drive-api-url" type="url" placeholder="Apps ScriptのWebアプリURL" />
-            <div class="drive-sync-actions">
-              <button id="save-drive-url-button" class="secondary-button" type="button">URL保存</button>
-              <button id="sync-drive-button" class="primary-button" type="button">Drive同期</button>
-            </div>
-            <p id="drive-sync-status" class="drive-sync-status">未設定</p>
-          </div>
-          <div class="drive-sync-box maps-api-box">
-            <label for="maps-api-key">Google Maps APIキー</label>
-            <input id="maps-api-key" type="password" autocomplete="off" placeholder="ブラウザ内だけに保存" />
-            <div class="drive-sync-actions">
-              <button id="save-maps-key-button" class="secondary-button" type="button">キー保存</button>
-              <button id="load-maps-button" class="primary-button" type="button">地図表示</button>
-            </div>
-            <a class="map-http-link" href="http://127.0.0.1:4173/">HTTPで開く</a>
-            <p id="maps-status" class="drive-sync-status">未設定</p>
-          </div>
-          <div class="drive-sync-box firebase-sync-box">
-            <label for="firebase-config">Firebase設定</label>
-            <textarea id="firebase-config" rows="5" placeholder='{"apiKey":"...","authDomain":"...","projectId":"...","appId":"..."}'></textarea>
-            <div class="drive-sync-actions">
-              <button id="save-firebase-config-button" class="secondary-button" type="button">設定保存</button>
-              <button id="sync-firebase-button" class="primary-button" type="button">Firebase同期</button>
-            </div>
-            <button id="load-firebase-button" class="secondary-button db-button" type="button">Firebaseから読込</button>
-            <p id="firebase-status" class="drive-sync-status">未設定</p>
-          </div>
-        </section>
       </aside>
 
       <section class="map-area" aria-label="探索マップ">
@@ -281,6 +244,7 @@
             <button type="button" data-mode="event-admin" onclick="window.setQuestMode && window.setQuestMode('event-admin')">探究ポイント登録</button>
             <button type="button" data-mode="feedback" onclick="window.setQuestMode && window.setQuestMode('feedback')">フィードバック</button>
             <button type="button" data-mode="capital" onclick="window.setQuestMode && window.setQuestMode('capital')">成長</button>
+            <button type="button" data-mode="settings" onclick="window.setQuestMode && window.setQuestMode('settings')">設定</button>
           </div>
         </header>
 
@@ -662,6 +626,56 @@
                 <ul id="hero-next-evolution" class="hero-next-evolution"></ul>
               </section>
             </aside>
+          </div>
+        </section>
+
+        <section class="settings-view hidden" aria-label="設定">
+          <div class="settings-shell">
+            <section class="settings-main">
+              <div class="section-head">
+                <div>
+                  <p class="eyebrow">アプリ設定</p>
+                  <h2>データベース・API設定</h2>
+                </div>
+                <span id="db-status" class="small-badge">準備中</span>
+              </div>
+              <div id="db-counts" class="db-counts settings-counts"></div>
+              <button id="export-db-button" class="secondary-button db-button" type="button">DBを書き出す</button>
+
+              <div class="settings-grid">
+                <section class="drive-sync-box">
+                  <label for="drive-api-url">Google Drive API URL</label>
+                  <input id="drive-api-url" type="url" placeholder="Apps ScriptのWebアプリURL" />
+                  <div class="drive-sync-actions">
+                    <button id="save-drive-url-button" class="secondary-button" type="button">URL保存</button>
+                    <button id="sync-drive-button" class="primary-button" type="button">Drive同期</button>
+                  </div>
+                  <p id="drive-sync-status" class="drive-sync-status">未設定</p>
+                </section>
+
+                <section class="drive-sync-box maps-api-box">
+                  <label for="maps-api-key">Google Maps APIキー</label>
+                  <input id="maps-api-key" type="password" autocomplete="off" placeholder="ブラウザ内だけに保存" />
+                  <div class="drive-sync-actions">
+                    <button id="save-maps-key-button" class="secondary-button" type="button">キー保存</button>
+                    <button id="load-maps-button" class="primary-button" type="button">地図表示</button>
+                  </div>
+                  <a class="map-http-link" href="http://127.0.0.1:4173/">HTTPで開く</a>
+                  <p id="maps-status" class="drive-sync-status">未設定</p>
+                </section>
+
+                <section class="drive-sync-box firebase-sync-box">
+                  <label for="firebase-config">Firebase設定</label>
+                  <textarea id="firebase-config" rows="5" placeholder='{"apiKey":"...","authDomain":"...","projectId":"...","appId":"..."}'></textarea>
+                  <div class="drive-sync-actions">
+                    <button id="save-firebase-config-button" class="secondary-button" type="button">設定保存</button>
+                    <button id="sync-firebase-button" class="primary-button" type="button">Firebase同期</button>
+                  </div>
+                  <button id="load-firebase-button" class="secondary-button db-button" type="button">Firebaseから読込</button>
+                  <p id="firebase-status" class="drive-sync-status">未設定</p>
+                </section>
+              </div>
+            </section>
           </div>
         </section>
 

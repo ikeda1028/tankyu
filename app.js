@@ -217,6 +217,7 @@ const els = {
   fieldPostList: document.querySelector("#field-post-list"),
   questViews: document.querySelectorAll(".quest-view"),
   heroGrowthView: document.querySelector(".hero-growth-view"),
+  settingsView: document.querySelector(".settings-view"),
   heroGrowthTitle: document.querySelector("#hero-growth-title"),
   heroGrowthDimension: document.querySelector("#hero-growth-dimension"),
   heroLargeAvatar: document.querySelector("#hero-large-avatar"),
@@ -3389,10 +3390,12 @@ function showMode(mode) {
   const feedback = mode === "feedback";
   const eventAdmin = mode === "event-admin";
   const capital = mode === "capital";
-  els.questViews.forEach((view) => view.classList.toggle("hidden", feedback || eventAdmin || capital));
+  const settings = mode === "settings";
+  els.questViews.forEach((view) => view.classList.toggle("hidden", feedback || eventAdmin || capital || settings));
   els.feedbackView.classList.toggle("hidden", !feedback);
   els.eventAdminView.classList.toggle("hidden", !eventAdmin);
   els.heroGrowthView?.classList.toggle("hidden", !capital);
+  els.settingsView?.classList.toggle("hidden", !settings);
   document.querySelectorAll(".mode-tabs button").forEach((item) => {
     item.classList.toggle("active", item.dataset.mode === mode);
   });
