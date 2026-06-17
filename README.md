@@ -74,6 +74,14 @@ Vercelの環境変数に以下を設定します。
 - `FIREBASE_MESSAGING_SENDER_ID`: Firebase Webアプリ設定の messagingSenderId
 - `FIREBASE_APP_ID`: Firebase Webアプリ設定の appId
 
+Firebaseは個別の `FIREBASE_*` の代わりに、Firebase ConsoleのWeb設定JSONを1行にして `FIREBASE_CONFIG_JSON` に入れても動作します。
+
+```text
+FIREBASE_CONFIG_JSON={"apiKey":"...","authDomain":"...","projectId":"...","storageBucket":"...","messagingSenderId":"...","appId":"..."}
+```
+
+公開版でこれらをVercelに設定して再デプロイすると、利用者は画面でGoogle Maps APIキー、Firebase設定、Google Drive API URLを毎回入力しなくて済みます。OpenAI APIキーはサーバー側APIだけで使われ、ブラウザには配信されません。
+
 Vercelで発行されたURLをGoogle Cloud ConsoleのAPIキー制限に追加してください。
 
 例:

@@ -710,6 +710,10 @@ function getDriveUrl() {
   return (getPublicConfig().driveApiUrl || state.driveSync?.apiUrl || "").trim();
 }
 
+function hasPublicDriveUrl() {
+  return Boolean(getPublicConfig().driveApiUrl);
+}
+
 function setDriveStatus(message) {
   state.driveSync = {
     ...(state.driveSync || {}),
@@ -733,8 +737,12 @@ function saveDriveUrl() {
 
 function renderDriveSync() {
   if (!els.driveApiUrl || !els.driveSyncStatus) return;
-  els.driveApiUrl.value = getDriveUrl();
-  const status = state.driveSync?.lastStatus || (getDriveUrl() ? "URL保存済み" : "未設定");
+  const publicEnabled = hasPublicDriveUrl();
+  els.driveApiUrl.disabled = publicEnabled;
+  els.saveDriveUrlButton.disabled = publicEnabled;
+  els.driveApiUrl.value = publicEnabled ? "" : getDriveUrl();
+  els.driveApiUrl.placeholder = publicEnabled ? "公開設定から読み込み中" : "Apps ScriptのWebアプリURL";
+  const status = state.driveSync?.lastStatus || (getDriveUrl() ? (publicEnabled ? "公開設定のDrive APIを使用中" : "URL保存済み") : "未設定");
   const lastSync = state.driveSync?.lastSyncAt ? ` / 最終 ${formatTime(new Date(state.driveSync.lastSyncAt))}` : "";
   els.driveSyncStatus.textContent = `${status}${lastSync}`;
 }
