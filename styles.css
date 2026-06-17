@@ -1127,7 +1127,7 @@ textarea {
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 10px 12px;
-  width: min(340px, calc(100% - 36px));
+  width: min(320px, calc(100% - 36px));
   max-height: min(48vh, 420px);
   padding: 12px;
   overflow-y: auto;
@@ -1137,12 +1137,72 @@ textarea {
   box-shadow: 0 10px 32px rgba(30, 48, 36, 0.08);
 }
 
+.theme-panel-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
 .theme-evaluation h2 {
   overflow: hidden;
   max-width: 260px;
   font-size: 16px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.theme-evaluation.compact {
+  width: min(250px, calc(100% - 36px));
+  max-height: 260px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.theme-evaluation.compact .theme-overview {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.theme-evaluation.compact .theme-keywords,
+.theme-evaluation.compact .theme-places {
+  display: none;
+}
+
+.theme-evaluation.compact .theme-bases {
+  gap: 6px;
+}
+
+.theme-evaluation.compact .theme-bases button {
+  grid-template-columns: 22px minmax(0, 1fr);
+  padding: 6px;
+}
+
+.theme-evaluation.compact .theme-bases em,
+.theme-evaluation.compact .theme-bases small {
+  display: none;
+}
+
+.theme-evaluation.collapsed {
+  width: min(250px, calc(100% - 36px));
+  max-height: 68px;
+  overflow: hidden;
+  padding: 9px 10px;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.theme-evaluation.collapsed > strong {
+  width: 34px;
+  height: 34px;
+  font-size: 15px;
+}
+
+.theme-evaluation.collapsed .theme-overview,
+.theme-evaluation.collapsed .theme-keywords,
+.theme-evaluation.collapsed .theme-places,
+.theme-evaluation.collapsed .theme-bases {
+  display: none;
 }
 
 .theme-evaluation > strong {

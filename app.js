@@ -146,6 +146,7 @@ const defaultState = {
     eventsPanel: "compact",
     encounterPanel: "open",
     fieldPostPanel: "open",
+    themePanel: "compact",
     memberEditing: false,
     editingEventId: "",
   },
@@ -261,6 +262,8 @@ const els = {
   centerSearchButton: document.querySelector("#center-search-button"),
   currentLocationButton: document.querySelector("#current-location-button"),
   themeEvaluationPanel: document.querySelector("#theme-evaluation-panel"),
+  compactThemeButton: document.querySelector("#compact-theme-button"),
+  collapseThemeButton: document.querySelector("#collapse-theme-button"),
   themeEvaluationTitle: document.querySelector("#theme-evaluation-title"),
   themeEvaluationScore: document.querySelector("#theme-evaluation-score"),
   themeOverview: document.querySelector("#theme-overview"),
@@ -1839,8 +1842,30 @@ function renderFieldPostPanelState() {
   }
 }
 
+function renderThemePanelState() {
+  if (!els.themeEvaluationPanel) return;
+  const mode = state.ui?.themePanel || "compact";
+  els.themeEvaluationPanel.classList.toggle("compact", mode === "compact");
+  els.themeEvaluationPanel.classList.toggle("collapsed", mode === "collapsed");
+  if (els.compactThemeButton) {
+    els.compactThemeButton.textContent = mode === "compact" ? "□" : "▣";
+    els.compactThemeButton.setAttribute(
+      "aria-label",
+      mode === "compact" ? "探究テーマ評価を通常表示" : "探究テーマ評価を小さく表示"
+    );
+  }
+  if (els.collapseThemeButton) {
+    els.collapseThemeButton.textContent = mode === "collapsed" ? "+" : "−";
+    els.collapseThemeButton.setAttribute(
+      "aria-label",
+      mode === "collapsed" ? "探究テーマ評価を開く" : "探究テーマ評価を折りたたむ"
+    );
+  }
+}
+
 function renderThemeEvaluation() {
   if (!els.themeEvaluationPanel) return;
+  renderThemePanelState();
   const query = state.themeSearch?.query?.trim();
   if (els.mapSearch && document.activeElement !== els.mapSearch) {
     els.mapSearch.value = query || "";
@@ -1985,6 +2010,18 @@ function toggleCollapseEncounter() {
   state.ui.encounterPanel = state.ui.encounterPanel === "collapsed" ? "compact" : "collapsed";
   saveState();
   renderEncounterPanelState();
+}
+
+function toggleCompactTheme() {
+  state.ui.themePanel = state.ui.themePanel === "compact" ? "open" : "compact";
+  saveState();
+  renderThemePanelState();
+}
+
+function toggleCollapseTheme() {
+  state.ui.themePanel = state.ui.themePanel === "collapsed" ? "compact" : "collapsed";
+  saveState();
+  renderThemePanelState();
 }
 
 function toggleCompactFieldPost() {
@@ -4206,6 +4243,8 @@ els.saveMapsKeyButton.addEventListener("click", saveMapsKey);
 els.loadMapsButton.addEventListener("click", initializeGoogleMap);
 els.centerSearchButton?.addEventListener("click", centerGoogleMapOnSearch);
 els.currentLocationButton?.addEventListener("click", centerOnCurrentLocation);
+els.compactThemeButton?.addEventListener("click", toggleCompactTheme);
+els.collapseThemeButton?.addEventListener("click", toggleCollapseTheme);
 els.compactEncounterButton?.addEventListener("click", toggleCompactEncounter);
 els.collapseEncounterButton?.addEventListener("click", toggleCollapseEncounter);
 els.compactFieldPostButton?.addEventListener("click", toggleCompactFieldPost);
