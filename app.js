@@ -143,6 +143,7 @@ const defaultState = {
     lastStatus: "未設定",
   },
   ui: {
+    mode: "quest",
     eventsPanel: "compact",
     encounterPanel: "open",
     fieldPostPanel: "open",
@@ -219,6 +220,17 @@ const els = {
   questViews: document.querySelectorAll(".quest-view"),
   heroGrowthView: document.querySelector(".hero-growth-view"),
   settingsView: document.querySelector(".settings-view"),
+  kidsView: document.querySelector(".kids-view"),
+  guardianView: document.querySelector(".guardian-view"),
+  kidsAvatar: document.querySelector("#kids-avatar"),
+  kidsQuestPower: document.querySelector("#kids-quest-power"),
+  kidsJoyPower: document.querySelector("#kids-joy-power"),
+  kidsPostCount: document.querySelector("#kids-post-count"),
+  guardianStatus: document.querySelector("#guardian-status"),
+  guardianChildName: document.querySelector("#guardian-child-name"),
+  guardianChildMeta: document.querySelector("#guardian-child-meta"),
+  guardianPendingCount: document.querySelector("#guardian-pending-count"),
+  guardianActivityCount: document.querySelector("#guardian-activity-count"),
   heroGrowthTitle: document.querySelector("#hero-growth-title"),
   heroGrowthDimension: document.querySelector("#hero-growth-dimension"),
   heroLargeAvatar: document.querySelector("#hero-large-avatar"),
@@ -2552,6 +2564,8 @@ function render() {
   renderFieldPostPanelState();
   renderFieldPosts();
   renderHeroGrowth();
+  renderKidsMode();
+  renderGuardianMode();
   renderInterests();
   renderActivity();
   renderGrowthPath();
@@ -2646,6 +2660,29 @@ function renderHeroGrowth() {
     })
     .join("");
   els.heroNextEvolution.innerHTML = getNextEvolutionTasks().map((task) => `<li>${escapeHtml(task)}</li>`).join("");
+}
+
+function renderKidsMode() {
+  if (!els.kidsView) return;
+  renderAvatarElement(els.kidsAvatar, normalizeAvatar(state.member.avatar));
+  if (els.kidsQuestPower) els.kidsQuestPower.textContent = state.quest;
+  if (els.kidsJoyPower) els.kidsJoyPower.textContent = state.joy;
+  if (els.kidsPostCount) els.kidsPostCount.textContent = `${state.fieldPosts.length}`;
+}
+
+function renderGuardianMode() {
+  if (!els.guardianView) return;
+  if (els.guardianStatus) els.guardianStatus.textContent = state.ui.mode === "guardian" ? "保護者確認済み" : "待機中";
+  if (els.guardianChildName) els.guardianChildName.textContent = state.member.name || "子どもプロフィール未設定";
+  if (els.guardianChildMeta) {
+    const meta = [state.member.grade, state.member.region].filter(Boolean).join(" / ");
+    els.guardianChildMeta.textContent = meta || "年齢・地域を保護者が確認します。";
+  }
+  if (els.guardianPendingCount) {
+    const pendingPosts = (state.fieldPosts || []).filter((post) => post.approvalStatus === "pending").length;
+    els.guardianPendingCount.textContent = `${pendingPosts}件`;
+  }
+  if (els.guardianActivityCount) els.guardianActivityCount.textContent = `${state.activity.length}件`;
 }
 
 function setMemberStatus(message, isError = false) {
@@ -3455,19 +3492,39 @@ function saveQuickFeedback(template) {
   saveMentorFeedback();
 }
 
+function confirmGuardianMode() {
+  const passcode = String(state.guardian?.passcode || "0000");
+  const input = window.prompt("保護者モードのパスコードを入力してください");
+  if (input === null) return false;
+  if (String(input).trim() === passcode) return true;
+  window.alert("パスコードが違います");
+  return false;
+}
+
 function showMode(mode) {
+  if (mode === "guardian" && state.ui.mode !== "guardian" && !confirmGuardianMode()) {
+    return;
+  }
   const feedback = mode === "feedback";
   const eventAdmin = mode === "event-admin";
   const capital = mode === "capital";
   const settings = mode === "settings";
-  els.questViews.forEach((view) => view.classList.toggle("hidden", feedback || eventAdmin || capital || settings));
+  const kids = mode === "kids";
+  const guardian = mode === "guardian";
+  state.ui.mode = mode;
+  saveState();
+  els.questViews.forEach((view) => view.classList.toggle("hidden", feedback || eventAdmin || capital || settings || kids || guardian));
   els.feedbackView.classList.toggle("hidden", !feedback);
   els.eventAdminView.classList.toggle("hidden", !eventAdmin);
   els.heroGrowthView?.classList.toggle("hidden", !capital);
   els.settingsView?.classList.toggle("hidden", !settings);
+  els.kidsView?.classList.toggle("hidden", !kids);
+  els.guardianView?.classList.toggle("hidden", !guardian);
   document.querySelectorAll(".mode-tabs button").forEach((item) => {
     item.classList.toggle("active", item.dataset.mode === mode);
   });
+  renderKidsMode();
+  renderGuardianMode();
 }
 
 window.setQuestMode = showMode;
@@ -4391,6 +4448,26 @@ document.querySelector("#analyze-button").addEventListener("click", selectRecomm
 document.querySelector("#import-button").addEventListener("click", importMockApps);
 document.querySelector("#reset-button").addEventListener("click", resetState);
 els.exportDbButton.addEventListener("click", exportDatabase);
+document.querySelectorAll("[data-kids-action]").forEach((button) => {
+  button.addEventListener("click", () => {
+    const action = button.dataset.kidsAction;
+    if (action === "avatar") {
+      showMode("capital");
+      return;
+    }
+    if (action === "record") {
+      showMode("feedback");
+      return;
+    }
+    showMode("quest");
+    if (action === "photo") {
+      state.ui.fieldPostPanel = "open";
+      saveState();
+      renderFieldPostPanelState();
+      els.fieldPostPanel?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  });
+});
 document.querySelectorAll(".mode-tabs button").forEach((button) => {
   ["click", "pointerup", "keydown"].forEach((eventName) => {
     button.addEventListener(eventName, (event) => {
@@ -4418,4 +4495,10 @@ els.mapSearch.addEventListener("keydown", (event) => {
 });
 
 render();
+if (state.ui.mode && state.ui.mode !== "quest" && state.ui.mode !== "guardian") {
+  showMode(state.ui.mode);
+} else if (state.ui.mode === "guardian") {
+  state.ui.mode = "quest";
+  saveState();
+}
 initDatabase();

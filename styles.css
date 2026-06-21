@@ -1493,7 +1493,9 @@ textarea {
 
 .feedback-view,
 .hero-growth-view,
-.settings-view {
+.settings-view,
+.kids-view,
+.guardian-view {
   position: absolute;
   inset: 96px 18px 18px;
   z-index: 7;
@@ -1519,6 +1521,144 @@ textarea {
 
 .event-admin-shell {
   grid-template-columns: minmax(460px, 1fr) minmax(300px, 360px);
+}
+
+.kids-shell,
+.guardian-shell {
+  display: grid;
+  gap: 14px;
+  min-height: 100%;
+}
+
+.kids-hero,
+.guardian-main {
+  padding: 18px;
+  border: 1px solid rgba(223, 230, 222, 0.9);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 10px 32px rgba(30, 48, 36, 0.08);
+}
+
+.kids-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  background: linear-gradient(135deg, #fffaf0 0%, #f0fbff 100%);
+}
+
+.kids-hero h2 {
+  margin: 0 0 6px;
+  font-size: 30px;
+}
+
+.kids-hero p {
+  margin: 0;
+  max-width: 560px;
+  color: var(--muted);
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.7;
+}
+
+.kids-avatar {
+  display: grid;
+  place-items: center;
+  width: 116px;
+  height: 116px;
+  border: 5px solid white;
+  border-radius: 50%;
+  overflow: hidden;
+  color: white;
+  background: var(--avatar-bg, linear-gradient(140deg, var(--green), #17211b));
+  box-shadow: 0 18px 36px rgba(30, 48, 36, 0.16);
+  font-size: 34px;
+  font-weight: 900;
+}
+
+.kids-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.kids-action-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.kids-action-card {
+  display: grid;
+  gap: 8px;
+  min-height: 128px;
+  padding: 16px;
+  border: 1px solid rgba(47, 111, 179, 0.16);
+  border-radius: 8px;
+  color: var(--ink);
+  background: white;
+  box-shadow: 0 10px 32px rgba(30, 48, 36, 0.08);
+  text-align: left;
+}
+
+.kids-action-card span {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  color: white;
+  background: var(--green);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.kids-action-card strong {
+  font-size: 20px;
+  line-height: 1.3;
+}
+
+.kids-status-row,
+.guardian-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.kids-status-row > div,
+.guardian-grid article {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid rgba(223, 230, 222, 0.9);
+  border-radius: 8px;
+  background: white;
+  box-shadow: 0 10px 32px rgba(30, 48, 36, 0.08);
+}
+
+.kids-status-row span,
+.guardian-grid span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.kids-status-row strong,
+.guardian-grid strong {
+  color: var(--ink);
+  font-size: 24px;
+}
+
+.guardian-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.guardian-grid p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.5;
 }
 
 .feedback-main,
@@ -3084,7 +3224,9 @@ textarea {
 
   .feedback-view,
   .hero-growth-view,
-  .settings-view {
+  .settings-view,
+  .kids-view,
+  .guardian-view {
     position: relative;
     inset: auto;
     margin: 96px 12px 12px;
@@ -3118,7 +3260,14 @@ textarea {
   .hero-growth-shell,
   .hero-showcase,
   .settings-grid,
-  .event-admin-shell {
+  .event-admin-shell,
+  .kids-action-grid,
+  .kids-status-row,
+  .guardian-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .kids-hero {
     grid-template-columns: 1fr;
   }
 
@@ -3154,6 +3303,15 @@ textarea {
 
   .mode-tabs {
     overflow-x: auto;
+  }
+
+  .kids-hero h2 {
+    font-size: 25px;
+  }
+
+  .kids-avatar {
+    width: 96px;
+    height: 96px;
   }
 
   .map-controls {

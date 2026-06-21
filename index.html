@@ -241,9 +241,11 @@
             <button id="map-search-button" type="button">探す</button>
           </div>
           <div class="mode-tabs" role="tablist" aria-label="表示モード">
+            <button type="button" data-mode="kids" onclick="window.setQuestMode && window.setQuestMode('kids')">キッズ</button>
             <button class="active" type="button" data-mode="quest" onclick="window.setQuestMode && window.setQuestMode('quest')">探究</button>
             <button type="button" data-mode="event-admin" onclick="window.setQuestMode && window.setQuestMode('event-admin')">探究ポイント登録</button>
             <button type="button" data-mode="feedback" onclick="window.setQuestMode && window.setQuestMode('feedback')">フィードバック</button>
+            <button type="button" data-mode="guardian" onclick="window.setQuestMode && window.setQuestMode('guardian')">保護者</button>
             <button type="button" data-mode="capital" onclick="window.setQuestMode && window.setQuestMode('capital')">成長</button>
             <button type="button" data-mode="settings" onclick="window.setQuestMode && window.setQuestMode('settings')">設定</button>
           </div>
@@ -627,6 +629,87 @@
                 <ul id="hero-next-evolution" class="hero-next-evolution"></ul>
               </section>
             </aside>
+          </div>
+        </section>
+
+        <section class="kids-view hidden" aria-label="キッズモード">
+          <div class="kids-shell">
+            <section class="kids-hero">
+              <div>
+                <p class="eyebrow">4-10さいモード</p>
+                <h2>きょうのぼうけん</h2>
+                <p>すき、ふしぎ、みつけたことから、ワクワクをひろげよう。</p>
+              </div>
+              <div id="kids-avatar" class="kids-avatar">?</div>
+            </section>
+            <div class="kids-action-grid">
+              <button class="kids-action-card" type="button" data-kids-action="quest">
+                <span>ちず</span>
+                <strong>ぼうけんポイント</strong>
+              </button>
+              <button class="kids-action-card" type="button" data-kids-action="photo">
+                <span>しゃしん</span>
+                <strong>みつけたこと</strong>
+              </button>
+              <button class="kids-action-card" type="button" data-kids-action="avatar">
+                <span>アバター</span>
+                <strong>せいちょう</strong>
+              </button>
+              <button class="kids-action-card" type="button" data-kids-action="record">
+                <span>きろく</span>
+                <strong>きょうのワクワク</strong>
+              </button>
+            </div>
+            <section class="kids-status-row">
+              <div>
+                <span>たんけんパワー</span>
+                <strong id="kids-quest-power">72</strong>
+              </div>
+              <div>
+                <span>ワクワク</span>
+                <strong id="kids-joy-power">84</strong>
+              </div>
+              <div>
+                <span>みつけた</span>
+                <strong id="kids-post-count">0</strong>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section class="guardian-view hidden" aria-label="保護者モード">
+          <div class="guardian-shell">
+            <section class="guardian-main">
+              <div class="section-head">
+                <div>
+                  <p class="eyebrow">保護者モード</p>
+                  <h2>子どもの活動と安全設定</h2>
+                </div>
+                <span id="guardian-status" class="small-badge">確認中</span>
+              </div>
+              <div class="guardian-grid">
+                <article>
+                  <span>子どもプロフィール</span>
+                  <strong id="guardian-child-name">未設定</strong>
+                  <p id="guardian-child-meta">年齢・地域を保護者が確認します。</p>
+                </article>
+                <article>
+                  <span>承認待ち</span>
+                  <strong id="guardian-pending-count">0件</strong>
+                  <p>写真、位置情報、公開投稿はここで確認します。</p>
+                </article>
+                <article>
+                  <span>活動ログ</span>
+                  <strong id="guardian-activity-count">0件</strong>
+                  <p>ぼうけん、投稿、振り返りの履歴を見守ります。</p>
+                </article>
+                <article>
+                  <span>安全設定</span>
+                  <strong>保護者管理</strong>
+                  <p>位置情報、外部公開、AI候補、同期設定を保護者側に集約します。</p>
+                </article>
+              </div>
+            </section>
           </div>
         </section>
 
