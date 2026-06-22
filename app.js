@@ -79,6 +79,47 @@ const seedEncounters = [
   },
 ];
 
+const seedFriendPhotos = seedEncounters.flatMap((encounter, index) => {
+  if (!hasValidSeedLatLng(encounter.position)) return [];
+  const offset = 0.00008 + index * 0.00001;
+  return [
+    {
+      id: `friend-photo-${encounter.id}-a`,
+      eventId: encounter.id,
+      friendName: ["そら", "みお", "りく", "はな", "ゆい"][index % 5],
+      text: `${encounter.tags?.[0] || "ふしぎ"}をみつけた`,
+      color: encounter.color || "#2f8f63",
+      position: {
+        lat: Number(encounter.position.lat) + offset,
+        lng: Number(encounter.position.lng) + offset,
+      },
+    },
+    {
+      id: `friend-photo-${encounter.id}-b`,
+      eventId: encounter.id,
+      friendName: ["あお", "けい", "なつ", "れん", "まこ"][index % 5],
+      text: `${encounter.impact || "ワクワク"}の写真`,
+      color: encounter.color || "#2f8f63",
+      position: {
+        lat: Number(encounter.position.lat) - offset,
+        lng: Number(encounter.position.lng) + offset * 0.7,
+      },
+    },
+  ];
+});
+
+function hasValidSeedLatLng(position) {
+  return (
+    position &&
+    Number.isFinite(Number(position.lat)) &&
+    Number.isFinite(Number(position.lng)) &&
+    Number(position.lat) >= -90 &&
+    Number(position.lat) <= 90 &&
+    Number(position.lng) >= -180 &&
+    Number(position.lng) <= 180
+  );
+}
+
 const defaultState = {
   auth: {
     loggedIn: false,
@@ -1436,6 +1477,99 @@ function createMarkerIcon(color) {
   };
 }
 
+function createFriendPhotoDataUrl(color = "#2f8f63", label = "友") {
+  const safeColor = /^#[0-9a-f]{6}$/i.test(color) ? color : "#2f8f63";
+  const safeLabel = String(label || "友").trim().slice(0, 1) || "友";
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="88" height="88" viewBox="0 0 88 88">
+    <defs>
+      <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+        <stop offset="0" stop-color="${safeColor}"/>
+        <stop offset="1" stop-color="#ffffff"/>
+      </linearGradient>
+    </defs>
+    <circle cx="44" cy="44" r="40" fill="url(#bg)" stroke="#ffffff" stroke-width="6"/>
+    <circle cx="34" cy="34" r="8" fill="#fff4bf"/>
+    <path d="M20 62 L38 46 L50 58 L60 48 L72 62 Z" fill="#1f6f52" opacity="0.92"/>
+    <text x="44" y="31" text-anchor="middle" font-family="system-ui, sans-serif" font-size="18" font-weight="900" fill="#17211b">${safeLabel}</text>
+  </svg>`;
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+}
+
+function createPhotoMarkerIcon(imageSrc, color = "#2f8f63", label = "友") {
+  const url = imageSrc || createFriendPhotoDataUrl(color, label);
+  return {
+    url,
+    scaledSize: new google.maps.Size(46, 46),
+    anchor: new google.maps.Point(23, 23),
+  };
+}
+
+function getEncounterPositionById(eventId) {
+  const encounter = getEncounters().find((item) => item.id === eventId);
+  return hasValidLatLng(encounter?.position) ? encounter.position : null;
+}
+
+function getOwnKidsPhotoMarkers() {
+  const radius = getKidsWorldRadius();
+  const center = getKidsWorldCenter();
+  return (state.fieldPosts || [])
+    .filter((post) => post.approvalStatus !== "rejected")
+    .filter((post) => post.image?.dataUrl || post.image?.downloadUrl)
+    .map((post) => {
+      const position = hasValidLatLng(post.location) ? post.location : getEncounterPositionById(post.eventId);
+      return {
+        id: post.id,
+        type: "own",
+        eventId: post.eventId,
+        title: post.eventTitle || "じぶんのみつけたこと",
+        text: post.stamp || post.text || "みつけたこと",
+        imageSrc: post.image?.dataUrl || post.image?.downloadUrl || "",
+        color: normalizeAvatar(state.member.avatar).color || "#2f8f63",
+        position,
+      };
+    })
+    .filter((photo) => hasValidLatLng(photo.position))
+    .filter((photo) => !center || getDistanceMeters(center, photo.position) <= radius)
+    .slice(0, 12);
+}
+
+function getFriendKidsPhotoMarkers() {
+  const radius = getKidsWorldRadius();
+  const center = getKidsWorldCenter();
+  const visiblePointIds = new Set(getKidsScopedPoints("friends").map((point) => point.id));
+  return seedFriendPhotos
+    .filter((photo) => visiblePointIds.has(photo.eventId))
+    .filter((photo) => hasValidLatLng(photo.position))
+    .filter((photo) => !center || getDistanceMeters(center, photo.position) <= radius)
+    .slice(0, 16);
+}
+
+function renderKidsPhotoMapMarkers(bounds) {
+  if (!googleMap || !window.google?.maps || !state.ui?.kidsMapActive) return;
+  const scope = state.ui?.kidsPointScope || "own";
+  const photos = scope === "friends" ? [...getOwnKidsPhotoMarkers(), ...getFriendKidsPhotoMarkers()] : getOwnKidsPhotoMarkers();
+  photos.forEach((photo) => {
+    if (!hasValidLatLng(photo.position)) return;
+    const position = { lat: Number(photo.position.lat), lng: Number(photo.position.lng) };
+    const marker = new google.maps.Marker({
+      map: googleMap,
+      position,
+      title: `${photo.type === "own" ? "じぶん" : photo.friendName || "ともだち"} / ${photo.title || photo.text}`,
+      icon: createPhotoMarkerIcon(photo.imageSrc, photo.color, photo.friendName || "自"),
+      zIndex: photo.type === "own" ? 80 : 70,
+    });
+    marker.addListener("click", () => {
+      if (photo.eventId) state.selected = photo.eventId;
+      saveState();
+      renderKidsMapGuide();
+      focusGoogleMapPoint(position, Math.max(googleMap.getZoom(), 14));
+      setKidsMapStatus(`${photo.type === "own" ? "じぶん" : `${photo.friendName || "ともだち"}さん`}の写真: ${photo.text || "みつけたこと"}`);
+    });
+    googleMapMarkers.push(marker);
+    bounds?.extend(position);
+  });
+}
+
 function getThemeMapFocus() {
   const selectedPlace = normalizeThemePlace(state.themeSearch?.selectedPlace);
   if (selectedPlace.name && hasThemePlaceLatLng(selectedPlace)) {
@@ -1534,7 +1668,9 @@ function renderGoogleMapMarkers() {
   clearGoogleMapMarkers();
   const bounds = new google.maps.LatLngBounds();
   const themeActive = Boolean(state.themeSearch?.query);
-  rankedEncounters().forEach((encounter) => {
+  const kidsMapActive = Boolean(state.ui?.kidsMapActive);
+  const markerEncounters = kidsMapActive ? getKidsScopedPoints(state.ui?.kidsPointScope || "own") : rankedEncounters();
+  markerEncounters.forEach((encounter) => {
     if (!hasValidLatLng(encounter.position)) return;
     const position = { lat: Number(encounter.position.lat), lng: Number(encounter.position.lng) };
     const evaluation = themeActive ? encounter.themeEvaluation || getThemeEvaluation(encounter.id) : null;
@@ -1560,33 +1696,41 @@ function renderGoogleMapMarkers() {
     googleMapMarkers.push(marker);
     bounds.extend(position);
   });
+  renderKidsPhotoMapMarkers(bounds);
   const aiPlaces = Array.isArray(state.themeSearch?.aiPlaces) ? state.themeSearch.aiPlaces.map(normalizeThemePlace) : [];
   let aiPlaceMarkerIndex = 0;
-  aiPlaces.forEach((place) => {
-    if (!place.name || !hasThemePlaceLatLng(place)) return;
-    aiPlaceMarkerIndex += 1;
-    const position = { lat: Number(place.lat), lng: Number(place.lng) };
-    const marker = new google.maps.Marker({
-      map: googleMap,
-      position,
-      title: `${place.name} / AI関係場所`,
-      label: {
-        text: `P${aiPlaceMarkerIndex}`,
-        color: "#ffffff",
-        fontSize: "10px",
-        fontWeight: "900",
-      },
-      icon: createMarkerIcon("#7c4d9e"),
+  if (!kidsMapActive) {
+    aiPlaces.forEach((place) => {
+      if (!place.name || !hasThemePlaceLatLng(place)) return;
+      aiPlaceMarkerIndex += 1;
+      const position = { lat: Number(place.lat), lng: Number(place.lng) };
+      const marker = new google.maps.Marker({
+        map: googleMap,
+        position,
+        title: `${place.name} / AI関係場所`,
+        label: {
+          text: `P${aiPlaceMarkerIndex}`,
+          color: "#ffffff",
+          fontSize: "10px",
+          fontWeight: "900",
+        },
+        icon: createMarkerIcon("#7c4d9e"),
+      });
+      marker.addListener("click", () => {
+        askThemePlace(place);
+        focusGoogleMapPoint(position, Math.max(googleMap.getZoom(), 10));
+      });
+      googleMapMarkers.push(marker);
+      bounds.extend(position);
     });
-    marker.addListener("click", () => {
-      askThemePlace(place);
-      focusGoogleMapPoint(position, Math.max(googleMap.getZoom(), 10));
-    });
-    googleMapMarkers.push(marker);
-    bounds.extend(position);
-  });
+  }
   if (!bounds.isEmpty()) googleMap.fitBounds(bounds, 64);
-  if (state.themeSearch?.query) {
+  if (kidsMapActive) {
+    const selected = getSelectedEncounter();
+    if (hasValidLatLng(selected?.position)) {
+      focusGoogleMapPoint({ lat: Number(selected.position.lat), lng: Number(selected.position.lng) }, Math.max(googleMap.getZoom(), 12));
+    }
+  } else if (state.themeSearch?.query) {
     centerGoogleMapOnSearch();
   } else {
     const selected = getSelectedEncounter();
@@ -5651,9 +5795,15 @@ document.querySelectorAll("[data-kids-record-stamp]").forEach((button) => {
 document.querySelectorAll("[data-kids-point-scope]").forEach((button) => {
   button.addEventListener("click", () => {
     state.ui.kidsPointScope = button.dataset.kidsPointScope || "own";
+    state.ui.kidsMapActive = true;
     saveState();
     renderKidsMode();
     renderKidsMapGuide();
+    if (googleMap) {
+      renderGoogleMapMarkers();
+    } else {
+      initializeGoogleMap();
+    }
   });
 });
 els.kidsRecordPhoto?.addEventListener("change", handleKidsRecordPhotoChange);
@@ -5679,6 +5829,7 @@ document.querySelectorAll("[data-kids-action]").forEach((button) => {
       saveState();
       showMode("quest", { kidsMap: true });
       renderKidsMapGuide();
+      if (googleMap) renderGoogleMapMarkers();
       if (candidate && googleMap && hasValidLatLng(candidate.position)) {
         focusGoogleMapPoint({ lat: Number(candidate.position.lat), lng: Number(candidate.position.lng) }, Math.max(googleMap.getZoom(), 10));
       }
