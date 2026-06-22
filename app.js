@@ -2243,6 +2243,83 @@ function escapeHtml(value) {
     .replace(/'/g, "&#039;");
 }
 
+function toKidsText(value = "") {
+  return String(value || "")
+    .replace(/Google Map/g, "ぐーぐるまっぷ")
+    .replace(/Google/g, "ぐーぐる")
+    .replace(/AI/g, "えーあい")
+    .replace(/Chrome/g, "くろーむ")
+    .replace(/Safari/g, "さふぁり")
+    .replace(/ブラウザ/g, "ぶらうざ")
+    .replace(/マイク/g, "まいく")
+    .replace(/ネット/g, "ねっと")
+    .replace(/オン/g, "おん")
+    .replace(/スタンプ/g, "すたんぷ")
+    .replace(/キッズ/g, "きっず")
+    .replace(/ポイント/g, "ぽいんと")
+    .replace(/パワー/g, "ぱわー")
+    .replace(/ソロ/g, "ひとり")
+    .replace(/キャラ/g, "なかま")
+    .replace(/ワクワク/g, "わくわく")
+    .replace(/GPS/g, "じーぴーえす")
+    .replace(/Wi-Fi/g, "わいふぁい")
+    .replace(/HTTPS/g, "えいちてぃーてぃーぴーえす")
+    .replace(/写真/g, "しゃしん")
+    .replace(/場所/g, "ばしょ")
+    .replace(/地図/g, "ちず")
+    .replace(/真ん中/g, "まんなか")
+    .replace(/番号/g, "ばんごう")
+    .replace(/世界/g, "せかい")
+    .replace(/半径/g, "はんけい")
+    .replace(/冒険/g, "ぼうけん")
+    .replace(/探検/g, "たんけん")
+    .replace(/探究/g, "たんきゅう")
+    .replace(/現在地/g, "いまいるばしょ")
+    .replace(/位置情報/g, "いちじょうほう")
+    .replace(/保存/g, "ほぞん")
+    .replace(/確認/g, "かくにん")
+    .replace(/許可/g, "きょか")
+    .replace(/保護者/g, "ほごしゃ")
+    .replace(/登録/g, "とうろく")
+    .replace(/未登録/g, "みとうろく")
+    .replace(/設定/g, "せってい")
+    .replace(/追加/g, "ついか")
+    .replace(/読み込み/g, "よみこみ")
+    .replace(/認識/g, "にんしき")
+    .replace(/音声入力/g, "こえのにゅうりょく")
+    .replace(/入力/g, "にゅうりょく")
+    .replace(/声/g, "こえ")
+    .replace(/聞/g, "き")
+    .replace(/話/g, "はな")
+    .replace(/文字/g, "もじ")
+    .replace(/端末/g, "たんまつ")
+    .replace(/通信/g, "つうしん")
+    .replace(/接続/g, "せつぞく")
+    .replace(/開始/g, "かいし")
+    .replace(/停止/g, "ていし")
+    .replace(/一緒/g, "いっしょ")
+    .replace(/発見/g, "はっけん")
+    .replace(/見/g, "み")
+    .replace(/行/g, "い")
+    .replace(/中/g, "ちゅう")
+    .replace(/読/g, "よ")
+    .replace(/入/g, "はい")
+    .replace(/使/g, "つか")
+    .replace(/少/g, "すこ")
+    .replace(/待/g, "ま")
+    .replace(/遠/g, "とお")
+    .replace(/育/g, "そだ")
+    .replace(/力/g, "ちから")
+    .replace(/星/g, "ほし")
+    .replace(/炎/g, "ほのお")
+    .replace(/水/g, "みず")
+    .replace(/森/g, "もり")
+    .replace(/雷/g, "かみなり")
+    .replace(/光/g, "ひかり")
+    .replace(/知/g, "ちえ")
+    .replace(/翼/g, "つばさ");
+}
+
 function getEventTypeLabel(event) {
   return event.eventType === "limited" ? "期間限定" : "常設";
 }
@@ -2256,6 +2333,11 @@ function getEventPeriodLabel(event) {
   if (start) return `${typeLabel} ${start}から`;
   if (end) return `${typeLabel} ${end}まで`;
   return typeLabel;
+}
+
+function getKidsPeriodLabel(event) {
+  if (!event?.eventType) return "";
+  return event.eventType === "limited" ? "いまだけ" : "いつでも";
 }
 
 function getEventTitle(eventId) {
@@ -2562,22 +2644,22 @@ function renderKidsMapGuide() {
   const selected = candidates.find((encounter) => encounter.id === state.selected) || candidates[0] || null;
   if (els.kidsMapCenterButton) els.kidsMapCenterButton.disabled = !selected || !hasValidLatLng(selected.position);
   if (els.kidsMapStatus && !els.kidsMapStatus.textContent) {
-    els.kidsMapStatus.textContent = "番号をえらぶと、その場所が地図の真ん中にきます。";
+    els.kidsMapStatus.textContent = "ばんごうをえらぶと、そのばしょがちずのまんなかにきます。";
   }
-  if (els.kidsMapTitle) els.kidsMapTitle.textContent = selected?.title || "ぼうけんポイント";
+  if (els.kidsMapTitle) els.kidsMapTitle.textContent = toKidsText(selected?.title || "ぼうけんポイント");
   if (els.kidsMapText) {
     els.kidsMapText.textContent = selected
-      ? `${selected.locationName || "この場所"}で、${selected.impact || "ワクワク"}をみつけよう。`
-      : "気になる場所をえらんで、みつけたことをのこそう。";
+      ? `${toKidsText(selected.locationName || "このばしょ")}で、${toKidsText(selected.impact || "ワクワク")}をみつけよう。`
+      : "きになるばしょをえらんで、みつけたことをのこそう。";
   }
   if (els.kidsMapBadges) {
     els.kidsMapBadges.innerHTML = [
       `${selected?.index || state.quest}パワー`,
-      getEventPeriodLabel(selected || {}),
-      selected?.character?.name ? "キャラあり" : "みつける",
+      getKidsPeriodLabel(selected || {}),
+      selected?.character?.name ? "なかまあり" : "みつける",
     ]
       .filter(Boolean)
-      .map((label) => `<span>${escapeHtml(label)}</span>`)
+      .map((label) => `<span>${escapeHtml(toKidsText(label))}</span>`)
       .join("");
   }
   if (els.kidsMapList) {
@@ -2585,8 +2667,8 @@ function renderKidsMapGuide() {
       els.kidsMapList.innerHTML = "";
       setKidsMapStatus(
         state.ui?.kidsPointScope === "own"
-          ? "まだじぶんの冒険ポイントがありません。"
-          : `半径${formatKidsRadius(getKidsWorldRadius())}の中に、ともだちのポイントはまだありません。`
+          ? "まだじぶんのぼうけんポイントがありません。"
+          : `はんけい${formatKidsRadius(getKidsWorldRadius())}のなかに、ともだちのポイントはまだありません。`
       );
       return;
     }
@@ -2595,8 +2677,8 @@ function renderKidsMapGuide() {
         const activeClass = encounter.id === state.selected ? " active" : "";
         return `<button class="kids-map-point${activeClass}" type="button" data-id="${escapeHtml(encounter.id)}">
           <span>${index + 1}</span>
-          <strong>${escapeHtml(encounter.title)}</strong>
-          <small>${escapeHtml(encounter.locationName || encounter.impact || "ぼうけんポイント")}</small>
+          <strong>${escapeHtml(toKidsText(encounter.title))}</strong>
+          <small>${escapeHtml(toKidsText(encounter.locationName || encounter.impact || "ぼうけんポイント"))}</small>
         </button>`;
       })
       .join("");
@@ -2608,7 +2690,8 @@ function renderKidsMapGuide() {
 
 function setKidsMapStatus(message, isError = false) {
   if (!els.kidsMapStatus) return;
-  els.kidsMapStatus.textContent = isError && isLocationSettingsWarning(message) ? `${message} タップして設定を確認` : message;
+  const kidsMessage = toKidsText(message);
+  els.kidsMapStatus.textContent = isError && isLocationSettingsWarning(message) ? `${kidsMessage} おしてせっていをかくにん` : kidsMessage;
   els.kidsMapStatus.classList.toggle("error", Boolean(isError));
   markLocationSettingsLink(els.kidsMapStatus, message, isError);
 }
@@ -2617,7 +2700,7 @@ function centerKidsSelectedPoint() {
   const candidates = getKidsMapCandidates();
   const selected = candidates.find((encounter) => encounter.id === state.selected) || candidates[0] || null;
   if (!selected || !hasValidLatLng(selected.position)) {
-    setKidsMapStatus("この場所には、まだ地図の位置がありません。", true);
+    setKidsMapStatus("このばしょには、まだちずのいちがありません。", true);
     return;
   }
   state.selected = selected.id;
@@ -2625,19 +2708,19 @@ function centerKidsSelectedPoint() {
   saveState();
   renderKidsMapGuide();
   if (!googleMap) {
-    setKidsMapStatus("地図を読み込み中です。少し待ってからもう一度押してください。", true);
+    setKidsMapStatus("ちずをよみこみちゅうです。すこしまってからもういちどおしてください。", true);
     initializeGoogleMap();
     return;
   }
   focusGoogleMapPoint({ lat: Number(selected.position.lat), lng: Number(selected.position.lng) }, Math.max(googleMap.getZoom(), 12));
-  setKidsMapStatus(`${selected.title}を真ん中にしました。`);
+  setKidsMapStatus(`${toKidsText(selected.title)}をまんなかにしました。`);
 }
 
 function centerKidsCurrentLocation() {
   state.ui.kidsMapActive = true;
   saveState();
   renderKidsMapGuide();
-  setKidsMapStatus("いまいる場所をさがしています...");
+  setKidsMapStatus("いまいるばしょをさがしています...");
   if (!googleMap) {
     initializeGoogleMap();
     return;
@@ -2656,7 +2739,7 @@ function openKidsMapPoint(eventId) {
   if (googleMap && hasValidLatLng(encounter.position)) {
     focusGoogleMapPoint({ lat: Number(encounter.position.lat), lng: Number(encounter.position.lng) }, Math.max(googleMap.getZoom(), 11));
   }
-  setKidsMapStatus(`${encounter.title}をえらびました。`);
+  setKidsMapStatus(`${toKidsText(encounter.title)}をえらびました。`);
 }
 
 function renderEventDrawer() {
@@ -3598,13 +3681,13 @@ function renderKidsMode() {
   }
   if (els.kidsView.querySelector(".kids-hero p")) {
     els.kidsView.querySelector(".kids-hero p").textContent = child.favoriteThings
-      ? child.favoriteThings
-      : "すきなことから、世界をひろげよう。";
+      ? toKidsText(child.favoriteThings)
+      : "すきなことから、せかいをひろげよう。";
   }
-  if (els.kidsGrowthStage) els.kidsGrowthStage.textContent = `${getHeroStageLabel()} / ${formatKidsRadius(getKidsWorldRadius())}`;
-  if (els.kidsGrowthName) els.kidsGrowthName.textContent = child.nickname || state.member.name || "ぼうけんしゃ";
+  if (els.kidsGrowthStage) els.kidsGrowthStage.textContent = `${toKidsText(getHeroStageLabel())} / ${formatKidsRadius(getKidsWorldRadius())}`;
+  if (els.kidsGrowthName) els.kidsGrowthName.textContent = toKidsText(child.nickname || state.member.name || "ぼうけんしゃ");
   if (els.kidsGrowthText) {
-    els.kidsGrowthText.textContent = `いま見える世界は半径${formatKidsRadius(getKidsWorldRadius())}。見つけたことがふえると、もっと遠くまで行けます。`;
+    els.kidsGrowthText.textContent = `いまみえるせかいははんけい${formatKidsRadius(getKidsWorldRadius())}。みつけたことがふえると、もっととおくまでいけます。`;
   }
   const bestDepthLabel = depthLabels[getBestDepth() - 1].replace("まで", "");
   setKidsParameter(
@@ -3613,16 +3696,16 @@ function renderKidsMode() {
     els.kidsQuestNote,
     state.quest,
     getHeroHpMax(),
-    `${getHeroStageLabel()}の力`
+    `${toKidsText(getHeroStageLabel())}のちから`
   );
-  setKidsParameter(els.kidsJoyPower, els.kidsJoyMeter, els.kidsJoyNote, state.joy, 100, "すき・発見で育つ");
+  setKidsParameter(els.kidsJoyPower, els.kidsJoyMeter, els.kidsJoyNote, state.joy, 100, "すき・はっけんでそだつ");
   setKidsParameter(
     els.kidsDrivePower,
     els.kidsDriveMeter,
     els.kidsDriveNote,
     state.drive,
     100,
-    `${bestDepthLabel}までしれた`
+    `${toKidsText(bestDepthLabel)}までしれた`
   );
   setKidsParameter(
     els.kidsThanksPower,
@@ -3655,7 +3738,7 @@ function renderKidsPhotoFeed() {
     .slice(0, 12);
   if (els.kidsPhotoCount) els.kidsPhotoCount.textContent = `${posts.length}こ`;
   if (!posts.length) {
-    els.kidsPhotoFeed.innerHTML = `<article class="kids-photo-empty"><strong>まだありません</strong><span>見つけたことをのこそう</span></article>`;
+    els.kidsPhotoFeed.innerHTML = `<article class="kids-photo-empty"><strong>まだありません</strong><span>みつけたことをのこそう</span></article>`;
     return;
   }
   els.kidsPhotoFeed.innerHTML = posts
@@ -3663,8 +3746,8 @@ function renderKidsPhotoFeed() {
       const imageSrc = post.image?.dataUrl || post.image?.downloadUrl || "";
       const body = post.stamp || post.text || "みつけた";
       return `<article class="kids-photo-card">
-        ${imageSrc ? `<img src="${escapeHtml(imageSrc)}" alt="${escapeHtml(post.eventTitle || "みつけたこと")}" />` : `<div>${escapeHtml(String(body).slice(0, 1) || "発")}</div>`}
-        <span>${escapeHtml(body)}</span>
+        ${imageSrc ? `<img src="${escapeHtml(imageSrc)}" alt="${escapeHtml(toKidsText(post.eventTitle || "みつけたこと"))}" />` : `<div>${escapeHtml(toKidsText(String(body).slice(0, 1) || "は"))}</div>`}
+        <span>${escapeHtml(toKidsText(body))}</span>
       </article>`;
     })
     .join("");
@@ -3675,7 +3758,7 @@ function renderKidsPointBoard() {
   const scope = state.ui?.kidsPointScope || "own";
   const points = getKidsScopedPoints(scope);
   const radius = getKidsWorldRadius();
-  if (els.kidsWorldRadius) els.kidsWorldRadius.textContent = `半径${formatKidsRadius(radius)}`;
+  if (els.kidsWorldRadius) els.kidsWorldRadius.textContent = `はんけい${formatKidsRadius(radius)}`;
   document.querySelectorAll("[data-kids-point-scope]").forEach((button) => {
     button.classList.toggle("active", button.dataset.kidsPointScope === scope);
   });
@@ -3684,8 +3767,8 @@ function renderKidsPointBoard() {
     if (els.kidsPointEmpty) {
       els.kidsPointEmpty.textContent =
         scope === "own"
-          ? "まだじぶんの冒険ポイントがありません。保護者と一緒に登録できます。"
-          : `半径${formatKidsRadius(radius)}の中に、ともだちのポイントはまだありません。`;
+          ? "まだじぶんのぼうけんポイントがありません。ほごしゃといっしょにとうろくできます。"
+          : `はんけい${formatKidsRadius(radius)}のなかに、ともだちのポイントはまだありません。`;
     }
     return;
   }
@@ -3695,8 +3778,8 @@ function renderKidsPointBoard() {
       const active = point.id === state.selected ? " active" : "";
       return `<button class="kids-point-card${active}" type="button" data-kids-point-id="${escapeHtml(point.id)}">
         <span>${index + 1}</span>
-        <strong>${escapeHtml(point.title)}</strong>
-        <small>${escapeHtml(point.locationName || point.impact || "ぼうけんポイント")}</small>
+        <strong>${escapeHtml(toKidsText(point.title))}</strong>
+        <small>${escapeHtml(toKidsText(point.locationName || point.impact || "ぼうけんポイント"))}</small>
       </button>`;
     })
     .join("");
@@ -3709,7 +3792,7 @@ function renderKidsRecordPanel() {
   if (!els.kidsRecordPanel) return;
   const records = (state.fieldPosts || []).filter((post) => post.sourceMode === "kids").slice(0, 5);
   if (els.kidsRecordCount) els.kidsRecordCount.textContent = `${records.length}こ`;
-  if (els.kidsRecordSelected) els.kidsRecordSelected.textContent = pendingKidsRecordStamp || "スタンプなし";
+  if (els.kidsRecordSelected) els.kidsRecordSelected.textContent = pendingKidsRecordStamp || "すたんぷなし";
   renderKidsRecordPhotoPreview();
   renderKidsPhotoAnalysis();
   document.querySelectorAll("[data-kids-record-stamp]").forEach((button) => {
@@ -3717,7 +3800,7 @@ function renderKidsRecordPanel() {
   });
   if (!els.kidsRecordList) return;
   if (!records.length) {
-    els.kidsRecordList.innerHTML = `<p>まだきろくはありません。スタンプだけでものこせます。</p>`;
+    els.kidsRecordList.innerHTML = `<p>まだきろくはありません。すたんぷだけでものこせます。</p>`;
     return;
   }
   els.kidsRecordList.innerHTML = records
@@ -3727,8 +3810,8 @@ function renderKidsRecordPanel() {
         .join(" / ");
       return `<article>
         <span>${escapeHtml(formatTime(new Date(record.at)))}</span>
-        <strong>${escapeHtml(record.eventTitle || "きょうのきろく")}</strong>
-        <p>${escapeHtml(body)}</p>
+        <strong>${escapeHtml(toKidsText(record.eventTitle || "きょうのきろく"))}</strong>
+        <p>${escapeHtml(toKidsText(body))}</p>
       </article>`;
     })
     .join("");
@@ -3736,7 +3819,8 @@ function renderKidsRecordPanel() {
 
 function setKidsRecordStatus(message, isError = false) {
   if (!els.kidsRecordStatus) return;
-  els.kidsRecordStatus.textContent = isError && isLocationSettingsWarning(message) ? `${message} タップして設定を確認` : message;
+  const kidsMessage = toKidsText(message);
+  els.kidsRecordStatus.textContent = isError && isLocationSettingsWarning(message) ? `${kidsMessage} おしてせっていをかくにん` : kidsMessage;
   els.kidsRecordStatus.classList.toggle("error", Boolean(isError));
   markLocationSettingsLink(els.kidsRecordStatus, message, isError);
 }
@@ -3753,13 +3837,13 @@ function renderKidsPhotoAnalysis() {
     els.kidsPhotoAnalysis.innerHTML = "";
     return;
   }
-  const labelText = status === "loading" ? "AIが写真を見ています" : status === "success" ? "AIが見つけました" : "AI確認できませんでした";
+  const labelText = status === "loading" ? "えーあいがしゃしんをみています" : status === "success" ? "えーあいがみつけました" : "えーあいかくにんできませんでした";
   const labels = Array.isArray(analysis.labels) ? analysis.labels.filter(Boolean).slice(0, 4) : [];
   els.kidsPhotoAnalysis.innerHTML = `<div>
     <strong>${escapeHtml(labelText)}</strong>
-    <span>${escapeHtml(analysis.message || analysis.text || "")}</span>
+    <span>${escapeHtml(toKidsText(analysis.message || analysis.text || ""))}</span>
   </div>
-  ${labels.length ? `<p>${labels.map((label) => `<em>${escapeHtml(label)}</em>`).join("")}</p>` : ""}`;
+  ${labels.length ? `<p>${labels.map((label) => `<em>${escapeHtml(toKidsText(label))}</em>`).join("")}</p>` : ""}`;
 }
 
 function setKidsPhotoAnalysis(nextState = {}) {
@@ -3797,10 +3881,10 @@ function appendKidsRecordText(text) {
 async function analyzeKidsRecordPhoto(image) {
   const token = ++kidsRecordImageAnalysisToken;
   if (!image?.dataUrl) return;
-  setKidsRecordStatus("写真をAIで見ています...");
+  setKidsRecordStatus("しゃしんをえーあいでみています...");
   setKidsPhotoAnalysis({
     status: "loading",
-    message: "写真に写っているものを確認しています。少し待ってね。",
+    message: "しゃしんにうつっているものをかくにんしています。すこしまってね。",
   });
   try {
     const encounter = getSelectedEncounter();
@@ -3821,23 +3905,23 @@ async function analyzeKidsRecordPhoto(image) {
     const data = await response.json().catch(() => ({}));
     if (token !== kidsRecordImageAnalysisToken || image !== pendingKidsRecordImage) return;
     if (!response.ok) {
-      throw new Error(data.error || "写真をAIで見られませんでした");
+      throw new Error(data.error || "しゃしんをえーあいでみられませんでした");
     }
     appendKidsRecordText(data.text || data.caption);
     setKidsPhotoAnalysis({
       status: "success",
-      message: data.text || data.caption || "写真から見つけたことを入れました。",
+      message: data.text || data.caption || "しゃしんからみつけたことをいれました。",
       text: data.text || data.caption || "",
       labels: data.labels || [],
     });
-    setKidsRecordStatus(data.text ? "写真から見つけたものを入れました" : "写真を追加しました");
+    setKidsRecordStatus(data.text ? "しゃしんからみつけたものをいれました" : "しゃしんをついかしました");
   } catch (error) {
     if (token !== kidsRecordImageAnalysisToken) return;
     setKidsPhotoAnalysis({
       status: "error",
-      message: error.message || "もう一度試してください。",
+      message: error.message || "もういちどためしてください。",
     });
-    setKidsRecordStatus(`写真は追加しました。AI認識はできませんでした: ${error.message || "もう一度試してください"}`, true);
+    setKidsRecordStatus(`しゃしんはついかしました。えーあいにんしきはできませんでした: ${error.message || "もういちどためしてください"}`, true);
   }
 }
 
@@ -3850,25 +3934,25 @@ async function handleKidsRecordPhotoChange(event) {
     renderKidsRecordPhotoPreview();
     return;
   }
-  setKidsRecordStatus("写真を読み込み中...");
+  setKidsRecordStatus("しゃしんをよみこみちゅう...");
   setKidsPhotoAnalysis({
     status: "loading",
-    message: "写真を読み込んでいます。",
+    message: "しゃしんをよみこんでいます。",
   });
   try {
     pendingKidsRecordImage = await compressImageFile(file);
     renderKidsRecordPhotoPreview();
-    setKidsRecordStatus("写真を追加しました");
+    setKidsRecordStatus("しゃしんをついかしました");
     analyzeKidsRecordPhoto(pendingKidsRecordImage);
   } catch (error) {
     kidsRecordImageAnalysisToken += 1;
     setKidsPhotoAnalysis({
       status: "error",
-      message: error.message || "写真を追加できませんでした。",
+      message: error.message || "しゃしんをついかできませんでした。",
     });
     pendingKidsRecordImage = null;
     renderKidsRecordPhotoPreview();
-    setKidsRecordStatus(error.message || "写真を追加できませんでした", true);
+    setKidsRecordStatus(error.message || "しゃしんをついかできませんでした", true);
   }
 }
 
@@ -3876,22 +3960,68 @@ function openKidsRecordCamera() {
   els.kidsRecordPhoto?.click();
 }
 
+function getKidsReadableText(scope = "home") {
+  const root =
+    scope === "map"
+      ? els.kidsMapGuide
+      : scope === "record"
+        ? els.kidsRecordPanel
+        : els.kidsView;
+  if (!root) return "";
+  return toKidsText(
+    Array.from(root.querySelectorAll("h2, h3, p, strong, span, button:not(.kids-listen-button), textarea"))
+      .filter((node) => !node.closest(".hidden"))
+      .map((node) => (node.tagName === "TEXTAREA" ? node.value || node.getAttribute("placeholder") || "" : node.textContent || ""))
+      .join("。")
+      .replace(/\s+/g, " ")
+      .trim()
+  );
+}
+
+function setKidsListenButtonsText(text) {
+  document.querySelectorAll("[data-kids-listen]").forEach((button) => {
+    button.textContent = text;
+  });
+}
+
+function speakKidsText(scope = "home") {
+  if (!("speechSynthesis" in window) || typeof SpeechSynthesisUtterance === "undefined") {
+    setKidsRecordStatus("このブラウザではよみあげがつかえません。", true);
+    return;
+  }
+  if (window.speechSynthesis.speaking) {
+    window.speechSynthesis.cancel();
+    setKidsListenButtonsText("よむ");
+    return;
+  }
+  const text = getKidsReadableText(scope);
+  if (!text) return;
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = "ja-JP";
+  utterance.rate = 0.86;
+  utterance.pitch = 1.08;
+  utterance.onend = () => setKidsListenButtonsText("よむ");
+  utterance.onerror = () => setKidsListenButtonsText("よむ");
+  setKidsListenButtonsText("とめる");
+  window.speechSynthesis.speak(utterance);
+}
+
 function getSpeechErrorMessage(errorType = "") {
   const messages = {
     "not-allowed": "マイクが許可されていません。ブラウザのマイク許可をオンにしてください。",
-    "service-not-allowed": "音声入力サービスが使えません。ChromeやSafariで試してください。",
-    "no-speech": "声が聞こえませんでした。もう一度、近くで話してください。",
-    "audio-capture": "マイクが見つかりません。端末のマイク設定を確認してください。",
-    network: "音声入力の通信で止まりました。ネット接続を確認してください。",
-    aborted: "音声入力を止めました。",
+    "service-not-allowed": "こえのにゅうりょくがつかえません。くろーむやさふぁりでためしてください。",
+    "no-speech": "こえがきこえませんでした。もういちど、ちかくではなしてください。",
+    "audio-capture": "マイクがみつかりません。たんまつのマイクせっていをかくにんしてください。",
+    network: "こえのにゅうりょくのつうしんでとまりました。ネットせつぞくをかくにんしてください。",
+    aborted: "こえのにゅうりょくをとめました。",
   };
-  return messages[errorType] || "音声入力が止まりました。もう一度試してください。";
+  return messages[errorType] || "こえのにゅうりょくがとまりました。もういちどためしてください。";
 }
 
 function startKidsRecordVoice() {
   const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!Recognition) {
-    setKidsRecordStatus("このブラウザでは音声入力が使えません。ChromeかSafariで試してください。", true);
+    setKidsRecordStatus("このブラウザではこえのにゅうりょくがつかえません。くろーむかさふぁりでためしてください。", true);
     return;
   }
   if (kidsRecordSpeechRecognition) {
@@ -3905,8 +4035,8 @@ function startKidsRecordVoice() {
   recognition.interimResults = false;
   recognition.maxAlternatives = 1;
   recognition.continuous = false;
-  if (els.kidsRecordVoiceButton) els.kidsRecordVoiceButton.textContent = "聞いています";
-  setKidsRecordStatus("話してください...");
+  if (els.kidsRecordVoiceButton) els.kidsRecordVoiceButton.textContent = "きいています";
+  setKidsRecordStatus("はなしてください...");
   recognition.onresult = (event) => {
     const transcript = Array.from(event.results)
       .map((result) => result[0]?.transcript || "")
@@ -3915,30 +4045,30 @@ function startKidsRecordVoice() {
     if (transcript && els.kidsRecordText) {
       els.kidsRecordText.value = [els.kidsRecordText.value.trim(), transcript].filter(Boolean).join(" ");
     }
-    setKidsRecordStatus(transcript ? "声を文字にしました" : "声を聞き取れませんでした", !transcript);
+    setKidsRecordStatus(transcript ? "こえをもじにしました" : "こえをききとれませんでした", !transcript);
   };
   recognition.onerror = (event) => setKidsRecordStatus(getSpeechErrorMessage(event.error), event.error !== "aborted");
   recognition.onend = () => {
     kidsRecordSpeechRecognition = null;
-    if (els.kidsRecordVoiceButton) els.kidsRecordVoiceButton.textContent = "声でのこす";
+    if (els.kidsRecordVoiceButton) els.kidsRecordVoiceButton.textContent = "こえでのこす";
   };
   try {
     recognition.start();
   } catch (error) {
     kidsRecordSpeechRecognition = null;
-    if (els.kidsRecordVoiceButton) els.kidsRecordVoiceButton.textContent = "声でのこす";
-    setKidsRecordStatus("音声入力を開始できませんでした。少し待ってもう一度押してください。", true);
+    if (els.kidsRecordVoiceButton) els.kidsRecordVoiceButton.textContent = "こえでのこす";
+    setKidsRecordStatus("こえのにゅうりょくをはじめられませんでした。すこしまってもういちどおしてください。", true);
   }
 }
 
 async function saveKidsRecord() {
   const text = els.kidsRecordText?.value.trim() || "";
   if (!text && !pendingKidsRecordStamp && !pendingKidsRecordImage?.dataUrl) {
-    setKidsRecordStatus("写真、声、スタンプのどれかを入れてください", true);
+    setKidsRecordStatus("しゃしん、こえ、すたんぷのどれかをいれてください", true);
     return;
   }
   if (pendingKidsRecordImage?.dataUrl && !hasValidLatLng(latestCurrentLocation)) {
-    setKidsRecordStatus("写真を探究ポイントにするため、現在地を確認しています...");
+    setKidsRecordStatus("しゃしんをたんきゅうポイントにするため、いまいるばしょをかくにんしています...");
     try {
       const position = await requestCurrentPositionWithFallback();
       latestCurrentLocation = {
@@ -3947,7 +4077,7 @@ async function saveKidsRecord() {
       };
       updateCurrentLocationOverlay(latestCurrentLocation);
     } catch (error) {
-      setKidsRecordStatus(`写真は保存できますが、地図ポイントにはできません: ${getGeolocationErrorMessage(error)}`, true);
+      setKidsRecordStatus(`しゃしんはほぞんできますが、ちずポイントにはできません: ${getGeolocationErrorMessage(error)}`, true);
     }
   }
   const encounter = getSelectedEncounter();
@@ -3984,7 +4114,7 @@ async function saveKidsRecord() {
   pendingKidsRecordImage = null;
   pendingKidsRecordStamp = "";
   renderKidsRecordPhotoPreview();
-  setKidsRecordStatus(recordLocation ? "写真をキッズ探究ポイントとして登録しました。保護者確認待ちです" : "きろくしました。位置情報がないため地図ポイントは未登録です。");
+  setKidsRecordStatus(recordLocation ? "しゃしんをきっずたんきゅうポイントとしてとうろくしました。ほごしゃかくにんまちです" : "きろくしました。いちじょうほうがないためちずポイントはみとうろくです。");
   saveState();
   render();
   if (getDriveUrl()) {
@@ -6191,6 +6321,9 @@ document.querySelectorAll("[data-kids-stamp]").forEach((button) => {
 });
 document.querySelectorAll("[data-kids-record-stamp]").forEach((button) => {
   button.addEventListener("click", () => selectKidsRecordStamp(button.dataset.kidsRecordStamp));
+});
+document.querySelectorAll("[data-kids-listen]").forEach((button) => {
+  button.addEventListener("click", () => speakKidsText(button.dataset.kidsListen || "home"));
 });
 document.querySelectorAll("[data-kids-point-scope]").forEach((button) => {
   button.addEventListener("click", () => {

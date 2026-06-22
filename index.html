@@ -306,16 +306,17 @@
             <button id="center-search-button" type="button">検索地点</button>
             <button id="current-location-button" type="button">現在地</button>
           </div>
-          <section id="kids-map-guide" class="kids-map-guide hidden" aria-label="キッズぼうけんマップ">
+          <section id="kids-map-guide" class="kids-map-guide hidden" aria-label="きっずぼうけんまっぷ">
             <div>
-              <p class="eyebrow">ぼうけんマップ</p>
-              <h2 id="kids-map-title">ぼうけんポイント</h2>
-              <p id="kids-map-text">気になる場所をえらんで、みつけたことをのこそう。</p>
+              <p class="eyebrow">ぼうけんまっぷ</p>
+              <h2 id="kids-map-title">ぼうけんぽいんと</h2>
+              <p id="kids-map-text">きになるばしょをえらんで、みつけたことをのこそう。</p>
             </div>
+            <button class="kids-listen-button" type="button" data-kids-listen="map">よむ</button>
             <div id="kids-map-badges" class="kids-map-badges"></div>
             <div class="kids-map-actions">
-              <button id="kids-map-center-button" class="primary-button" type="button">この場所を真ん中</button>
-              <button id="kids-map-current-button" class="secondary-button" type="button">いまいる場所</button>
+              <button id="kids-map-center-button" class="primary-button" type="button">まんなか</button>
+              <button id="kids-map-current-button" class="secondary-button" type="button">いまここ</button>
               <button id="kids-map-post-button" class="secondary-button" type="button">みつけたこと</button>
             </div>
             <p id="kids-map-status" class="kids-map-status" aria-live="polite"></p>
@@ -687,14 +688,15 @@
           </div>
         </section>
 
-        <section class="kids-view hidden" aria-label="キッズモード">
+        <section class="kids-view hidden" aria-label="きっずもーど">
           <div class="kids-shell">
             <section class="kids-hero">
               <div>
-                <p class="eyebrow">4-10さいモード</p>
+                <p class="eyebrow">4-10さいもーど</p>
                 <h2>きょうのぼうけん</h2>
-                <p>すき、ふしぎ、みつけたことから、ワクワクをひろげよう。</p>
+                <p>すき、ふしぎ、みつけたことから、わくわくをひろげよう。</p>
               </div>
+              <button class="kids-listen-button" type="button" data-kids-listen="home">よむ</button>
               <div id="kids-avatar" class="kids-avatar">?</div>
             </section>
             <form id="kids-onboarding-form" class="kids-onboarding-card">
@@ -709,23 +711,23 @@
                 <input id="kids-onboarding-favorites" type="text" placeholder="むし、でんしゃ、くも、こうさく" />
                 <label for="kids-onboarding-symbol">しるし</label>
                 <select id="kids-onboarding-symbol">
-                  <option value="星">星</option>
-                  <option value="炎">炎</option>
-                  <option value="水">水</option>
-                  <option value="森">森</option>
-                  <option value="雷">雷</option>
-                  <option value="光">光</option>
-                  <option value="知">知</option>
-                  <option value="翼">翼</option>
+                  <option value="ほし">ほし</option>
+                  <option value="ほのお">ほのお</option>
+                  <option value="みず">みず</option>
+                  <option value="もり">もり</option>
+                  <option value="かみなり">かみなり</option>
+                  <option value="ひかり">ひかり</option>
+                  <option value="ちえ">ちえ</option>
+                  <option value="つばさ">つばさ</option>
                 </select>
                 <label for="kids-onboarding-color">いろ</label>
                 <input id="kids-onboarding-color" type="color" value="#2f8f63" />
                 <label for="kids-onboarding-aura">ちから</label>
                 <select id="kids-onboarding-aura">
-                  <option value="探究">探究</option>
-                  <option value="ワクワク">ワクワク</option>
+                  <option value="たんけん">たんけん</option>
+                  <option value="わくわく">わくわく</option>
                   <option value="ゆうき">ゆうき</option>
-                  <option value="共創">共創</option>
+                  <option value="いっしょ">いっしょ</option>
                   <option value="はっけん">はっけん</option>
                   <option value="やさしさ">やさしさ</option>
                   <option value="ひらめき">ひらめき</option>
@@ -736,42 +738,42 @@
             </form>
             <div class="kids-action-grid">
               <button class="kids-action-card" type="button" data-kids-action="quest">
-                <span>冒険</span>
-                <strong>冒険ポイント</strong>
+                <span>ぼうけん</span>
+                <strong>ぼうけんぽいんと</strong>
               </button>
               <button class="kids-action-card" type="button" data-kids-action="photo">
-                <span>発見</span>
+                <span>はっけん</span>
                 <strong>みつけたこと</strong>
               </button>
             </div>
-            <section id="kids-home-panel" class="kids-home-panel" aria-label="キッズホーム">
+            <section id="kids-home-panel" class="kids-home-panel" aria-label="きっずほーむ">
               <article class="kids-growth-card">
                 <div id="kids-growth-avatar" class="kids-growth-avatar">?</div>
                 <div>
-                  <span id="kids-growth-stage">ソロ探究</span>
+                  <span id="kids-growth-stage">ひとりたんけん</span>
                   <strong id="kids-growth-name">ぼうけんしゃ</strong>
-                  <p id="kids-growth-text">見つけたことがふえると、世界がひろがります。</p>
+                  <p id="kids-growth-text">みつけたことがふえると、せかいがひろがります。</p>
                 </div>
               </article>
-              <section class="kids-photo-feed" aria-label="過去の写真">
+              <section class="kids-photo-feed" aria-label="これまでのしゃしん">
                 <div class="section-head">
                   <div>
                     <p class="eyebrow">みつけたこと</p>
-                    <h3>これまでの写真</h3>
+                    <h3>これまでのしゃしん</h3>
                   </div>
                   <span id="kids-photo-count" class="small-badge">0こ</span>
                 </div>
                 <div id="kids-photo-feed" class="kids-photo-grid"></div>
               </section>
-              <section class="kids-point-board" aria-label="冒険ポイント">
+              <section class="kids-point-board" aria-label="ぼうけんぽいんと">
                 <div class="section-head">
                   <div>
-                    <p class="eyebrow">冒険ポイント</p>
-                    <h3>いける世界</h3>
+                    <p class="eyebrow">ぼうけんぽいんと</p>
+                    <h3>いけるせかい</h3>
                   </div>
                   <span id="kids-world-radius" class="small-badge">30m</span>
                 </div>
-                <div class="kids-point-tabs" role="tablist" aria-label="ポイント表示">
+                <div class="kids-point-tabs" role="tablist" aria-label="ぽいんとひょうじ">
                   <button class="active" type="button" data-kids-point-scope="own">じぶん</button>
                   <button type="button" data-kids-point-scope="friends">ともだち</button>
                 </div>
@@ -783,11 +785,11 @@
               <div class="section-head">
                 <div>
                   <p class="eyebrow">きょうのきろく</p>
-                  <h3>どんなワクワクがあった？</h3>
+                  <h3>どんなわくわくがあった？</h3>
                 </div>
                 <span id="kids-record-count" class="small-badge">0こ</span>
               </div>
-              <div class="kids-record-stamps" aria-label="きもちスタンプ">
+              <div class="kids-record-stamps" aria-label="きもちすたんぷ">
                 <button type="button" data-kids-record-stamp="たのしかった">たのしい</button>
                 <button type="button" data-kids-record-stamp="びっくりした">びっくり</button>
                 <button type="button" data-kids-record-stamp="ふしぎ">ふしぎ</button>
@@ -795,14 +797,15 @@
               </div>
               <div class="kids-record-capture">
                 <input id="kids-record-photo" type="file" accept="image/*" capture="environment" />
-                <button id="kids-record-photo-button" class="primary-button" type="button">すぐ写真をとる</button>
-                <button id="kids-record-voice-button" class="secondary-button" type="button">声でのこす</button>
+                <button id="kids-record-photo-button" class="primary-button" type="button">すぐしゃしん</button>
+                <button id="kids-record-voice-button" class="secondary-button" type="button">こえでのこす</button>
+                <button class="kids-listen-button" type="button" data-kids-listen="record">よむ</button>
               </div>
               <div id="kids-record-photo-preview" class="kids-record-photo-preview hidden"></div>
               <div id="kids-photo-analysis" class="kids-photo-analysis hidden" aria-live="polite"></div>
-              <textarea id="kids-record-text" rows="3" placeholder="話したことや、みつけたことがここに入ります"></textarea>
+              <textarea id="kids-record-text" rows="3" placeholder="はなしたことや、みつけたことがここにはいります"></textarea>
               <div class="kids-record-actions">
-                <strong id="kids-record-selected">スタンプなし</strong>
+                <strong id="kids-record-selected">すたんぷなし</strong>
                 <button id="save-kids-record-button" class="primary-button" type="button">きろくする</button>
               </div>
               <p id="kids-record-status" class="field-post-status" aria-live="polite"></p>

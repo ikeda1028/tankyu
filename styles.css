@@ -1705,12 +1705,34 @@ textarea {
 
 .kids-hero {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: auto minmax(86px, auto) minmax(0, 132px);
   align-items: center;
   gap: 18px;
   min-height: 180px;
   background: #101914;
   color: white;
+}
+
+.kids-listen-button {
+  min-height: 46px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 999px;
+  color: var(--green);
+  background: #fff;
+  box-shadow: 0 10px 24px rgba(30, 48, 36, 0.14);
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.kids-map-guide .kids-listen-button,
+.kids-record-panel .kids-listen-button {
+  color: #fff;
+  background: var(--green);
+}
+
+.kids-map-guide > .kids-listen-button {
+  justify-self: start;
 }
 
 .kids-hero h2 {
@@ -2195,7 +2217,7 @@ textarea {
 
 .kids-record-capture {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(86px, 0.65fr);
   gap: 8px;
 }
 
@@ -4466,7 +4488,7 @@ textarea {
   }
 
   body:has(.kids-view:not(.hidden)) .kids-hero {
-    grid-template-columns: 76px minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) 58px 76px;
     min-height: 0;
     padding: 10px;
     gap: 10px;
@@ -4490,6 +4512,12 @@ textarea {
     height: 76px;
     border-width: 3px;
     font-size: 24px;
+  }
+
+  body:has(.kids-view:not(.hidden)) .kids-listen-button {
+    min-height: 44px;
+    padding: 0 10px;
+    font-size: 14px;
   }
 
   body:has(.kids-view:not(.hidden)) .kids-action-grid {
@@ -4625,7 +4653,7 @@ textarea {
   }
 
   body:has(.kids-view:not(.hidden)) .kids-record-capture {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 6px;
   }
 
