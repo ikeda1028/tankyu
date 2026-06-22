@@ -1884,6 +1884,114 @@ textarea {
   align-self: end;
 }
 
+.kids-record-panel {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid rgba(223, 230, 222, 0.9);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 10px 32px rgba(30, 48, 36, 0.08);
+}
+
+.kids-record-panel.hidden {
+  display: none;
+}
+
+.kids-record-panel h3 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 20px;
+}
+
+.kids-record-stamps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.kids-record-stamps button {
+  min-height: 48px;
+  border: 1px solid rgba(223, 230, 222, 0.9);
+  border-radius: 8px;
+  color: var(--ink);
+  background: #fff;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.kids-record-stamps button.active {
+  border-color: rgba(47, 143, 99, 0.42);
+  color: white;
+  background: var(--green);
+}
+
+.kids-record-panel textarea {
+  width: 100%;
+  min-height: 92px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  color: var(--ink);
+  background: #fff;
+  font: inherit;
+  font-size: 16px;
+  resize: vertical;
+}
+
+.kids-record-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.kids-record-actions strong {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.kids-record-list {
+  display: grid;
+  gap: 8px;
+}
+
+.kids-record-list > p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.kids-record-list article {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid rgba(223, 230, 222, 0.9);
+  border-radius: 8px;
+  background: #f7fbff;
+}
+
+.kids-record-list span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.kids-record-list strong {
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.kids-record-list p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.5;
+}
+
 .guardian-grid {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
@@ -3961,6 +4069,15 @@ textarea {
 
   .kids-hero {
     grid-template-columns: 1fr;
+  }
+
+  .kids-record-stamps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .kids-record-actions {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .child-profile-grid textarea {

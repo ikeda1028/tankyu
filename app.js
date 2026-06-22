@@ -283,6 +283,13 @@ const els = {
   kidsRecentText: document.querySelector("#kids-recent-text"),
   kidsNextStep: document.querySelector("#kids-next-step"),
   kidsNextText: document.querySelector("#kids-next-text"),
+  kidsRecordPanel: document.querySelector("#kids-record-panel"),
+  kidsRecordCount: document.querySelector("#kids-record-count"),
+  kidsRecordText: document.querySelector("#kids-record-text"),
+  kidsRecordSelected: document.querySelector("#kids-record-selected"),
+  saveKidsRecordButton: document.querySelector("#save-kids-record-button"),
+  kidsRecordStatus: document.querySelector("#kids-record-status"),
+  kidsRecordList: document.querySelector("#kids-record-list"),
   guardianStatus: document.querySelector("#guardian-status"),
   guardianChildName: document.querySelector("#guardian-child-name"),
   guardianChildMeta: document.querySelector("#guardian-child-meta"),
@@ -500,6 +507,7 @@ let firebaseAutoSyncReason = "";
 let pendingFieldPostImage = null;
 let pendingFieldPostLocation = null;
 let pendingKidsStamp = "";
+let pendingKidsRecordStamp = "";
 
 function normalizeChildProfile(profile = {}) {
   profile = profile || {};
@@ -2941,7 +2949,9 @@ function renderKidsMode() {
   els.kidsActionGrid?.classList.toggle("hidden", !onboardingComplete);
   els.kidsStatusRow?.classList.toggle("hidden", !onboardingComplete);
   els.kidsHomePanel?.classList.toggle("hidden", !onboardingComplete);
+  els.kidsRecordPanel?.classList.toggle("hidden", !onboardingComplete);
   renderKidsHomePanel(child);
+  renderKidsRecordPanel();
   fillKidsOnboardingForm(child, avatar);
 }
 
@@ -2974,6 +2984,86 @@ function renderKidsHomePanel(child = normalizeChildProfile(state.childProfile)) 
       ? `${child.favoriteThings}から、ふしぎをひとつえらんでみよう。`
       : "ふしぎだなと思ったら、しゃしんをとってきろくしよう。";
   }
+}
+
+function renderKidsRecordPanel() {
+  if (!els.kidsRecordPanel) return;
+  const records = (state.fieldPosts || []).filter((post) => post.sourceMode === "kids").slice(0, 5);
+  if (els.kidsRecordCount) els.kidsRecordCount.textContent = `${records.length}こ`;
+  if (els.kidsRecordSelected) els.kidsRecordSelected.textContent = pendingKidsRecordStamp || "スタンプなし";
+  document.querySelectorAll("[data-kids-record-stamp]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.kidsRecordStamp === pendingKidsRecordStamp);
+  });
+  if (!els.kidsRecordList) return;
+  if (!records.length) {
+    els.kidsRecordList.innerHTML = `<p>まだきろくはありません。スタンプだけでものこせます。</p>`;
+    return;
+  }
+  els.kidsRecordList.innerHTML = records
+    .map((record) => {
+      const body = [record.stamp, record.text || (record.image?.hasPhoto ? "しゃしんをのこしました" : "ひとこときろく")]
+        .filter(Boolean)
+        .join(" / ");
+      return `<article>
+        <span>${escapeHtml(formatTime(new Date(record.at)))}</span>
+        <strong>${escapeHtml(record.eventTitle || "きょうのきろく")}</strong>
+        <p>${escapeHtml(body)}</p>
+      </article>`;
+    })
+    .join("");
+}
+
+function setKidsRecordStatus(message, isError = false) {
+  if (!els.kidsRecordStatus) return;
+  els.kidsRecordStatus.textContent = message;
+  els.kidsRecordStatus.classList.toggle("error", Boolean(isError));
+}
+
+function selectKidsRecordStamp(stamp) {
+  pendingKidsRecordStamp = stamp || "";
+  renderKidsRecordPanel();
+}
+
+function saveKidsRecord() {
+  const text = els.kidsRecordText?.value.trim() || "";
+  if (!text && !pendingKidsRecordStamp) {
+    setKidsRecordStatus("スタンプか、ひとことを入れてください", true);
+    return;
+  }
+  const encounter = getSelectedEncounter();
+  const depth = Math.max(1, getDepth());
+  const questDelta = Math.max(2, depth + 2);
+  const joyDelta = pendingKidsRecordStamp ? 4 : 3;
+  const post = {
+    id: `kids-record-${Date.now()}`,
+    eventId: encounter.id,
+    eventTitle: encounter.title,
+    text,
+    image: null,
+    location: null,
+    stamp: pendingKidsRecordStamp,
+    sourceMode: "kids",
+    approvalStatus: "pending",
+    depth,
+    questDelta,
+    joyDelta,
+    at: new Date().toISOString(),
+  };
+  state.fieldPosts = [post, ...state.fieldPosts].slice(0, 80);
+  addQuest(questDelta);
+  state.joy = clamp(state.joy + joyDelta);
+  state.drive = clamp(state.drive + 1);
+  state.thanks = clamp(state.thanks + 2);
+  addActivity(`きょうのきろくを保存。たんけんパワー +${questDelta} / ワクワク +${joyDelta}`);
+  if (els.kidsRecordText) els.kidsRecordText.value = "";
+  pendingKidsRecordStamp = "";
+  setKidsRecordStatus("きろくしました。保護者確認待ちです");
+  saveState();
+  render();
+  if (getDriveUrl()) {
+    postToDrive("field_posts", fieldPostToDriveRecord(post));
+  }
+  queueFirebaseSync("きょうのきろく");
 }
 
 function fillKidsOnboardingForm(child = normalizeChildProfile(state.childProfile), avatar = normalizeAvatar(state.member.avatar)) {
@@ -4985,7 +5075,11 @@ els.usePostLocationButton?.addEventListener("click", attachFieldPostLocation);
 document.querySelectorAll("[data-kids-stamp]").forEach((button) => {
   button.addEventListener("click", () => selectKidsStamp(button.dataset.kidsStamp));
 });
+document.querySelectorAll("[data-kids-record-stamp]").forEach((button) => {
+  button.addEventListener("click", () => selectKidsRecordStamp(button.dataset.kidsRecordStamp));
+});
 els.saveFieldPostButton?.addEventListener("click", saveFieldPost);
+els.saveKidsRecordButton?.addEventListener("click", saveKidsRecord);
 els.saveFeedbackButton.addEventListener("click", saveMentorFeedback);
 els.quickFeedbackButtons.forEach((button) => {
   button.addEventListener("click", () => saveQuickFeedback(button.dataset.template));
@@ -5014,7 +5108,9 @@ document.querySelectorAll("[data-kids-action]").forEach((button) => {
       return;
     }
     if (action === "record") {
-      showMode("feedback");
+      showMode("kids");
+      els.kidsRecordPanel?.scrollIntoView({ behavior: "smooth", block: "center" });
+      els.kidsRecordText?.focus();
       return;
     }
     showMode("quest");
