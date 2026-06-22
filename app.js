@@ -3264,10 +3264,22 @@ function openKidsRecordCamera() {
   els.kidsRecordPhoto?.click();
 }
 
+function getSpeechErrorMessage(errorType = "") {
+  const messages = {
+    "not-allowed": "マイクが許可されていません。ブラウザのマイク許可をオンにしてください。",
+    "service-not-allowed": "音声入力サービスが使えません。ChromeやSafariで試してください。",
+    "no-speech": "声が聞こえませんでした。もう一度、近くで話してください。",
+    "audio-capture": "マイクが見つかりません。端末のマイク設定を確認してください。",
+    network: "音声入力の通信で止まりました。ネット接続を確認してください。",
+    aborted: "音声入力を止めました。",
+  };
+  return messages[errorType] || "音声入力が止まりました。もう一度試してください。";
+}
+
 function startKidsRecordVoice() {
   const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!Recognition) {
-    setKidsRecordStatus("このブラウザでは音声入力が使えません", true);
+    setKidsRecordStatus("このブラウザでは音声入力が使えません。ChromeかSafariで試してください。", true);
     return;
   }
   if (kidsRecordSpeechRecognition) {
@@ -3280,6 +3292,7 @@ function startKidsRecordVoice() {
   recognition.lang = "ja-JP";
   recognition.interimResults = false;
   recognition.maxAlternatives = 1;
+  recognition.continuous = false;
   if (els.kidsRecordVoiceButton) els.kidsRecordVoiceButton.textContent = "聞いています";
   setKidsRecordStatus("話してください...");
   recognition.onresult = (event) => {
@@ -3292,12 +3305,18 @@ function startKidsRecordVoice() {
     }
     setKidsRecordStatus(transcript ? "声を文字にしました" : "声を聞き取れませんでした", !transcript);
   };
-  recognition.onerror = () => setKidsRecordStatus("音声入力が止まりました。もう一度試してください", true);
+  recognition.onerror = (event) => setKidsRecordStatus(getSpeechErrorMessage(event.error), event.error !== "aborted");
   recognition.onend = () => {
     kidsRecordSpeechRecognition = null;
     if (els.kidsRecordVoiceButton) els.kidsRecordVoiceButton.textContent = "声でのこす";
   };
-  recognition.start();
+  try {
+    recognition.start();
+  } catch (error) {
+    kidsRecordSpeechRecognition = null;
+    if (els.kidsRecordVoiceButton) els.kidsRecordVoiceButton.textContent = "声でのこす";
+    setKidsRecordStatus("音声入力を開始できませんでした。少し待ってもう一度押してください。", true);
+  }
 }
 
 function saveKidsRecord() {
