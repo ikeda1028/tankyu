@@ -648,6 +648,7 @@ let googleMapsLoadPromise = null;
 let googleMapMarkers = [];
 let currentLocationMarker = null;
 let currentLocationCircle = null;
+let kidsWorldCircles = [];
 let latestCurrentLocation = null;
 let googleMapFocusToken = 0;
 let mapsAutoLoadKey = "";
@@ -856,11 +857,43 @@ function getEncounters() {
 }
 
 function getKidsExplorationPoints(scope = "") {
+  if (scope === "own") return getOwnKidsExplorationPoints();
   return kidsExplorationPoints.filter((point) => !scope || (Array.isArray(point.scope) && point.scope.includes(scope)));
 }
 
 function getKidsPointById(pointId) {
-  return kidsExplorationPoints.find((point) => point.id === pointId) || null;
+  return getOwnKidsExplorationPoints().find((point) => point.id === pointId) || kidsExplorationPoints.find((point) => point.id === pointId) || null;
+}
+
+function getOwnKidsExplorationPoints() {
+  return (state.fieldPosts || [])
+    .filter((post) => post.sourceMode === "kids")
+    .filter((post) => post.approvalStatus !== "rejected")
+    .filter((post) => post.createsKidsPoint)
+    .filter((post) => post.image?.dataUrl || post.image?.downloadUrl)
+    .filter((post) => hasValidLatLng(post.location))
+    .map((post, index) => {
+      const title = String(post.text || post.stamp || "みつけたこと").trim().slice(0, 18) || "みつけたこと";
+      return {
+        id: `kids-photo-point-${post.id}`,
+        sourcePostId: post.id,
+        title,
+        index: Math.max(10, 20 + index * 2),
+        description: post.text || "写真から作ったキッズ用探究ポイント。",
+        tags: [post.stamp || "みつけた", "しゃしん"].filter(Boolean),
+        keywords: [post.stamp || "みつけた", "写真", "キッズ"],
+        impact: "写真から生まれた探究",
+        questionPath: ["何を見つけたかな", "どんな色かな", "どこがふしぎかな", "もう一度見ると何が違うかな", "だれかに教えるなら何を話すかな"],
+        color: normalizeAvatar(state.member.avatar).color || "#2f8f63",
+        position: post.location,
+        locationName: "写真をとった場所",
+        boost: { joy: 4, distance: 2, reflection: 1 },
+        image: post.image,
+        kidsOnly: true,
+        userCreated: true,
+        scope: ["own"],
+      };
+    });
 }
 
 function normalizeThemePlace(place) {
@@ -1425,6 +1458,20 @@ function getMapsTroubleshootingMessage(reason = "認証エラー") {
   return `${reason}: Google Cloudで ${getMapsReferrerHint()} をHTTPリファラーに追加し、Maps JavaScript APIと請求設定を確認`;
 }
 
+function getKidsSafeMapStyles() {
+  return [
+    { featureType: "poi", stylers: [{ visibility: "off" }] },
+    { featureType: "poi.business", stylers: [{ visibility: "off" }] },
+    { featureType: "poi.attraction", stylers: [{ visibility: "off" }] },
+    { featureType: "poi.medical", stylers: [{ visibility: "off" }] },
+    { featureType: "poi.place_of_worship", stylers: [{ visibility: "off" }] },
+    { featureType: "poi.school", stylers: [{ visibility: "off" }] },
+    { featureType: "poi.sports_complex", stylers: [{ visibility: "off" }] },
+    { featureType: "transit", stylers: [{ visibility: "off" }] },
+    { featureType: "administrative.neighborhood", stylers: [{ visibility: "off" }] },
+  ];
+}
+
 function isFilePage() {
   return window.location.protocol === "file:";
 }
@@ -1525,6 +1572,7 @@ async function initializeGoogleMap() {
       mapTypeControl: false,
       streetViewControl: false,
       gestureHandling: "greedy",
+      styles: state.ui?.kidsMapActive ? getKidsSafeMapStyles() : null,
     });
     els.mapCanvas.classList.add("google-map-enabled");
     renderGoogleMapMarkers();
@@ -1620,23 +1668,70 @@ function updateCurrentLocationOverlay(position) {
   }
   currentLocationMarker.setMap(googleMap);
   currentLocationMarker.setPosition(current);
-  if (state.ui?.kidsMapActive) {
-    const radius = getKidsWorldRadius();
-    if (!currentLocationCircle) {
-      currentLocationCircle = new google.maps.Circle({
-        map: googleMap,
-        strokeColor: "#2f8f63",
-        strokeOpacity: 0.82,
-        strokeWeight: 2,
-        fillColor: "#2f8f63",
-        fillOpacity: 0.12,
-      });
-    }
-    currentLocationCircle.setMap(googleMap);
-    currentLocationCircle.setCenter(current);
-    currentLocationCircle.setRadius(radius);
-  } else if (currentLocationCircle) {
+  renderKidsWorldRange();
+}
+
+function clearKidsWorldRange() {
+  kidsWorldCircles.forEach((circle) => circle.setMap(null));
+  kidsWorldCircles = [];
+  if (currentLocationCircle) {
     currentLocationCircle.setMap(null);
+    currentLocationCircle = null;
+  }
+}
+
+function extendBoundsByRadius(bounds, center, radius) {
+  if (!bounds || !hasValidLatLng(center)) return;
+  const lat = Number(center.lat);
+  const lng = Number(center.lng);
+  const latDelta = radius / 111320;
+  const lngDelta = radius / (111320 * Math.max(0.2, Math.cos((lat * Math.PI) / 180)));
+  bounds.extend({ lat: lat - latDelta, lng: lng - lngDelta });
+  bounds.extend({ lat: lat + latDelta, lng: lng + lngDelta });
+}
+
+function getKidsWorldBounds() {
+  if (!window.google?.maps) return null;
+  const radius = getKidsWorldRadius();
+  const centers = getKidsWorldCenters();
+  if (!centers.length) return null;
+  const bounds = new google.maps.LatLngBounds();
+  centers.forEach((center) => extendBoundsByRadius(bounds, center, radius));
+  return bounds.isEmpty() ? null : bounds;
+}
+
+function renderKidsWorldRange() {
+  if (!googleMap || !window.google?.maps) return;
+  clearKidsWorldRange();
+  if (!state.ui?.kidsMapActive) {
+    googleMap.setOptions({ restriction: null, minZoom: null, styles: null });
+    return;
+  }
+  const radius = getKidsWorldRadius();
+  const centers = getKidsWorldCenters();
+  if (!centers.length) return;
+  const bounds = getKidsWorldBounds();
+  centers.forEach((center) => {
+    if (!hasValidLatLng(center)) return;
+    const circle = new google.maps.Circle({
+      map: googleMap,
+      center: { lat: Number(center.lat), lng: Number(center.lng) },
+      radius,
+      strokeColor: "#2f8f63",
+      strokeOpacity: 0.82,
+      strokeWeight: 2,
+      fillColor: "#2f8f63",
+      fillOpacity: 0.12,
+      clickable: false,
+    });
+    kidsWorldCircles.push(circle);
+  });
+  if (bounds) {
+    googleMap.setOptions({
+      restriction: { latLngBounds: bounds, strictBounds: true },
+      minZoom: Math.max(3, getKidsMapZoomForRadius(radius) - 1),
+      styles: getKidsSafeMapStyles(),
+    });
   }
 }
 
@@ -1667,19 +1762,16 @@ function createPhotoMarkerIcon(imageSrc, color = "#2f8f63", label = "友") {
   };
 }
 
-function getEncounterPositionById(eventId) {
-  const encounter = getEncounters().find((item) => item.id === eventId) || getKidsPointById(eventId);
-  return hasValidLatLng(encounter?.position) ? encounter.position : null;
-}
-
 function getOwnKidsPhotoMarkers() {
   const radius = getKidsWorldRadius();
   const center = getKidsWorldCenter();
   return (state.fieldPosts || [])
+    .filter((post) => post.sourceMode === "kids")
     .filter((post) => post.approvalStatus !== "rejected")
+    .filter((post) => post.createsKidsPoint)
     .filter((post) => post.image?.dataUrl || post.image?.downloadUrl)
+    .filter((post) => hasValidLatLng(post.location))
     .map((post) => {
-      const position = hasValidLatLng(post.location) ? post.location : getEncounterPositionById(post.eventId);
       return {
         id: post.id,
         type: "own",
@@ -1688,7 +1780,7 @@ function getOwnKidsPhotoMarkers() {
         text: post.stamp || post.text || "みつけたこと",
         imageSrc: post.image?.dataUrl || post.image?.downloadUrl || "",
         color: normalizeAvatar(state.member.avatar).color || "#2f8f63",
-        position,
+        position: post.location,
       };
     })
     .filter((photo) => hasValidLatLng(photo.position))
@@ -1887,15 +1979,19 @@ function renderGoogleMapMarkers() {
       bounds.extend(position);
     });
   }
-  if (!bounds.isEmpty()) googleMap.fitBounds(bounds, 64);
   if (kidsMapActive) {
-    const selected = getSelectedEncounter();
-    if (hasValidLatLng(selected?.position)) {
-      focusGoogleMapPoint({ lat: Number(selected.position.lat), lng: Number(selected.position.lng) }, Math.max(googleMap.getZoom(), 12));
+    renderKidsWorldRange();
+    const worldBounds = getKidsWorldBounds();
+    if (worldBounds) {
+      googleMap.fitBounds(worldBounds, 48);
+    } else if (!bounds.isEmpty()) {
+      googleMap.fitBounds(bounds, 64);
     }
   } else if (state.themeSearch?.query) {
+    if (!bounds.isEmpty()) googleMap.fitBounds(bounds, 64);
     centerGoogleMapOnSearch();
   } else {
+    if (!bounds.isEmpty()) googleMap.fitBounds(bounds, 64);
     const selected = getSelectedEncounter();
     if (hasValidLatLng(selected?.position)) {
       focusGoogleMapPoint({ lat: Number(selected.position.lat), lng: Number(selected.position.lng) }, 7);
@@ -3420,24 +3516,34 @@ function formatKidsRadius(radius) {
 }
 
 function getKidsWorldCenter() {
-  if (hasValidLatLng(latestCurrentLocation)) return latestCurrentLocation;
-  const ownPoint = getKidsExplorationPoints("own").find((event) => hasValidLatLng(event.position));
+  const ownPoint = getOwnKidsExplorationPoints().find((event) => hasValidLatLng(event.position));
   if (ownPoint) return ownPoint.position;
+  if (hasValidLatLng(latestCurrentLocation)) return latestCurrentLocation;
   const selected = getKidsPointById(state.selected) || getSelectedEncounter();
   if (selected && hasValidLatLng(selected.position)) return selected.position;
   const fallback = kidsExplorationPoints.find((encounter) => hasValidLatLng(encounter.position));
   return fallback?.position || null;
 }
 
-function getKidsScopedPoints(scope = state.ui?.kidsPointScope || "own") {
+function getKidsWorldCenters() {
+  const ownCenters = getOwnKidsExplorationPoints().map((point) => point.position).filter(hasValidLatLng);
+  if (ownCenters.length) return ownCenters;
+  const fallback = getKidsWorldCenter();
+  return hasValidLatLng(fallback) ? [fallback] : [];
+}
+
+function isInsideKidsWorld(position) {
+  if (!hasValidLatLng(position)) return false;
+  const centers = getKidsWorldCenters();
+  if (!centers.length) return true;
   const radius = getKidsWorldRadius();
-  const center = getKidsWorldCenter();
+  return centers.some((center) => getDistanceMeters(center, position) <= radius);
+}
+
+function getKidsScopedPoints(scope = state.ui?.kidsPointScope || "own") {
   const source = getKidsExplorationPoints(scope);
   return source
-    .filter((encounter) => {
-      if (!hasValidLatLng(encounter.position) || !center) return true;
-      return getDistanceMeters(center, encounter.position) <= radius;
-    })
+    .filter((encounter) => !hasValidLatLng(encounter.position) || isInsideKidsWorld(encounter.position))
     .slice(0, 12);
 }
 
@@ -3785,25 +3891,40 @@ function startKidsRecordVoice() {
   }
 }
 
-function saveKidsRecord() {
+async function saveKidsRecord() {
   const text = els.kidsRecordText?.value.trim() || "";
   if (!text && !pendingKidsRecordStamp && !pendingKidsRecordImage?.dataUrl) {
     setKidsRecordStatus("写真、声、スタンプのどれかを入れてください", true);
     return;
   }
+  if (pendingKidsRecordImage?.dataUrl && !hasValidLatLng(latestCurrentLocation)) {
+    setKidsRecordStatus("写真を探究ポイントにするため、現在地を確認しています...");
+    try {
+      const position = await requestCurrentPositionWithFallback();
+      latestCurrentLocation = {
+        lat: position.coords.latitude,
+        lng: position.coords.longitude,
+      };
+      updateCurrentLocationOverlay(latestCurrentLocation);
+    } catch (error) {
+      setKidsRecordStatus(`写真は保存できますが、地図ポイントにはできません: ${getGeolocationErrorMessage(error)}`, true);
+    }
+  }
   const encounter = getSelectedEncounter();
   const depth = Math.max(1, getDepth());
   const questDelta = Math.max(2, depth + 2 + (pendingKidsRecordImage ? 2 : 0));
   const joyDelta = pendingKidsRecordStamp ? 4 : pendingKidsRecordImage ? 4 : 3;
+  const recordLocation = pendingKidsRecordImage?.dataUrl && hasValidLatLng(latestCurrentLocation) ? { ...latestCurrentLocation } : null;
   const post = {
     id: `kids-record-${Date.now()}`,
     eventId: encounter.id,
     eventTitle: encounter.title,
     text,
     image: pendingKidsRecordImage,
-    location: null,
+    location: recordLocation,
     stamp: pendingKidsRecordStamp,
     sourceMode: "kids",
+    createsKidsPoint: Boolean(pendingKidsRecordImage?.dataUrl && recordLocation),
     approvalStatus: "pending",
     depth,
     questDelta,
@@ -3823,7 +3944,7 @@ function saveKidsRecord() {
   pendingKidsRecordImage = null;
   pendingKidsRecordStamp = "";
   renderKidsRecordPhotoPreview();
-  setKidsRecordStatus("きろくしました。保護者確認待ちです");
+  setKidsRecordStatus(recordLocation ? "写真をキッズ探究ポイントとして登録しました。保護者確認待ちです" : "きろくしました。位置情報がないため地図ポイントは未登録です。");
   saveState();
   render();
   if (getDriveUrl()) {
