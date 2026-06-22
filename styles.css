@@ -2390,9 +2390,26 @@ body:has(.map-canvas.kids-map-active) .kids-navigator-bot {
   font-weight: 900;
 }
 
+.kids-profile-form .primary-button,
+.kids-profile-form .secondary-button {
+  min-height: 42px;
+}
+
+.kids-profile-form .secondary-button {
+  padding: 0 10px;
+  font-size: 13px;
+}
+
+.kids-profile-form .secondary-button:first-of-type {
+  grid-column: 1 / 2;
+}
+
+.kids-profile-form .secondary-button:last-of-type {
+  grid-column: 2 / 3;
+}
+
 .kids-profile-form .primary-button {
   grid-column: 1 / -1;
-  min-height: 42px;
 }
 
 .kids-item-grid {

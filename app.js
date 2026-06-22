@@ -450,6 +450,8 @@ const els = {
   kidsProfileSymbolInput: document.querySelector("#kids-profile-symbol-input"),
   kidsProfileColorInput: document.querySelector("#kids-profile-color-input"),
   kidsProfileAuraInput: document.querySelector("#kids-profile-aura-input"),
+  kidsAvatarResetButton: document.querySelector("#kids-avatar-reset-button"),
+  kidsAvatarRegenerateButton: document.querySelector("#kids-avatar-regenerate-button"),
   kidsItemGrid: document.querySelector("#kids-item-grid"),
   guardianStatus: document.querySelector("#guardian-status"),
   guardianChildName: document.querySelector("#guardian-child-name"),
@@ -3950,6 +3952,93 @@ function saveKidsProfileEdit(event) {
   queueFirebaseSync("キッズ個人設定更新");
 }
 
+function buildKidsAvatarPrompt() {
+  const child = normalizeChildProfile(state.childProfile);
+  const avatar = normalizeAvatar({
+    ...state.member.avatar,
+    symbol: els.kidsProfileSymbolInput?.value || state.member.avatar.symbol,
+    color: els.kidsProfileColorInput?.value || state.member.avatar.color,
+    aura: els.kidsProfileAuraInput?.value || state.member.avatar.aura,
+  });
+  const favoriteThings = els.kidsProfileFavoritesInput?.value.trim() || child.favoriteThings || state.member.initialInterest || "みつけること";
+  return [
+    "4歳から10歳向けの探究アプリで使う、子どもの相棒アバターを1体生成する。",
+    `よびな: ${els.kidsProfileNameInput?.value.trim() || child.nickname || "ぼうけんしゃ"}`,
+    `すきなこと: ${favoriteThings}`,
+    `しるし: ${avatar.symbol}`,
+    `いろ: ${avatar.color}`,
+    `ちから: ${avatar.aura}`,
+    "最初から怖くない、丸みのある、シンプルで親しみやすいキャラクター。",
+    "成長前の姿なので、装備は少なめ。小さな発見を応援する雰囲気。",
+    "全身が見える。背景は透明または白に近いシンプルな背景。",
+    "武器、攻撃、危険な表現、読める文字、ロゴは入れない。",
+    "明るく安全で、幼児から小学生低学年にふさわしいデザイン。",
+  ].join("\n");
+}
+
+function resetKidsAvatarImage() {
+  const avatar = normalizeAvatar({
+    ...state.member.avatar,
+    symbol: els.kidsProfileSymbolInput?.value || state.member.avatar.symbol,
+    color: els.kidsProfileColorInput?.value || state.member.avatar.color,
+    aura: els.kidsProfileAuraInput?.value || state.member.avatar.aura,
+    imageDataUrl: "",
+    downloadUrl: "",
+    storagePath: "",
+    generatedAt: "",
+    generationStage: "simple",
+  });
+  state.member.avatar = avatar;
+  saveState();
+  renderKidsMode();
+  renderKidsAvatarProfile();
+  queueFirebaseSync("キッズアバター簡易表示");
+}
+
+async function regenerateKidsAvatar() {
+  if (!els.kidsAvatarRegenerateButton) return;
+  const previousText = els.kidsAvatarRegenerateButton.textContent;
+  els.kidsAvatarRegenerateButton.disabled = true;
+  els.kidsAvatarRegenerateButton.textContent = "つくっています";
+  try {
+    const response = await fetch(getGenerateImageApiPath(), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        prompt: buildKidsAvatarPrompt(),
+      }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+    if (!data.imageDataUrl) throw new Error("画像データが空です");
+    const compressedImage = await compressGeneratedAvatarImage(data.imageDataUrl);
+    state.member.avatar = normalizeAvatar({
+      ...state.member.avatar,
+      symbol: els.kidsProfileSymbolInput?.value || state.member.avatar.symbol,
+      color: els.kidsProfileColorInput?.value || state.member.avatar.color,
+      aura: els.kidsProfileAuraInput?.value || state.member.avatar.aura,
+      imageDataUrl: compressedImage,
+      downloadUrl: "",
+      storagePath: "",
+      generatedAt: new Date().toISOString(),
+      generationStage: "simple",
+    });
+    saveState();
+    renderKidsMode();
+    renderKidsAvatarProfile();
+    addActivity("キッズアバターをつくりなおし");
+    queueFirebaseSync("キッズアバター再生成");
+  } catch (error) {
+    console.error(error);
+    if (els.kidsProfileText) {
+      els.kidsProfileText.textContent = "あばたーをつくれませんでした。せっていをたしかめてね。";
+    }
+  } finally {
+    els.kidsAvatarRegenerateButton.disabled = false;
+    els.kidsAvatarRegenerateButton.textContent = previousText;
+  }
+}
+
 function renderKidsPointBoard() {
   if (!els.kidsPointList) return;
   const scope = state.ui?.kidsPointScope || "own";
@@ -6696,6 +6785,8 @@ els.kidsAvatarProfile?.addEventListener("click", (event) => {
   if (event.target === els.kidsAvatarProfile) closeKidsAvatarProfile();
 });
 els.kidsProfileForm?.addEventListener("submit", saveKidsProfileEdit);
+els.kidsAvatarResetButton?.addEventListener("click", resetKidsAvatarImage);
+els.kidsAvatarRegenerateButton?.addEventListener("click", regenerateKidsAvatar);
 [
   els.kidsProfileSymbolInput,
   els.kidsProfileColorInput,
