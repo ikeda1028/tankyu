@@ -1002,18 +1002,42 @@ function getDistanceMeters(a, b) {
   return 2 * radius * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
 }
 
-function requestCurrentPosition() {
+function requestCurrentPosition(options = {}) {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
       reject(new Error("このブラウザでは現在地を取得できません"));
       return;
     }
     navigator.geolocation.getCurrentPosition(resolve, reject, {
-      enableHighAccuracy: true,
-      timeout: 10000,
-      maximumAge: 30000,
+      enableHighAccuracy: options.enableHighAccuracy ?? true,
+      timeout: options.timeout ?? 10000,
+      maximumAge: options.maximumAge ?? 30000,
     });
   });
+}
+
+function getGeolocationErrorMessage(error) {
+  if (!navigator.geolocation) return "このブラウザでは現在地を取得できません。";
+  if (location.protocol !== "https:" && location.hostname !== "127.0.0.1" && location.hostname !== "localhost") {
+    return "現在地はHTTPSまたはlocalhostでのみ使えます。公開URLで開いてください。";
+  }
+  if (error?.code === 1) return "位置情報が許可されていません。ブラウザの位置情報を許可してください。";
+  if (error?.code === 2) return "端末が現在地を見つけられませんでした。GPSやWi-Fiをオンにしてください。";
+  if (error?.code === 3) return "現在地の取得に時間がかかっています。屋外や窓の近くで再試行してください。";
+  return error?.message || "現在地を取得できませんでした。";
+}
+
+async function requestCurrentPositionWithFallback() {
+  try {
+    return await requestCurrentPosition({ enableHighAccuracy: true, timeout: 12000, maximumAge: 15000 });
+  } catch (firstError) {
+    try {
+      return await requestCurrentPosition({ enableHighAccuracy: false, timeout: 20000, maximumAge: 120000 });
+    } catch (secondError) {
+      secondError.firstError = firstError;
+      throw secondError;
+    }
+  }
 }
 
 async function unlockLocalCharacter(encounter) {
@@ -1026,7 +1050,7 @@ async function unlockLocalCharacter(encounter) {
 
   try {
     els.matchReason.textContent = "現地キャラクターのため現在地を確認中...";
-    const position = await requestCurrentPosition();
+    const position = await requestCurrentPositionWithFallback();
     const current = { lat: position.coords.latitude, lng: position.coords.longitude };
     const distance = getDistanceMeters(current, encounter.position);
     if (distance > 300) {
@@ -1037,7 +1061,7 @@ async function unlockLocalCharacter(encounter) {
     addActivity(`${character.name}に現地で出会った`);
     return true;
   } catch (error) {
-    els.matchReason.textContent = "現在地を取得できませんでした。位置情報を許可して現地で再度試してください。";
+    els.matchReason.textContent = getGeolocationErrorMessage(error);
     console.error(error);
     return false;
   }
@@ -1518,39 +1542,40 @@ async function initializeGoogleMap() {
   }
 }
 
-function centerOnCurrentLocation() {
+async function centerOnCurrentLocation() {
   if (!googleMap) {
     setMapsStatus("先に地図表示を押してください");
     return;
   }
   if (!navigator.geolocation) {
     setMapsStatus("このブラウザでは現在地を取得できません");
+    if (state.ui?.kidsMapActive) setKidsMapStatus("このブラウザでは現在地を取得できません", true);
     return;
   }
   setMapsStatus("現在地を取得中...");
-  navigator.geolocation.getCurrentPosition(
-    (position) => {
-      const current = {
-        lat: position.coords.latitude,
-        lng: position.coords.longitude,
-      };
-      latestCurrentLocation = current;
-      updateCurrentLocationOverlay(current);
-      googleMap.panTo(current);
-      googleMap.setZoom(state.ui?.kidsMapActive ? getKidsMapZoomForRadius() : 13);
-      if (state.ui?.kidsMapActive) {
-        renderKidsMode();
-        renderKidsMapGuide();
-        renderGoogleMapMarkers();
-        setKidsMapStatus(`いまいる場所から半径${formatKidsRadius(getKidsWorldRadius())}だけ見えます。`);
-      }
-      setMapsStatus(state.ui?.kidsMapActive ? `現在地から半径${formatKidsRadius(getKidsWorldRadius())}を表示中` : "現在地に移動しました");
-    },
-    () => {
-      setMapsStatus("現在地を取得できませんでした。ブラウザの位置情報許可を確認してください");
-    },
-    { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
-  );
+  if (state.ui?.kidsMapActive) setKidsMapStatus("現在地を確認しています。位置情報を許可してください...");
+  try {
+    const position = await requestCurrentPositionWithFallback();
+    const current = {
+      lat: position.coords.latitude,
+      lng: position.coords.longitude,
+    };
+    latestCurrentLocation = current;
+    updateCurrentLocationOverlay(current);
+    googleMap.panTo(current);
+    googleMap.setZoom(state.ui?.kidsMapActive ? getKidsMapZoomForRadius() : 13);
+    if (state.ui?.kidsMapActive) {
+      renderKidsMode();
+      renderKidsMapGuide();
+      renderGoogleMapMarkers();
+      setKidsMapStatus(`いまいる場所から半径${formatKidsRadius(getKidsWorldRadius())}だけ見えます。`);
+    }
+    setMapsStatus(state.ui?.kidsMapActive ? `現在地から半径${formatKidsRadius(getKidsWorldRadius())}を表示中` : "現在地に移動しました");
+  } catch (error) {
+    const message = getGeolocationErrorMessage(error);
+    setMapsStatus(message);
+    if (state.ui?.kidsMapActive) setKidsMapStatus(message, true);
+  }
 }
 
 function clearGoogleMapMarkers() {
