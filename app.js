@@ -258,6 +258,13 @@ const els = {
   kidsOnboardingStatus: document.querySelector("#kids-onboarding-status"),
   kidsActionGrid: document.querySelector(".kids-action-grid"),
   kidsStatusRow: document.querySelector(".kids-status-row"),
+  kidsHomePanel: document.querySelector("#kids-home-panel"),
+  kidsTodayTitle: document.querySelector("#kids-today-title"),
+  kidsTodayText: document.querySelector("#kids-today-text"),
+  kidsRecentTitle: document.querySelector("#kids-recent-title"),
+  kidsRecentText: document.querySelector("#kids-recent-text"),
+  kidsNextStep: document.querySelector("#kids-next-step"),
+  kidsNextText: document.querySelector("#kids-next-text"),
   guardianStatus: document.querySelector("#guardian-status"),
   guardianChildName: document.querySelector("#guardian-child-name"),
   guardianChildMeta: document.querySelector("#guardian-child-meta"),
@@ -2746,7 +2753,40 @@ function renderKidsMode() {
   els.kidsOnboardingForm?.classList.toggle("hidden", onboardingComplete);
   els.kidsActionGrid?.classList.toggle("hidden", !onboardingComplete);
   els.kidsStatusRow?.classList.toggle("hidden", !onboardingComplete);
+  els.kidsHomePanel?.classList.toggle("hidden", !onboardingComplete);
+  renderKidsHomePanel(child);
   fillKidsOnboardingForm(child, avatar);
+}
+
+function renderKidsHomePanel(child = normalizeChildProfile(state.childProfile)) {
+  if (!els.kidsHomePanel) return;
+  const encounters = getEncounters();
+  const selected = getSelectedEncounter();
+  const favoriteWords = extractInterests(child.favoriteThings || state.member.initialInterest || state.interests.join("、"));
+  const recommended =
+    encounters.find((encounter) =>
+      favoriteWords.some((word) =>
+        [encounter.title, encounter.impact, ...(encounter.tags || []), ...(encounter.keywords || [])].join(" ").includes(word)
+      )
+    ) || selected || encounters[0];
+  const recentPost = (state.fieldPosts || [])[0];
+  if (els.kidsTodayTitle) els.kidsTodayTitle.textContent = recommended?.title || "ぼうけんをえらぼう";
+  if (els.kidsTodayText) {
+    els.kidsTodayText.textContent = recommended
+      ? `${recommended.locationName || "ちず"}で、${recommended.impact || "ワクワク"}をみつけよう。`
+      : "ちずから、ちかくのワクワクをみつけよう。";
+  }
+  if (els.kidsRecentTitle) els.kidsRecentTitle.textContent = recentPost?.eventTitle || "まだありません";
+  if (els.kidsRecentText) {
+    els.kidsRecentText.textContent = recentPost?.text || (recentPost?.image?.hasPhoto ? "しゃしんをのこしました。" : "しゃしんやことばで、みつけたことをのこそう。");
+  }
+  const nextTasks = getNextEvolutionTasks();
+  if (els.kidsNextStep) els.kidsNextStep.textContent = nextTasks[0] ? nextTasks[0].replace("探究ポイント", "ぼうけんポイント").replace("現場投稿", "みつけたこと") : "すきなものをさがす";
+  if (els.kidsNextText) {
+    els.kidsNextText.textContent = child.favoriteThings
+      ? `${child.favoriteThings}から、ふしぎをひとつえらんでみよう。`
+      : "ふしぎだなと思ったら、しゃしんをとってきろくしよう。";
+  }
 }
 
 function fillKidsOnboardingForm(child = normalizeChildProfile(state.childProfile), avatar = normalizeAvatar(state.member.avatar)) {
