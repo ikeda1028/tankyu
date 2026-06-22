@@ -2074,9 +2074,12 @@ body:has(.map-canvas.kids-map-active) .kids-navigator-bot {
   min-height: 110px;
   overflow: hidden;
   place-items: center;
+  padding: 0;
+  border: 0;
   border-radius: 8px;
   color: white;
   background: #17211b;
+  font: inherit;
 }
 
 .kids-photo-card img {
@@ -2123,6 +2126,111 @@ body:has(.map-canvas.kids-map-active) .kids-navigator-bot {
 .kids-photo-empty span {
   display: block;
   text-align: center;
+}
+
+.kids-photo-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(16, 25, 20, 0.72);
+}
+
+.kids-photo-viewer.hidden {
+  display: none;
+}
+
+.kids-photo-viewer-close {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 92;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 999px;
+  color: #14351f;
+  background: #fff;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
+  font-weight: 900;
+}
+
+.kids-photo-viewer-body {
+  width: min(720px, 100%);
+}
+
+.kids-photo-viewer-card {
+  display: grid;
+  grid-template-rows: minmax(260px, 56vh) auto;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
+}
+
+.kids-photo-viewer-image {
+  display: grid;
+  min-height: 260px;
+  place-items: center;
+  background: #102017;
+}
+
+.kids-photo-viewer-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.kids-photo-viewer-image span {
+  display: grid;
+  width: 140px;
+  height: 140px;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  background: linear-gradient(145deg, #2f8f63, #95c94d);
+  font-size: 56px;
+  font-weight: 900;
+}
+
+.kids-photo-viewer-text {
+  display: grid;
+  gap: 8px;
+  padding: 18px;
+}
+
+.kids-photo-viewer-text span {
+  justify-self: start;
+  padding: 5px 10px;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--green);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.kids-photo-viewer-text h3,
+.kids-photo-viewer-text p {
+  margin: 0;
+}
+
+.kids-photo-viewer-text h3 {
+  color: var(--ink);
+  font-size: 24px;
+}
+
+.kids-photo-viewer-text p {
+  color: var(--ink);
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1.65;
+}
+
+.kids-photo-viewer-text small {
+  color: var(--muted);
+  font-weight: 900;
 }
 
 .kids-point-tabs {
@@ -4666,6 +4774,31 @@ body:has(.map-canvas.kids-map-active) .kids-navigator-bot {
   body:has(.kids-view:not(.hidden)) .kids-photo-card img,
   body:has(.kids-view:not(.hidden)) .kids-photo-card div {
     min-height: 72px;
+  }
+
+  body:has(.kids-view:not(.hidden)) .kids-photo-viewer,
+  body:has(.map-canvas.kids-map-active) .kids-photo-viewer {
+    padding: 10px;
+  }
+
+  body:has(.kids-view:not(.hidden)) .kids-photo-viewer-card,
+  body:has(.map-canvas.kids-map-active) .kids-photo-viewer-card {
+    grid-template-rows: minmax(220px, 52dvh) auto;
+  }
+
+  body:has(.kids-view:not(.hidden)) .kids-photo-viewer-text,
+  body:has(.map-canvas.kids-map-active) .kids-photo-viewer-text {
+    padding: 14px;
+  }
+
+  body:has(.kids-view:not(.hidden)) .kids-photo-viewer-text h3,
+  body:has(.map-canvas.kids-map-active) .kids-photo-viewer-text h3 {
+    font-size: 20px;
+  }
+
+  body:has(.kids-view:not(.hidden)) .kids-photo-viewer-text p,
+  body:has(.map-canvas.kids-map-active) .kids-photo-viewer-text p {
+    font-size: 16px;
   }
 
   body:has(.kids-view:not(.hidden)) .kids-point-tabs {

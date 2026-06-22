@@ -434,6 +434,9 @@ const els = {
   kidsRecordStatus: document.querySelector("#kids-record-status"),
   kidsRecordList: document.querySelector("#kids-record-list"),
   kidsNavigatorBot: document.querySelector("#kids-navigator-bot"),
+  kidsPhotoViewer: document.querySelector("#kids-photo-viewer"),
+  kidsPhotoViewerClose: document.querySelector("#kids-photo-viewer-close"),
+  kidsPhotoViewerBody: document.querySelector("#kids-photo-viewer-body"),
   guardianStatus: document.querySelector("#guardian-status"),
   guardianChildName: document.querySelector("#guardian-child-name"),
   guardianChildMeta: document.querySelector("#guardian-child-meta"),
@@ -3747,12 +3750,44 @@ function renderKidsPhotoFeed() {
     .map((post) => {
       const imageSrc = post.image?.dataUrl || post.image?.downloadUrl || "";
       const body = post.stamp || post.text || "みつけた";
-      return `<article class="kids-photo-card">
+      return `<button class="kids-photo-card" type="button" data-kids-photo-id="${escapeHtml(post.id)}">
         ${imageSrc ? `<img src="${escapeHtml(imageSrc)}" alt="${escapeHtml(toKidsText(post.eventTitle || "みつけたこと"))}" />` : `<div>${escapeHtml(toKidsText(String(body).slice(0, 1) || "は"))}</div>`}
         <span>${escapeHtml(toKidsText(body))}</span>
-      </article>`;
+      </button>`;
     })
     .join("");
+  els.kidsPhotoFeed.querySelectorAll("[data-kids-photo-id]").forEach((button) => {
+    button.addEventListener("click", () => openKidsPhotoViewer(button.dataset.kidsPhotoId));
+  });
+}
+
+function openKidsPhotoViewer(postId) {
+  const post = (state.fieldPosts || []).find((item) => item.id === postId);
+  if (!post || !els.kidsPhotoViewer || !els.kidsPhotoViewerBody) return;
+  const imageSrc = post.image?.dataUrl || post.image?.downloadUrl || "";
+  const thought = toKidsText(post.text || "まだことばはありません。しゃしんをみて、なにをおもったかな？");
+  const stamp = toKidsText(post.stamp || "きもちなし");
+  const place = post.location ? "ちずのばしょあり" : "ちずのばしょなし";
+  const title = toKidsText(post.eventTitle || "みつけたこと");
+  els.kidsPhotoViewerBody.innerHTML = `
+    <article class="kids-photo-viewer-card">
+      <div class="kids-photo-viewer-image">
+        ${imageSrc ? `<img src="${escapeHtml(imageSrc)}" alt="${escapeHtml(title)}" />` : `<span>${escapeHtml(stamp.slice(0, 1) || "み")}</span>`}
+      </div>
+      <div class="kids-photo-viewer-text">
+        <span>${escapeHtml(stamp)}</span>
+        <h3>${escapeHtml(title)}</h3>
+        <p>${escapeHtml(thought)}</p>
+        <small>${escapeHtml(place)}</small>
+      </div>
+    </article>`;
+  els.kidsPhotoViewer.classList.remove("hidden");
+  els.kidsPhotoViewerClose?.focus();
+}
+
+function closeKidsPhotoViewer() {
+  els.kidsPhotoViewer?.classList.add("hidden");
+  if (els.kidsPhotoViewerBody) els.kidsPhotoViewerBody.innerHTML = "";
 }
 
 function renderKidsPointBoard() {
@@ -6479,6 +6514,10 @@ els.kidsRecordPhoto?.addEventListener("change", handleKidsRecordPhotoChange);
 els.kidsRecordPhotoButton?.addEventListener("click", openKidsRecordCamera);
 els.kidsRecordVoiceButton?.addEventListener("click", startKidsRecordVoice);
 els.kidsNavigatorBot?.addEventListener("click", askKidsNavigator);
+els.kidsPhotoViewerClose?.addEventListener("click", closeKidsPhotoViewer);
+els.kidsPhotoViewer?.addEventListener("click", (event) => {
+  if (event.target === els.kidsPhotoViewer) closeKidsPhotoViewer();
+});
 els.saveFieldPostButton?.addEventListener("click", saveFieldPost);
 els.saveKidsRecordButton?.addEventListener("click", saveKidsRecord);
 els.saveFeedbackButton.addEventListener("click", saveMentorFeedback);
