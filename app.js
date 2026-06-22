@@ -86,6 +86,7 @@ const defaultState = {
   },
   member: {
     name: "",
+    age: 12,
     school: "",
     grade: "中1",
     region: "",
@@ -412,6 +413,7 @@ const els = {
   demoLoginButton: document.querySelector("#demo-login-button"),
   backLoginButton: document.querySelector("#back-login-button"),
   memberName: document.querySelector("#member-name"),
+  memberAge: document.querySelector("#member-age"),
   memberSchool: document.querySelector("#member-school"),
   memberGrade: document.querySelector("#member-grade"),
   memberRegion: document.querySelector("#member-region"),
@@ -3662,6 +3664,7 @@ function showMemberForm() {
   els.loginForm.classList.add("hidden");
   els.memberForm.classList.remove("hidden");
   els.memberName.value = state.member.name || "";
+  els.memberAge.value = state.member.age || state.childProfile.age || 12;
   els.memberSchool.value = state.member.school || "";
   els.memberGrade.value = state.member.grade || "中1";
   els.memberRegion.value = state.member.region || "";
@@ -3952,8 +3955,10 @@ function saveMemberInfo(event) {
   event.preventDefault();
   const isFirstMemberSetup = !state.member.name;
   const interestText = els.memberInterest.value.trim();
+  const memberAge = Math.max(4, Math.min(18, Number(els.memberAge?.value || state.member.age || state.childProfile.age || 12)));
   state.member = {
     name: els.memberName.value.trim() || "中高生ユーザー",
+    age: memberAge,
     school: els.memberSchool.value.trim(),
     grade: els.memberGrade.value,
     region: els.memberRegion.value.trim(),
@@ -3962,6 +3967,15 @@ function saveMemberInfo(event) {
     avatar: getAvatarFromEditor(),
     partyRoles: normalizePartyRoles(state.member.partyRoles),
   };
+  state.childProfile = normalizeChildProfile({
+    ...state.childProfile,
+    id: state.childProfile.id || `child-${Date.now()}`,
+    nickname: state.childProfile.nickname || state.member.name,
+    age: memberAge,
+    region: state.childProfile.region || state.member.region,
+    favoriteThings: state.childProfile.favoriteThings || interestText,
+    updatedAt: state.childProfile.updatedAt || new Date().toISOString(),
+  });
   if (interestText) {
     state.interests = [...new Set([...extractInterests(interestText), ...state.interests])].slice(0, 10);
     state.sparks.unshift({ text: interestText, source: "member-profile", at: new Date().toISOString() });
@@ -4108,6 +4122,7 @@ function memberToDriveRecord() {
     id: state.auth.email || "local-user",
     display_name: state.member.name || "中高生ユーザー",
     role: "student",
+    member_age: state.member.age || child.age,
     child_id: child.id,
     child_nickname: child.nickname,
     child_age: child.age,
