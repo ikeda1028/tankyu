@@ -1735,6 +1735,75 @@ textarea {
   justify-self: start;
 }
 
+.kids-navigator-bot {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 70;
+  display: none;
+  grid-template-columns: 58px;
+  justify-items: center;
+  gap: 4px;
+  width: 76px;
+  min-height: 88px;
+  padding: 8px;
+  border: 0;
+  border-radius: 999px;
+  color: #14351f;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 18px 44px rgba(30, 48, 36, 0.24);
+  font-weight: 900;
+}
+
+.kids-navigator-face {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  border: 4px solid #fff;
+  border-radius: 50%;
+  color: #fff;
+  background:
+    radial-gradient(circle at 35% 34%, #fff 0 4px, transparent 5px),
+    radial-gradient(circle at 65% 34%, #fff 0 4px, transparent 5px),
+    radial-gradient(circle at 50% 64%, #fff 0 8px, transparent 9px),
+    linear-gradient(145deg, #2f8f63, #95c94d);
+  box-shadow: inset 0 -8px 18px rgba(20, 53, 31, 0.18);
+  font-size: 0;
+}
+
+.kids-navigator-bot strong {
+  font-size: 13px;
+  line-height: 1;
+}
+
+.kids-navigator-bot.loading .kids-navigator-face,
+.kids-navigator-bot.speaking .kids-navigator-face {
+  animation: navigator-bounce 0.92s ease-in-out infinite;
+}
+
+.kids-navigator-bot.loading strong {
+  color: var(--muted);
+}
+
+body:has(.kids-view:not(.hidden)) .kids-navigator-bot,
+body:has(.map-canvas.kids-map-active) .kids-navigator-bot {
+  display: grid;
+}
+
+body:has(.map-canvas.kids-map-active) .kids-navigator-bot {
+  bottom: min(46dvh, 360px);
+}
+
+@keyframes navigator-bounce {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-5px) scale(1.04);
+  }
+}
+
 .kids-hero h2 {
   margin: 0 0 6px;
   font-size: 42px;
@@ -4778,6 +4847,11 @@ textarea {
     padding: 10px;
     overflow: hidden;
     transform: none;
+  }
+
+  body:has(.map-canvas.kids-map-active) .kids-navigator-bot {
+    right: 12px;
+    bottom: calc(42dvh + 18px);
   }
 
   body:has(.map-canvas.kids-map-active) .kids-map-guide .eyebrow,

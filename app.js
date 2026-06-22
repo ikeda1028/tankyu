@@ -433,6 +433,7 @@ const els = {
   saveKidsRecordButton: document.querySelector("#save-kids-record-button"),
   kidsRecordStatus: document.querySelector("#kids-record-status"),
   kidsRecordList: document.querySelector("#kids-record-list"),
+  kidsNavigatorBot: document.querySelector("#kids-navigator-bot"),
   guardianStatus: document.querySelector("#guardian-status"),
   guardianChildName: document.querySelector("#guardian-child-name"),
   guardianChildMeta: document.querySelector("#guardian-child-meta"),
@@ -3995,6 +3996,7 @@ function stopKidsTtsAudio() {
     window.speechSynthesis.cancel();
   }
   setKidsListenButtonsText("よむ");
+  els.kidsNavigatorBot?.classList.remove("speaking", "loading");
 }
 
 function speakKidsTextWithBrowser(text) {
@@ -4016,14 +4018,16 @@ function speakKidsTextWithBrowser(text) {
   window.speechSynthesis.speak(utterance);
 }
 
-async function speakKidsText(scope = "home") {
+async function playKidsOpenAiSpeech(text, options = {}) {
+  const buttonText = options.loadingText || "つくる";
+  const restoreText = options.restoreText || "よむ";
   if (kidsTtsAudio || ("speechSynthesis" in window && window.speechSynthesis.speaking)) {
     stopKidsTtsAudio();
-    return;
+    return false;
   }
-  const text = getKidsReadableText(scope);
   if (!text) return;
-  setKidsListenButtonsText("つくる");
+  setKidsListenButtonsText(buttonText);
+  els.kidsNavigatorBot?.classList.toggle("loading", Boolean(options.navigator));
   try {
     const response = await fetch("/api/tts", {
       method: "POST",
@@ -4043,11 +4047,93 @@ async function speakKidsText(scope = "home") {
     kidsTtsAudio.onended = stopKidsTtsAudio;
     kidsTtsAudio.onerror = stopKidsTtsAudio;
     setKidsListenButtonsText("とめる");
+    els.kidsNavigatorBot?.classList.remove("loading");
+    els.kidsNavigatorBot?.classList.toggle("speaking", Boolean(options.navigator));
     await kidsTtsAudio.play();
+    return true;
   } catch (error) {
     stopKidsTtsAudio();
     console.warn("OpenAI TTS fallback:", error);
+    return false;
+  } finally {
+    if (!kidsTtsAudio) setKidsListenButtonsText(restoreText);
+  }
+}
+
+async function speakKidsText(scope = "home") {
+  if (kidsTtsAudio || ("speechSynthesis" in window && window.speechSynthesis.speaking)) {
+    stopKidsTtsAudio();
+    return;
+  }
+  const text = getKidsReadableText(scope);
+  if (!text) return;
+  const played = await playKidsOpenAiSpeech(text);
+  if (!played) {
     speakKidsTextWithBrowser(text);
+  }
+}
+
+function getKidsNavigatorScreen() {
+  if (state.ui?.kidsMapActive) return "map";
+  if (state.ui?.kidsRecordOpen && !els.kidsRecordPanel?.classList.contains("hidden")) return "record";
+  return "home";
+}
+
+function getKidsRecentFinds() {
+  return (state.fieldPosts || [])
+    .filter((post) => post.sourceMode === "kids")
+    .slice(0, 4)
+    .map((post) => toKidsText(post.stamp || post.text || post.eventTitle || "みつけたこと"))
+    .filter(Boolean);
+}
+
+function getKidsNavigatorContext(screen = getKidsNavigatorScreen()) {
+  const child = normalizeChildProfile(state.childProfile);
+  const selected = state.ui?.kidsMapActive ? getKidsPointById(state.selected) : null;
+  return {
+    screen,
+    visibleText: getKidsReadableText(screen),
+    childName: child.nickname || state.member.name || "ぼうけんしゃ",
+    favoriteThings: child.favoriteThings || state.member.initialInterest || "",
+    selectedPoint: selected?.title || "",
+    recentFinds: getKidsRecentFinds(),
+    worldRadius: formatKidsRadius(getKidsWorldRadius()),
+    hasPhoto: Boolean(pendingKidsRecordImage?.dataUrl),
+    hasRecordText: Boolean(els.kidsRecordText?.value.trim()),
+  };
+}
+
+function getFallbackNavigatorLine(screen = getKidsNavigatorScreen()) {
+  if (screen === "map") return "ちずをひらいたよ。どのばしょから、ふしぎをさがしてみる？";
+  if (screen === "record") return "しゃしんでも、こえでも、すたんぷでもいいよ。いま、なにをみつけた？";
+  return "さあ、ぼうけんをはじめよう。なにかみつけたかな？それとも、まえのみつけたことをもういちどみる？";
+}
+
+async function askKidsNavigator() {
+  const screen = getKidsNavigatorScreen();
+  if (kidsTtsAudio || ("speechSynthesis" in window && window.speechSynthesis.speaking)) {
+    stopKidsTtsAudio();
+    return;
+  }
+  els.kidsNavigatorBot?.classList.add("loading");
+  try {
+    const response = await fetch("/api/kids-navigator", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(getKidsNavigatorContext(screen)),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || "なびをつくれませんでした");
+    const line = toKidsText(data.text || getFallbackNavigatorLine(screen));
+    const played = await playKidsOpenAiSpeech(line, { navigator: true, loadingText: "なび" });
+    if (!played) speakKidsTextWithBrowser(line);
+  } catch (error) {
+    console.warn("Kids navigator fallback:", error);
+    const line = getFallbackNavigatorLine(screen);
+    const played = await playKidsOpenAiSpeech(line, { navigator: true, loadingText: "なび", fallback: false });
+    if (!played) speakKidsTextWithBrowser(line);
+  } finally {
+    els.kidsNavigatorBot?.classList.remove("loading");
   }
 }
 
@@ -6392,6 +6478,7 @@ document.querySelectorAll("[data-kids-point-scope]").forEach((button) => {
 els.kidsRecordPhoto?.addEventListener("change", handleKidsRecordPhotoChange);
 els.kidsRecordPhotoButton?.addEventListener("click", openKidsRecordCamera);
 els.kidsRecordVoiceButton?.addEventListener("click", startKidsRecordVoice);
+els.kidsNavigatorBot?.addEventListener("click", askKidsNavigator);
 els.saveFieldPostButton?.addEventListener("click", saveFieldPost);
 els.saveKidsRecordButton?.addEventListener("click", saveKidsRecord);
 els.saveFeedbackButton.addEventListener("click", saveMentorFeedback);
