@@ -2728,6 +2728,21 @@ function renderKidsMapGuide() {
   }
 }
 
+function isKidsMapOnlyMode() {
+  return state.ui?.mode === "quest" && Boolean(state.ui?.kidsMapActive);
+}
+
+function applyKidsMapOnlyVisibility() {
+  const active = isKidsMapOnlyMode();
+  [els.eventDrawer, els.encounterPanel, els.fieldPostPanel, els.themeEvaluationPanel].forEach((panel) => {
+    panel?.classList.toggle("hidden", active);
+  });
+  if (active) {
+    els.mapCanvas?.classList.remove("hidden");
+    els.kidsMapGuide?.classList.remove("hidden");
+  }
+}
+
 function setKidsMapStatus(message, isError = false) {
   if (!els.kidsMapStatus) return;
   const kidsMessage = toKidsText(message);
@@ -2864,6 +2879,10 @@ function renderThemePanelState() {
 function renderThemeEvaluation() {
   if (!els.themeEvaluationPanel) return;
   renderThemePanelState();
+  if (isKidsMapOnlyMode()) {
+    els.themeEvaluationPanel.classList.add("hidden");
+    return;
+  }
   const query = state.themeSearch?.query?.trim();
   if (els.mapSearch && document.activeElement !== els.mapSearch) {
     els.mapSearch.value = query || "";
@@ -3571,6 +3590,7 @@ function render() {
   renderFirebaseSettings();
   renderMapsSettings();
   renderDatabaseStatus();
+  applyKidsMapOnlyVisibility();
 }
 
 function renderAuth() {
@@ -5756,7 +5776,10 @@ function showMode(mode, options = {}) {
     state.ui.kidsMapActive = false;
   }
   saveState();
-  els.questViews.forEach((view) => view.classList.toggle("hidden", feedback || eventAdmin || capital || settings || kids || guardian));
+  const kidsMapOnly = mode === "quest" && Boolean(options.kidsMap);
+  els.questViews.forEach((view) =>
+    view.classList.toggle("hidden", feedback || eventAdmin || capital || settings || kids || guardian || (kidsMapOnly && !view.classList.contains("map-canvas")))
+  );
   els.feedbackView.classList.toggle("hidden", !feedback);
   els.eventAdminView.classList.toggle("hidden", !eventAdmin);
   els.heroGrowthView?.classList.toggle("hidden", !capital);
@@ -5768,6 +5791,7 @@ function showMode(mode, options = {}) {
   });
   renderKidsMode();
   renderGuardianMode();
+  applyKidsMapOnlyVisibility();
 }
 
 window.setQuestMode = showMode;

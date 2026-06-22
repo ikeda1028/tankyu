@@ -1276,6 +1276,13 @@ textarea {
   background: #f7fbff;
 }
 
+.map-canvas.kids-map-active ~ .event-drawer,
+.map-canvas.kids-map-active ~ .encounter-panel,
+.map-canvas.kids-map-active ~ .field-post-panel,
+body:has(.map-canvas.kids-map-active) #theme-evaluation-panel {
+  display: none;
+}
+
 .map-canvas.kids-map-active .spot span {
   font-size: 11px;
 }
