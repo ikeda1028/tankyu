@@ -279,6 +279,8 @@ const els = {
   guardianChildMeta: document.querySelector("#guardian-child-meta"),
   guardianPendingCount: document.querySelector("#guardian-pending-count"),
   guardianActivityCount: document.querySelector("#guardian-activity-count"),
+  approvalListStatus: document.querySelector("#approval-list-status"),
+  guardianApprovalList: document.querySelector("#guardian-approval-list"),
   childProfileForm: document.querySelector("#child-profile-form"),
   childProfileStatus: document.querySelector("#child-profile-status"),
   childNickname: document.querySelector("#child-nickname"),
@@ -2346,7 +2348,7 @@ function setFieldPostStatus(message, isError = false) {
 
 function getSelectedFieldPosts() {
   return state.fieldPosts
-    .filter((post) => post.eventId === state.selected)
+    .filter((post) => post.eventId === state.selected && post.approvalStatus !== "rejected")
     .sort((a, b) => String(b.at || "").localeCompare(String(a.at || "")));
 }
 
@@ -2997,7 +2999,52 @@ function renderGuardianMode() {
     els.guardianPendingCount.textContent = `${pendingPosts}件`;
   }
   if (els.guardianActivityCount) els.guardianActivityCount.textContent = `${state.activity.length}件`;
+  renderGuardianApprovals();
   fillChildProfileForm();
+}
+
+function renderGuardianApprovals() {
+  if (!els.guardianApprovalList) return;
+  const pendingPosts = (state.fieldPosts || [])
+    .filter((post) => post.approvalStatus === "pending")
+    .sort((a, b) => String(b.at || "").localeCompare(String(a.at || "")));
+  if (els.approvalListStatus) els.approvalListStatus.textContent = `${pendingPosts.length}件`;
+  if (!pendingPosts.length) {
+    els.guardianApprovalList.innerHTML = "<p class=\"empty-note\">承認待ちの投稿はありません。</p>";
+    return;
+  }
+  els.guardianApprovalList.innerHTML = pendingPosts
+    .map((post) => {
+      const imageSrc = post.image?.dataUrl || post.image?.downloadUrl || "";
+      return `<article class="approval-card">
+        ${imageSrc ? `<img src="${escapeHtml(imageSrc)}" alt="${escapeHtml(post.eventTitle || "投稿写真")}" />` : ""}
+        <div>
+          <span>${escapeHtml(post.eventTitle || "ぼうけんポイント")} / ${formatTime(new Date(post.at))}</span>
+          <strong>${escapeHtml([post.stamp, post.text || "写真のみの投稿"].filter(Boolean).join(" / "))}</strong>
+          <p>${post.location ? `位置情報あり / ${Number(post.location.lat).toFixed(5)}, ${Number(post.location.lng).toFixed(5)}` : "位置情報なし"}</p>
+          <div class="approval-actions">
+            <button class="secondary-button" type="button" data-approval-id="${escapeHtml(post.id)}" data-approval-action="rejected">非表示</button>
+            <button class="primary-button" type="button" data-approval-id="${escapeHtml(post.id)}" data-approval-action="approved">承認</button>
+          </div>
+        </div>
+      </article>`;
+    })
+    .join("");
+  els.guardianApprovalList.querySelectorAll("[data-approval-id]").forEach((button) => {
+    button.addEventListener("click", () => updatePostApproval(button.dataset.approvalId, button.dataset.approvalAction));
+  });
+}
+
+function updatePostApproval(postId, approvalStatus) {
+  const target = state.fieldPosts.find((post) => post.id === postId);
+  if (!target) return;
+  target.approvalStatus = approvalStatus === "approved" ? "approved" : "rejected";
+  target.approvedBy = state.auth.email || state.guardian?.id || "guardian-local";
+  target.approvedAt = new Date().toISOString();
+  addActivity(`${target.eventTitle || "投稿"}を${target.approvalStatus === "approved" ? "承認" : "非表示"}に変更`);
+  saveState();
+  render();
+  queueFirebaseSync("保護者承認");
 }
 
 function fillChildProfileForm() {
@@ -3595,6 +3642,8 @@ function fieldPostToDriveRecord(post) {
     stamp: post.stamp || "",
     source_mode: post.sourceMode || "",
     approval_status: post.approvalStatus || "",
+    approved_by: post.approvedBy || "",
+    approved_at: post.approvedAt || "",
     has_photo: Boolean(post.image?.dataUrl),
     photo_name: post.image?.name || "",
     latitude: post.location?.lat || "",

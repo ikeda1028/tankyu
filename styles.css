@@ -1865,6 +1865,68 @@ textarea {
   line-height: 1.5;
 }
 
+.guardian-approval-section {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.guardian-approval-list {
+  display: grid;
+  gap: 10px;
+}
+
+.approval-card {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid rgba(223, 230, 222, 0.9);
+  border-radius: 8px;
+  background: #fbfdf9;
+}
+
+.approval-card img {
+  width: 96px;
+  height: 96px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.approval-card > div {
+  display: grid;
+  gap: 6px;
+}
+
+.approval-card span,
+.approval-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.approval-card strong {
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.approval-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.approval-actions button {
+  width: auto;
+  min-height: 34px;
+  padding: 0 12px;
+}
+
 .child-profile-form {
   display: grid;
   gap: 12px;
@@ -3739,6 +3801,7 @@ textarea {
   .settings-grid,
   .event-admin-shell,
   .kids-encounter-actions,
+  .approval-card,
   .kids-action-grid,
   .kids-onboarding-grid,
   .kids-home-panel,
