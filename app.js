@@ -427,6 +427,7 @@ const els = {
   kidsRecordPhotoButton: document.querySelector("#kids-record-photo-button"),
   kidsRecordVoiceButton: document.querySelector("#kids-record-voice-button"),
   kidsRecordPhotoPreview: document.querySelector("#kids-record-photo-preview"),
+  kidsPhotoAnalysis: document.querySelector("#kids-photo-analysis"),
   kidsRecordText: document.querySelector("#kids-record-text"),
   kidsRecordSelected: document.querySelector("#kids-record-selected"),
   saveKidsRecordButton: document.querySelector("#save-kids-record-button"),
@@ -664,6 +665,7 @@ let pendingKidsStamp = "";
 let pendingKidsRecordStamp = "";
 let pendingKidsRecordImage = null;
 let kidsRecordImageAnalysisToken = 0;
+let kidsPhotoAnalysisState = { status: "idle", message: "", text: "", labels: [] };
 let kidsRecordSpeechRecognition = null;
 
 function cloneDefaultState() {
@@ -3489,6 +3491,7 @@ function renderKidsRecordPanel() {
   if (els.kidsRecordCount) els.kidsRecordCount.textContent = `${records.length}こ`;
   if (els.kidsRecordSelected) els.kidsRecordSelected.textContent = pendingKidsRecordStamp || "スタンプなし";
   renderKidsRecordPhotoPreview();
+  renderKidsPhotoAnalysis();
   document.querySelectorAll("[data-kids-record-stamp]").forEach((button) => {
     button.classList.toggle("active", button.dataset.kidsRecordStamp === pendingKidsRecordStamp);
   });
@@ -3517,6 +3520,37 @@ function setKidsRecordStatus(message, isError = false) {
   els.kidsRecordStatus.classList.toggle("error", Boolean(isError));
 }
 
+function renderKidsPhotoAnalysis() {
+  if (!els.kidsPhotoAnalysis) return;
+  const analysis = kidsPhotoAnalysisState || {};
+  const status = analysis.status || "idle";
+  els.kidsPhotoAnalysis.classList.toggle("hidden", status === "idle");
+  els.kidsPhotoAnalysis.classList.toggle("loading", status === "loading");
+  els.kidsPhotoAnalysis.classList.toggle("success", status === "success");
+  els.kidsPhotoAnalysis.classList.toggle("error", status === "error");
+  if (status === "idle") {
+    els.kidsPhotoAnalysis.innerHTML = "";
+    return;
+  }
+  const labelText = status === "loading" ? "AIが写真を見ています" : status === "success" ? "AIが見つけました" : "AI確認できませんでした";
+  const labels = Array.isArray(analysis.labels) ? analysis.labels.filter(Boolean).slice(0, 4) : [];
+  els.kidsPhotoAnalysis.innerHTML = `<div>
+    <strong>${escapeHtml(labelText)}</strong>
+    <span>${escapeHtml(analysis.message || analysis.text || "")}</span>
+  </div>
+  ${labels.length ? `<p>${labels.map((label) => `<em>${escapeHtml(label)}</em>`).join("")}</p>` : ""}`;
+}
+
+function setKidsPhotoAnalysis(nextState = {}) {
+  kidsPhotoAnalysisState = {
+    status: nextState.status || "idle",
+    message: nextState.message || "",
+    text: nextState.text || "",
+    labels: Array.isArray(nextState.labels) ? nextState.labels : [],
+  };
+  renderKidsPhotoAnalysis();
+}
+
 function selectKidsRecordStamp(stamp) {
   pendingKidsRecordStamp = stamp || "";
   renderKidsRecordPanel();
@@ -3543,6 +3577,10 @@ async function analyzeKidsRecordPhoto(image) {
   const token = ++kidsRecordImageAnalysisToken;
   if (!image?.dataUrl) return;
   setKidsRecordStatus("写真をAIで見ています...");
+  setKidsPhotoAnalysis({
+    status: "loading",
+    message: "写真に写っているものを確認しています。少し待ってね。",
+  });
   try {
     const encounter = getSelectedEncounter();
     const response = await fetch(getAnalyzePhotoApiPath(), {
@@ -3565,9 +3603,19 @@ async function analyzeKidsRecordPhoto(image) {
       throw new Error(data.error || "写真をAIで見られませんでした");
     }
     appendKidsRecordText(data.text || data.caption);
+    setKidsPhotoAnalysis({
+      status: "success",
+      message: data.text || data.caption || "写真から見つけたことを入れました。",
+      text: data.text || data.caption || "",
+      labels: data.labels || [],
+    });
     setKidsRecordStatus(data.text ? "写真から見つけたものを入れました" : "写真を追加しました");
   } catch (error) {
     if (token !== kidsRecordImageAnalysisToken) return;
+    setKidsPhotoAnalysis({
+      status: "error",
+      message: error.message || "もう一度試してください。",
+    });
     setKidsRecordStatus(`写真は追加しました。AI認識はできませんでした: ${error.message || "もう一度試してください"}`, true);
   }
 }
@@ -3576,11 +3624,16 @@ async function handleKidsRecordPhotoChange(event) {
   const file = event.target.files?.[0];
   if (!file) {
     kidsRecordImageAnalysisToken += 1;
+    setKidsPhotoAnalysis({ status: "idle" });
     pendingKidsRecordImage = null;
     renderKidsRecordPhotoPreview();
     return;
   }
   setKidsRecordStatus("写真を読み込み中...");
+  setKidsPhotoAnalysis({
+    status: "loading",
+    message: "写真を読み込んでいます。",
+  });
   try {
     pendingKidsRecordImage = await compressImageFile(file);
     renderKidsRecordPhotoPreview();
@@ -3588,6 +3641,10 @@ async function handleKidsRecordPhotoChange(event) {
     analyzeKidsRecordPhoto(pendingKidsRecordImage);
   } catch (error) {
     kidsRecordImageAnalysisToken += 1;
+    setKidsPhotoAnalysis({
+      status: "error",
+      message: error.message || "写真を追加できませんでした。",
+    });
     pendingKidsRecordImage = null;
     renderKidsRecordPhotoPreview();
     setKidsRecordStatus(error.message || "写真を追加できませんでした", true);
@@ -3687,6 +3744,7 @@ function saveKidsRecord() {
   if (els.kidsRecordText) els.kidsRecordText.value = "";
   if (els.kidsRecordPhoto) els.kidsRecordPhoto.value = "";
   kidsRecordImageAnalysisToken += 1;
+  setKidsPhotoAnalysis({ status: "idle" });
   pendingKidsRecordImage = null;
   pendingKidsRecordStamp = "";
   renderKidsRecordPhotoPreview();

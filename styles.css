@@ -2215,6 +2215,65 @@ textarea {
   object-fit: cover;
 }
 
+.kids-photo-analysis {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid rgba(47, 143, 99, 0.18);
+  border-radius: 8px;
+  background: #f4fbf1;
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.kids-photo-analysis.hidden {
+  display: none;
+}
+
+.kids-photo-analysis div {
+  display: grid;
+  gap: 2px;
+}
+
+.kids-photo-analysis strong {
+  font-size: 13px;
+}
+
+.kids-photo-analysis span {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.kids-photo-analysis p {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0;
+}
+
+.kids-photo-analysis em {
+  padding: 3px 7px;
+  border-radius: 999px;
+  color: #1f6f52;
+  background: #ffffff;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.kids-photo-analysis.loading {
+  border-color: rgba(47, 111, 179, 0.22);
+  background: #eef7ff;
+}
+
+.kids-photo-analysis.success {
+  border-color: rgba(47, 143, 99, 0.28);
+}
+
+.kids-photo-analysis.error {
+  border-color: rgba(200, 93, 114, 0.32);
+  background: #fff4f5;
+}
+
 .kids-record-panel textarea {
   width: 100%;
   min-height: 92px;
@@ -4519,7 +4578,7 @@ textarea {
     inset: 10px;
     z-index: 45;
     display: grid;
-    grid-template-rows: auto auto auto auto auto auto;
+    grid-template-rows: auto auto auto auto auto auto auto;
     gap: 8px;
     padding: 10px;
     overflow: hidden;
@@ -4561,6 +4620,29 @@ textarea {
 
   body:has(.kids-view:not(.hidden)) .kids-record-photo-preview img {
     max-height: 116px;
+  }
+
+  body:has(.kids-view:not(.hidden)) .kids-photo-analysis {
+    gap: 4px;
+    max-height: 58px;
+    padding: 7px 9px;
+    overflow: hidden;
+    font-size: 12px;
+  }
+
+  body:has(.kids-view:not(.hidden)) .kids-photo-analysis strong {
+    font-size: 12px;
+  }
+
+  body:has(.kids-view:not(.hidden)) .kids-photo-analysis span {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  body:has(.kids-view:not(.hidden)) .kids-photo-analysis p {
+    display: none;
   }
 
   body:has(.kids-view:not(.hidden)) .kids-record-panel textarea {
