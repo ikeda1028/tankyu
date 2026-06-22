@@ -256,8 +256,17 @@ const els = {
   guardianView: document.querySelector(".guardian-view"),
   kidsAvatar: document.querySelector("#kids-avatar"),
   kidsQuestPower: document.querySelector("#kids-quest-power"),
+  kidsQuestMeter: document.querySelector("#kids-quest-meter"),
+  kidsQuestNote: document.querySelector("#kids-quest-note"),
   kidsJoyPower: document.querySelector("#kids-joy-power"),
-  kidsPostCount: document.querySelector("#kids-post-count"),
+  kidsJoyMeter: document.querySelector("#kids-joy-meter"),
+  kidsJoyNote: document.querySelector("#kids-joy-note"),
+  kidsDrivePower: document.querySelector("#kids-drive-power"),
+  kidsDriveMeter: document.querySelector("#kids-drive-meter"),
+  kidsDriveNote: document.querySelector("#kids-drive-note"),
+  kidsThanksPower: document.querySelector("#kids-thanks-power"),
+  kidsThanksMeter: document.querySelector("#kids-thanks-meter"),
+  kidsThanksNote: document.querySelector("#kids-thanks-note"),
   kidsOnboardingForm: document.querySelector("#kids-onboarding-form"),
   kidsOnboardingName: document.querySelector("#kids-onboarding-name"),
   kidsOnboardingFavorites: document.querySelector("#kids-onboarding-favorites"),
@@ -2879,6 +2888,15 @@ function renderHeroGrowth() {
   els.heroNextEvolution.innerHTML = getNextEvolutionTasks().map((task) => `<li>${escapeHtml(task)}</li>`).join("");
 }
 
+function setKidsParameter(valueEl, meterEl, noteEl, value, max, note) {
+  if (valueEl) valueEl.textContent = `${value}`;
+  if (meterEl) {
+    const percent = Math.max(8, Math.min(100, Math.round((value / Math.max(1, max)) * 100)));
+    meterEl.style.width = `${percent}%`;
+  }
+  if (noteEl) noteEl.textContent = note;
+}
+
 function renderKidsMode() {
   if (!els.kidsView) return;
   const child = normalizeChildProfile(state.childProfile);
@@ -2893,9 +2911,32 @@ function renderKidsMode() {
       ? `すきなこと: ${child.favoriteThings}`
       : "すき、ふしぎ、みつけたことから、ワクワクをひろげよう。";
   }
-  if (els.kidsQuestPower) els.kidsQuestPower.textContent = state.quest;
-  if (els.kidsJoyPower) els.kidsJoyPower.textContent = state.joy;
-  if (els.kidsPostCount) els.kidsPostCount.textContent = `${state.fieldPosts.length}`;
+  const bestDepthLabel = depthLabels[getBestDepth() - 1].replace("まで", "");
+  setKidsParameter(
+    els.kidsQuestPower,
+    els.kidsQuestMeter,
+    els.kidsQuestNote,
+    state.quest,
+    getHeroHpMax(),
+    `${getHeroStageLabel()}の力`
+  );
+  setKidsParameter(els.kidsJoyPower, els.kidsJoyMeter, els.kidsJoyNote, state.joy, 100, "すき・発見で育つ");
+  setKidsParameter(
+    els.kidsDrivePower,
+    els.kidsDriveMeter,
+    els.kidsDriveNote,
+    state.drive,
+    100,
+    `${bestDepthLabel}までしれた`
+  );
+  setKidsParameter(
+    els.kidsThanksPower,
+    els.kidsThanksMeter,
+    els.kidsThanksNote,
+    state.thanks,
+    100,
+    `${state.fieldPosts.length}このみつけたこと`
+  );
   els.kidsOnboardingForm?.classList.toggle("hidden", onboardingComplete);
   els.kidsActionGrid?.classList.toggle("hidden", !onboardingComplete);
   els.kidsStatusRow?.classList.toggle("hidden", !onboardingComplete);

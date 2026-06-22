@@ -1781,7 +1781,12 @@ textarea {
   line-height: 1.3;
 }
 
-.kids-status-row,
+.kids-status-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
 .guardian-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1810,6 +1815,32 @@ textarea {
 .guardian-grid strong {
   color: var(--ink);
   font-size: 24px;
+}
+
+.kids-stat-card p {
+  min-height: 32px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.kids-meter-track {
+  width: 100%;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(223, 230, 222, 0.9);
+}
+
+.kids-meter-track i {
+  display: block;
+  width: 8%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #2f8f63, #e1b33f);
+  transition: width 180ms ease;
 }
 
 .kids-home-panel {
