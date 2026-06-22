@@ -365,6 +365,10 @@ const els = {
   kidsMapTitle: document.querySelector("#kids-map-title"),
   kidsMapText: document.querySelector("#kids-map-text"),
   kidsMapBadges: document.querySelector("#kids-map-badges"),
+  kidsMapCenterButton: document.querySelector("#kids-map-center-button"),
+  kidsMapCurrentButton: document.querySelector("#kids-map-current-button"),
+  kidsMapPostButton: document.querySelector("#kids-map-post-button"),
+  kidsMapStatus: document.querySelector("#kids-map-status"),
   kidsMapList: document.querySelector("#kids-map-list"),
   centerSearchButton: document.querySelector("#center-search-button"),
   currentLocationButton: document.querySelector("#current-location-button"),
@@ -1976,6 +1980,10 @@ function renderKidsMapGuide() {
   if (!active) return;
   const selected = getSelectedEncounter();
   const candidates = getKidsMapCandidates();
+  if (els.kidsMapCenterButton) els.kidsMapCenterButton.disabled = !selected || !hasValidLatLng(selected.position);
+  if (els.kidsMapStatus && !els.kidsMapStatus.textContent) {
+    els.kidsMapStatus.textContent = "番号をえらぶと、その場所が地図の真ん中にきます。";
+  }
   if (els.kidsMapTitle) els.kidsMapTitle.textContent = selected?.title || "ぼうけんポイント";
   if (els.kidsMapText) {
     els.kidsMapText.textContent = selected
@@ -2009,6 +2017,38 @@ function renderKidsMapGuide() {
   }
 }
 
+function setKidsMapStatus(message, isError = false) {
+  if (!els.kidsMapStatus) return;
+  els.kidsMapStatus.textContent = message;
+  els.kidsMapStatus.classList.toggle("error", Boolean(isError));
+}
+
+function centerKidsSelectedPoint() {
+  const selected = getSelectedEncounter();
+  if (!selected || !hasValidLatLng(selected.position)) {
+    setKidsMapStatus("この場所には、まだ地図の位置がありません。", true);
+    return;
+  }
+  state.ui.kidsMapActive = true;
+  saveState();
+  renderKidsMapGuide();
+  if (!googleMap) {
+    setKidsMapStatus("地図を読み込み中です。少し待ってからもう一度押してください。", true);
+    initializeGoogleMap();
+    return;
+  }
+  focusGoogleMapPoint({ lat: Number(selected.position.lat), lng: Number(selected.position.lng) }, Math.max(googleMap.getZoom(), 12));
+  setKidsMapStatus(`${selected.title}を真ん中にしました。`);
+}
+
+function centerKidsCurrentLocation() {
+  state.ui.kidsMapActive = true;
+  saveState();
+  renderKidsMapGuide();
+  setKidsMapStatus("いまいる場所をさがしています...");
+  centerOnCurrentLocation();
+}
+
 function openKidsMapPoint(eventId) {
   const encounter = getEncounters().find((item) => item.id === eventId);
   if (!encounter) return;
@@ -2020,6 +2060,7 @@ function openKidsMapPoint(eventId) {
   if (googleMap && hasValidLatLng(encounter.position)) {
     focusGoogleMapPoint({ lat: Number(encounter.position.lat), lng: Number(encounter.position.lng) }, Math.max(googleMap.getZoom(), 11));
   }
+  setKidsMapStatus(`${encounter.title}をえらびました。`);
 }
 
 function renderEventDrawer() {
@@ -5100,6 +5141,9 @@ els.saveMapsKeyButton.addEventListener("click", saveMapsKey);
 els.loadMapsButton.addEventListener("click", initializeGoogleMap);
 els.centerSearchButton?.addEventListener("click", centerGoogleMapOnSearch);
 els.currentLocationButton?.addEventListener("click", centerOnCurrentLocation);
+els.kidsMapCenterButton?.addEventListener("click", centerKidsSelectedPoint);
+els.kidsMapCurrentButton?.addEventListener("click", centerKidsCurrentLocation);
+els.kidsMapPostButton?.addEventListener("click", openKidsFieldPost);
 els.compactThemeButton?.addEventListener("click", toggleCompactTheme);
 els.collapseThemeButton?.addEventListener("click", toggleCollapseTheme);
 els.compactEncounterButton?.addEventListener("click", toggleCompactEncounter);

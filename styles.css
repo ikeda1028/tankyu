@@ -1174,6 +1174,38 @@ textarea {
   font-weight: 900;
 }
 
+.kids-map-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.kids-map-actions button {
+  min-height: 42px;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.kids-map-actions button:first-child {
+  grid-column: 1 / -1;
+}
+
+.kids-map-status {
+  min-height: 20px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  color: var(--muted);
+  background: #f7fbff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.kids-map-status.error {
+  color: #9a3f2e;
+  background: #fff4ef;
+}
+
 .kids-map-list {
   display: grid;
   gap: 8px;
