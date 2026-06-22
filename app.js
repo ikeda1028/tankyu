@@ -539,6 +539,7 @@ let pendingFieldPostLocation = null;
 let pendingKidsStamp = "";
 let pendingKidsRecordStamp = "";
 let pendingKidsRecordImage = null;
+let kidsRecordImageAnalysisToken = 0;
 let kidsRecordSpeechRecognition = null;
 
 function normalizeChildProfile(profile = {}) {
@@ -1910,6 +1911,13 @@ function getGenerateImageApiPath() {
   return "/api/generate-image";
 }
 
+function getAnalyzePhotoApiPath() {
+  if (location.protocol === "file:" || location.hostname === "127.0.0.1" || location.hostname === "localhost") {
+    return `${PUBLIC_API_BASE}/api/analyze-photo`;
+  }
+  return "/api/analyze-photo";
+}
+
 function getSuggestCharacterApiPath() {
   if (location.protocol === "file:" || location.hostname === "127.0.0.1" || location.hostname === "localhost") {
     return `${PUBLIC_API_BASE}/api/suggest-character`;
@@ -3241,9 +3249,52 @@ function renderKidsRecordPhotoPreview() {
     : "";
 }
 
+function appendKidsRecordText(text) {
+  if (!els.kidsRecordText) return;
+  const nextText = String(text || "").trim();
+  if (!nextText) return;
+  const currentText = els.kidsRecordText.value.trim();
+  if (currentText.includes(nextText)) return;
+  els.kidsRecordText.value = [currentText, nextText].filter(Boolean).join("\n");
+}
+
+async function analyzeKidsRecordPhoto(image) {
+  const token = ++kidsRecordImageAnalysisToken;
+  if (!image?.dataUrl) return;
+  setKidsRecordStatus("写真をAIで見ています...");
+  try {
+    const encounter = getSelectedEncounter();
+    const response = await fetch(getAnalyzePhotoApiPath(), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        imageDataUrl: image.dataUrl,
+        mode: "kids-record",
+        context: {
+          eventTitle: encounter?.title || "",
+          eventDescription: encounter?.description || "",
+          stamp: pendingKidsRecordStamp,
+          childAge: normalizeChildProfile(state.childProfile).age,
+        },
+      }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (token !== kidsRecordImageAnalysisToken || image !== pendingKidsRecordImage) return;
+    if (!response.ok) {
+      throw new Error(data.error || "写真をAIで見られませんでした");
+    }
+    appendKidsRecordText(data.text || data.caption);
+    setKidsRecordStatus(data.text ? "写真から見つけたものを入れました" : "写真を追加しました");
+  } catch (error) {
+    if (token !== kidsRecordImageAnalysisToken) return;
+    setKidsRecordStatus(`写真は追加しました。AI認識はできませんでした: ${error.message || "もう一度試してください"}`, true);
+  }
+}
+
 async function handleKidsRecordPhotoChange(event) {
   const file = event.target.files?.[0];
   if (!file) {
+    kidsRecordImageAnalysisToken += 1;
     pendingKidsRecordImage = null;
     renderKidsRecordPhotoPreview();
     return;
@@ -3253,7 +3304,9 @@ async function handleKidsRecordPhotoChange(event) {
     pendingKidsRecordImage = await compressImageFile(file);
     renderKidsRecordPhotoPreview();
     setKidsRecordStatus("写真を追加しました");
+    analyzeKidsRecordPhoto(pendingKidsRecordImage);
   } catch (error) {
+    kidsRecordImageAnalysisToken += 1;
     pendingKidsRecordImage = null;
     renderKidsRecordPhotoPreview();
     setKidsRecordStatus(error.message || "写真を追加できませんでした", true);
@@ -3352,6 +3405,7 @@ function saveKidsRecord() {
   addActivity(`きょうのきろくを保存。たんけんパワー +${questDelta} / ワクワク +${joyDelta}`);
   if (els.kidsRecordText) els.kidsRecordText.value = "";
   if (els.kidsRecordPhoto) els.kidsRecordPhoto.value = "";
+  kidsRecordImageAnalysisToken += 1;
   pendingKidsRecordImage = null;
   pendingKidsRecordStamp = "";
   renderKidsRecordPhotoPreview();
