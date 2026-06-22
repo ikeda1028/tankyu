@@ -662,6 +662,7 @@ textarea {
 
 .member-avatar-summary,
 .member-avatar-preview {
+  position: relative;
   display: grid;
   flex: 0 0 auto;
   overflow: hidden;
@@ -1820,6 +1821,7 @@ body:has(.map-canvas.kids-map-active) .kids-navigator-bot {
 }
 
 .kids-avatar {
+  position: relative;
   display: grid;
   place-items: center;
   grid-row: 1;
@@ -1839,6 +1841,36 @@ body:has(.map-canvas.kids-map-active) .kids-navigator-bot {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.avatar-symbol {
+  position: relative;
+  z-index: 1;
+}
+
+.avatar-item-badges {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  z-index: 2;
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.84);
+}
+
+.avatar-item-badges i {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  background: var(--green);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 900;
 }
 
 .kids-onboarding-card {
@@ -2012,6 +2044,7 @@ body:has(.map-canvas.kids-map-active) .kids-navigator-bot {
 }
 
 .kids-growth-avatar {
+  position: relative;
   display: grid;
   place-items: center;
   aspect-ratio: 1;
@@ -2231,6 +2264,164 @@ body:has(.map-canvas.kids-map-active) .kids-navigator-bot {
 .kids-photo-viewer-text small {
   color: var(--muted);
   font-weight: 900;
+}
+
+.kids-avatar-profile {
+  position: fixed;
+  inset: 0;
+  z-index: 91;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(16, 25, 20, 0.72);
+}
+
+.kids-avatar-profile.hidden {
+  display: none;
+}
+
+.kids-avatar-profile-close {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 93;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 999px;
+  color: #14351f;
+  background: #fff;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
+  font-weight: 900;
+}
+
+.kids-avatar-profile-card {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.8fr) minmax(280px, 1fr);
+  gap: 18px;
+  width: min(840px, 100%);
+  padding: 18px;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
+}
+
+.kids-profile-avatar {
+  position: relative;
+  display: grid;
+  min-height: 420px;
+  overflow: hidden;
+  place-items: center;
+  border-radius: 8px;
+  color: #fff;
+  background: var(--avatar-bg, linear-gradient(140deg, var(--green), #17211b));
+  box-shadow: inset 0 0 0 12px rgba(255, 255, 255, 0.42);
+  font-size: clamp(72px, 12vw, 130px);
+  font-weight: 900;
+}
+
+.kids-profile-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.kids-profile-main {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+}
+
+.kids-profile-main > span {
+  justify-self: start;
+  padding: 5px 10px;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--green);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.kids-profile-main h2,
+.kids-profile-main p {
+  margin: 0;
+}
+
+.kids-profile-main h2 {
+  color: var(--ink);
+  font-size: 32px;
+}
+
+.kids-profile-main p {
+  color: var(--muted);
+  font-weight: 900;
+  line-height: 1.6;
+}
+
+.kids-item-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.kids-item-card {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  min-height: 74px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--muted);
+  background: #f7f8f6;
+  text-align: left;
+  opacity: 0.62;
+}
+
+.kids-item-card span {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  background: #8b988f;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.kids-item-card strong,
+.kids-item-card small {
+  display: block;
+}
+
+.kids-item-card strong {
+  color: var(--ink);
+  font-size: 15px;
+}
+
+.kids-item-card small {
+  margin-top: 3px;
+  font-weight: 900;
+}
+
+.kids-item-card.unlocked {
+  color: var(--ink);
+  background: #eef8f1;
+  border-color: rgba(47, 143, 99, 0.28);
+  opacity: 1;
+}
+
+.kids-item-card.unlocked span,
+.kids-item-card.active span {
+  background: var(--green);
+}
+
+.kids-item-card.active {
+  background: #fff7d9;
+  border-color: rgba(225, 179, 63, 0.58);
+  box-shadow: inset 0 0 0 2px rgba(225, 179, 63, 0.18);
 }
 
 .kids-point-tabs {
@@ -4799,6 +4990,64 @@ body:has(.map-canvas.kids-map-active) .kids-navigator-bot {
   body:has(.kids-view:not(.hidden)) .kids-photo-viewer-text p,
   body:has(.map-canvas.kids-map-active) .kids-photo-viewer-text p {
     font-size: 16px;
+  }
+
+  body:has(.kids-view:not(.hidden)) .kids-avatar-profile,
+  body:has(.map-canvas.kids-map-active) .kids-avatar-profile {
+    padding: 10px;
+  }
+
+  body:has(.kids-view:not(.hidden)) .kids-avatar-profile-card,
+  body:has(.map-canvas.kids-map-active) .kids-avatar-profile-card {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    max-height: calc(100dvh - 20px);
+    overflow: hidden;
+    padding: 10px;
+  }
+
+  body:has(.kids-view:not(.hidden)) .kids-profile-avatar,
+  body:has(.map-canvas.kids-map-active) .kids-profile-avatar {
+    min-height: 220px;
+    max-height: 34dvh;
+    font-size: 72px;
+  }
+
+  body:has(.kids-view:not(.hidden)) .kids-profile-main,
+  body:has(.map-canvas.kids-map-active) .kids-profile-main {
+    gap: 8px;
+    min-height: 0;
+  }
+
+  body:has(.kids-view:not(.hidden)) .kids-profile-main h2,
+  body:has(.map-canvas.kids-map-active) .kids-profile-main h2 {
+    font-size: 22px;
+  }
+
+  body:has(.kids-view:not(.hidden)) .kids-profile-main p,
+  body:has(.map-canvas.kids-map-active) .kids-profile-main p {
+    font-size: 13px;
+  }
+
+  body:has(.kids-view:not(.hidden)) .kids-item-grid,
+  body:has(.map-canvas.kids-map-active) .kids-item-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-height: 32dvh;
+    overflow: hidden;
+  }
+
+  body:has(.kids-view:not(.hidden)) .kids-item-card,
+  body:has(.map-canvas.kids-map-active) .kids-item-card {
+    grid-template-columns: 34px minmax(0, 1fr);
+    min-height: 58px;
+    padding: 8px;
+  }
+
+  body:has(.kids-view:not(.hidden)) .kids-item-card span,
+  body:has(.map-canvas.kids-map-active) .kids-item-card span {
+    width: 34px;
+    height: 34px;
+    font-size: 14px;
   }
 
   body:has(.kids-view:not(.hidden)) .kids-point-tabs {

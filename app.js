@@ -225,6 +225,7 @@ const defaultState = {
       imageDataUrl: "",
       generatedAt: "",
       generationStage: "simple",
+      equippedItems: [],
     },
     partyRoles: ["問いを深める人", "現地を記録する人", "社会とつなぐ人"],
   },
@@ -437,6 +438,13 @@ const els = {
   kidsPhotoViewer: document.querySelector("#kids-photo-viewer"),
   kidsPhotoViewerClose: document.querySelector("#kids-photo-viewer-close"),
   kidsPhotoViewerBody: document.querySelector("#kids-photo-viewer-body"),
+  kidsAvatarProfile: document.querySelector("#kids-avatar-profile"),
+  kidsAvatarProfileClose: document.querySelector("#kids-avatar-profile-close"),
+  kidsProfileAvatar: document.querySelector("#kids-profile-avatar"),
+  kidsProfileStage: document.querySelector("#kids-profile-stage"),
+  kidsProfileName: document.querySelector("#kids-profile-name"),
+  kidsProfileText: document.querySelector("#kids-profile-text"),
+  kidsItemGrid: document.querySelector("#kids-item-grid"),
   guardianStatus: document.querySelector("#guardian-status"),
   guardianChildName: document.querySelector("#guardian-child-name"),
   guardianChildMeta: document.querySelector("#guardian-child-meta"),
@@ -773,6 +781,7 @@ function normalizeAvatar(avatar) {
     storagePath: String(avatar?.storagePath || "").trim(),
     generatedAt: String(avatar?.generatedAt || "").trim(),
     generationStage: String(avatar?.generationStage || fallback.generationStage || "simple").trim(),
+    equippedItems: Array.isArray(avatar?.equippedItems) ? avatar.equippedItems.map((item) => String(item || "").trim()).filter(Boolean).slice(0, 4) : [],
   };
 }
 
@@ -845,6 +854,24 @@ function getHeroEquipment() {
       detail: "実装まで到達、またはHP160で装備",
     },
   ];
+}
+
+function getKidsAvatarItems() {
+  const equipment = getHeroEquipment();
+  const icons = ["こ", "れ", "の", "ば", "ま", "こ"];
+  const names = ["こんぱす", "れんず", "のーと", "ばっじ", "まんと", "こあ"];
+  return equipment.map((item, index) => ({
+    id: `kids-item-${index}`,
+    icon: icons[index] || "★",
+    name: names[index] || toKidsText(item.name),
+    detail: toKidsText(item.detail),
+    unlocked: Boolean(item.unlocked),
+  }));
+}
+
+function getEquippedKidsItems(avatar = normalizeAvatar(state.member.avatar)) {
+  const itemMap = new Map(getKidsAvatarItems().map((item) => [item.id, item]));
+  return (avatar.equippedItems || []).map((id) => itemMap.get(id)).filter((item) => item?.unlocked).slice(0, 4);
 }
 
 function getNextEvolutionTasks() {
@@ -3578,9 +3605,19 @@ function renderMemberSummary() {
 function renderAvatarElement(element, avatar) {
   if (!element) return;
   const imageSrc = avatar.imageDataUrl || avatar.downloadUrl || "";
+  const equippedItems = getEquippedKidsItems(avatar);
   element.innerHTML = imageSrc
     ? `<img src="${escapeHtml(imageSrc)}" alt="${escapeHtml(avatar.aura)}オーラのアバター" />`
-    : escapeHtml(avatar.symbol);
+    : `<span class="avatar-symbol">${escapeHtml(avatar.symbol)}</span>`;
+  if (equippedItems.length) {
+    element.insertAdjacentHTML(
+      "beforeend",
+      `<span class="avatar-item-badges">${equippedItems
+        .slice(0, 3)
+        .map((item) => `<i>${escapeHtml(item.icon)}</i>`)
+        .join("")}</span>`
+    );
+  }
   element.style.setProperty("--avatar-bg", getAvatarGradient(avatar.color));
   element.style.setProperty("--avatar-color", avatar.color);
   element.setAttribute("title", `${avatar.symbol} / ${avatar.aura}オーラ`);
@@ -3728,6 +3765,7 @@ function renderKidsMode() {
   renderKidsHomePanel(child);
   renderKidsRecordPanel();
   fillKidsOnboardingForm(child, avatar);
+  if (!els.kidsAvatarProfile?.classList.contains("hidden")) renderKidsAvatarProfile();
 }
 
 function renderKidsHomePanel(child = normalizeChildProfile(state.childProfile)) {
@@ -3788,6 +3826,64 @@ function openKidsPhotoViewer(postId) {
 function closeKidsPhotoViewer() {
   els.kidsPhotoViewer?.classList.add("hidden");
   if (els.kidsPhotoViewerBody) els.kidsPhotoViewerBody.innerHTML = "";
+}
+
+function openKidsAvatarProfile() {
+  renderKidsAvatarProfile();
+  els.kidsAvatarProfile?.classList.remove("hidden");
+  els.kidsAvatarProfileClose?.focus();
+}
+
+function closeKidsAvatarProfile() {
+  els.kidsAvatarProfile?.classList.add("hidden");
+}
+
+function toggleKidsAvatarItem(itemId) {
+  const item = getKidsAvatarItems().find((candidate) => candidate.id === itemId);
+  if (!item?.unlocked) return;
+  const avatar = normalizeAvatar(state.member.avatar);
+  const equipped = new Set(avatar.equippedItems || []);
+  if (equipped.has(itemId)) {
+    equipped.delete(itemId);
+  } else {
+    equipped.add(itemId);
+  }
+  state.member.avatar = normalizeAvatar({
+    ...avatar,
+    equippedItems: Array.from(equipped).slice(0, 4),
+  });
+  saveState();
+  renderKidsMode();
+  renderKidsAvatarProfile();
+  queueFirebaseSync("アバター着せ替え");
+}
+
+function renderKidsAvatarProfile() {
+  if (!els.kidsAvatarProfile || !els.kidsItemGrid) return;
+  const child = normalizeChildProfile(state.childProfile);
+  const avatar = normalizeAvatar(state.member.avatar);
+  const items = getKidsAvatarItems();
+  const equipped = new Set(avatar.equippedItems || []);
+  renderAvatarElement(els.kidsProfileAvatar, avatar);
+  if (els.kidsProfileStage) els.kidsProfileStage.textContent = `${toKidsText(getHeroStageLabel())} / ${formatKidsRadius(getKidsWorldRadius())}`;
+  if (els.kidsProfileName) els.kidsProfileName.textContent = toKidsText(child.nickname || state.member.name || "ぼうけんしゃ");
+  if (els.kidsProfileText) {
+    const unlockedCount = items.filter((item) => item.unlocked).length;
+    els.kidsProfileText.textContent = `${unlockedCount}このあいてむをみつけたよ。つけたいものをえらんでね。`;
+  }
+  els.kidsItemGrid.innerHTML = items
+    .map((item) => {
+      const active = equipped.has(item.id);
+      return `<button class="kids-item-card${item.unlocked ? " unlocked" : ""}${active ? " active" : ""}" type="button" data-kids-item-id="${escapeHtml(item.id)}" ${item.unlocked ? "" : "disabled"}>
+        <span>${escapeHtml(item.icon)}</span>
+        <strong>${escapeHtml(item.name)}</strong>
+        <small>${escapeHtml(item.unlocked ? (active ? "つけています" : "つける") : item.detail)}</small>
+      </button>`;
+    })
+    .join("");
+  els.kidsItemGrid.querySelectorAll("[data-kids-item-id]").forEach((button) => {
+    button.addEventListener("click", () => toggleKidsAvatarItem(button.dataset.kidsItemId));
+  });
 }
 
 function renderKidsPointBoard() {
@@ -6514,9 +6610,26 @@ els.kidsRecordPhoto?.addEventListener("change", handleKidsRecordPhotoChange);
 els.kidsRecordPhotoButton?.addEventListener("click", openKidsRecordCamera);
 els.kidsRecordVoiceButton?.addEventListener("click", startKidsRecordVoice);
 els.kidsNavigatorBot?.addEventListener("click", askKidsNavigator);
+[
+  els.kidsAvatar,
+  els.kidsGrowthAvatar,
+].forEach((avatarElement) => {
+  avatarElement?.setAttribute("role", "button");
+  avatarElement?.setAttribute("tabindex", "0");
+  avatarElement?.addEventListener("click", openKidsAvatarProfile);
+  avatarElement?.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    openKidsAvatarProfile();
+  });
+});
 els.kidsPhotoViewerClose?.addEventListener("click", closeKidsPhotoViewer);
 els.kidsPhotoViewer?.addEventListener("click", (event) => {
   if (event.target === els.kidsPhotoViewer) closeKidsPhotoViewer();
+});
+els.kidsAvatarProfileClose?.addEventListener("click", closeKidsAvatarProfile);
+els.kidsAvatarProfile?.addEventListener("click", (event) => {
+  if (event.target === els.kidsAvatarProfile) closeKidsAvatarProfile();
 });
 els.saveFieldPostButton?.addEventListener("click", saveFieldPost);
 els.saveKidsRecordButton?.addEventListener("click", saveKidsRecord);
