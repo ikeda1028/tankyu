@@ -87,6 +87,7 @@ const defaultState = {
   member: {
     name: "",
     age: 12,
+    birthdate: "",
     school: "",
     grade: "中1",
     region: "",
@@ -107,6 +108,7 @@ const defaultState = {
     id: "",
     nickname: "",
     age: 6,
+    birthdate: "",
     region: "",
     favoriteThings: "",
     favoriteColor: "#2f8f63",
@@ -414,8 +416,10 @@ const els = {
   backLoginButton: document.querySelector("#back-login-button"),
   memberName: document.querySelector("#member-name"),
   memberAge: document.querySelector("#member-age"),
+  memberBirthdate: document.querySelector("#member-birthdate"),
   memberSchool: document.querySelector("#member-school"),
   memberGrade: document.querySelector("#member-grade"),
+  memberGradeNote: document.querySelector("#member-grade-note"),
   memberRegion: document.querySelector("#member-region"),
   memberInterest: document.querySelector("#member-interest"),
   memberHeroRole: document.querySelector("#member-hero-role"),
@@ -1703,6 +1707,43 @@ function formatDateLabel(value) {
     month: "numeric",
     day: "numeric",
   }).format(new Date(`${value}T00:00:00`));
+}
+
+function calculateAgeFromBirthdate(birthdate, today = new Date()) {
+  if (!birthdate) return null;
+  const born = new Date(`${birthdate}T00:00:00`);
+  if (Number.isNaN(born.getTime()) || born > today) return null;
+  let age = today.getFullYear() - born.getFullYear();
+  const beforeBirthday =
+    today.getMonth() < born.getMonth() || (today.getMonth() === born.getMonth() && today.getDate() < born.getDate());
+  if (beforeBirthday) age -= 1;
+  return Math.max(0, age);
+}
+
+function inferJapaneseGradeFromBirthdate(birthdate, today = new Date()) {
+  if (!birthdate) return "";
+  const born = new Date(`${birthdate}T00:00:00`);
+  if (Number.isNaN(born.getTime())) return "";
+  const schoolYear = today.getMonth() >= 3 ? today.getFullYear() : today.getFullYear() - 1;
+  const aprilFirst = new Date(`${schoolYear}-04-01T00:00:00`);
+  const ageOnAprilFirst = calculateAgeFromBirthdate(birthdate, aprilFirst);
+  if (ageOnAprilFirst === null) return "";
+  if (ageOnAprilFirst <= 4) return "年中";
+  if (ageOnAprilFirst === 5) return "年長";
+  if (ageOnAprilFirst >= 6 && ageOnAprilFirst <= 11) return `小${ageOnAprilFirst - 5}`;
+  if (ageOnAprilFirst >= 12 && ageOnAprilFirst <= 14) return `中${ageOnAprilFirst - 11}`;
+  if (ageOnAprilFirst >= 15 && ageOnAprilFirst <= 17) return `高${ageOnAprilFirst - 14}`;
+  return "その他";
+}
+
+function updateMemberGradeFromBirthdate(options = {}) {
+  const birthdate = els.memberBirthdate?.value || "";
+  const age = calculateAgeFromBirthdate(birthdate);
+  const grade = inferJapaneseGradeFromBirthdate(birthdate);
+  if (options.applyGrade && grade && els.memberGrade) els.memberGrade.value = grade;
+  if (els.memberGradeNote) {
+    els.memberGradeNote.textContent = age === null ? "生年月日から自動判定。修正できます。" : `${age}歳 / ${grade || "学年未判定"}として判定。修正できます。`;
+  }
 }
 
 function escapeHtml(value) {
@@ -3664,9 +3705,10 @@ function showMemberForm() {
   els.loginForm.classList.add("hidden");
   els.memberForm.classList.remove("hidden");
   els.memberName.value = state.member.name || "";
-  els.memberAge.value = state.member.age || state.childProfile.age || 12;
+  if (els.memberBirthdate) els.memberBirthdate.value = state.member.birthdate || state.childProfile.birthdate || "";
   els.memberSchool.value = state.member.school || "";
   els.memberGrade.value = state.member.grade || "中1";
+  updateMemberGradeFromBirthdate();
   els.memberRegion.value = state.member.region || "";
   els.memberInterest.value = state.member.initialInterest || "";
   els.memberHeroRole.value = state.member.heroRole || "ヒーロー";
@@ -3955,10 +3997,13 @@ function saveMemberInfo(event) {
   event.preventDefault();
   const isFirstMemberSetup = !state.member.name;
   const interestText = els.memberInterest.value.trim();
-  const memberAge = Math.max(4, Math.min(18, Number(els.memberAge?.value || state.member.age || state.childProfile.age || 12)));
+  const memberBirthdate = els.memberBirthdate?.value || "";
+  const calculatedAge = calculateAgeFromBirthdate(memberBirthdate);
+  const memberAge = Math.max(4, Math.min(18, Number(calculatedAge ?? state.member.age ?? state.childProfile.age ?? 12)));
   state.member = {
     name: els.memberName.value.trim() || "中高生ユーザー",
     age: memberAge,
+    birthdate: memberBirthdate,
     school: els.memberSchool.value.trim(),
     grade: els.memberGrade.value,
     region: els.memberRegion.value.trim(),
@@ -3972,6 +4017,7 @@ function saveMemberInfo(event) {
     id: state.childProfile.id || `child-${Date.now()}`,
     nickname: state.childProfile.nickname || state.member.name,
     age: memberAge,
+    birthdate: memberBirthdate || state.childProfile.birthdate,
     region: state.childProfile.region || state.member.region,
     favoriteThings: state.childProfile.favoriteThings || interestText,
     updatedAt: state.childProfile.updatedAt || new Date().toISOString(),
@@ -4123,9 +4169,12 @@ function memberToDriveRecord() {
     display_name: state.member.name || "中高生ユーザー",
     role: "student",
     member_age: state.member.age || child.age,
+    member_birthdate: state.member.birthdate || child.birthdate || "",
+    member_grade: state.member.grade || "",
     child_id: child.id,
     child_nickname: child.nickname,
     child_age: child.age,
+    child_birthdate: child.birthdate || "",
     child_region: child.region,
     child_favorite_things: child.favoriteThings,
     child_guardian_id: child.guardianId,
@@ -5386,6 +5435,7 @@ els.memberForm.addEventListener("submit", saveMemberInfo);
   els.memberAvatarPrompt,
 ].forEach((input) => input?.addEventListener("input", updateAvatarFromEditor));
 els.memberAvatarPhoto?.addEventListener("change", handleAvatarPhotoChange);
+els.memberBirthdate?.addEventListener("change", () => updateMemberGradeFromBirthdate({ applyGrade: true }));
 els.generateMemberAvatarButton?.addEventListener("click", generateMemberAvatar);
 els.addPartyRoleButton?.addEventListener("click", addPartyRole);
 els.memberPartyRoleInput?.addEventListener("keydown", (event) => {

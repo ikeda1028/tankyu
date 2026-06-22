@@ -36,19 +36,29 @@
           <input id="member-school" type="text" placeholder="探究中学校" />
           <div class="form-grid">
             <div>
-              <label for="member-age">年齢</label>
-              <input id="member-age" type="number" min="4" max="18" value="12" />
+              <label for="member-birthdate">生年月日</label>
+              <input id="member-birthdate" type="date" />
             </div>
             <div>
               <label for="member-grade">学年</label>
               <select id="member-grade">
+                <option>年中</option>
+                <option>年長</option>
+                <option>小1</option>
+                <option>小2</option>
+                <option>小3</option>
+                <option>小4</option>
+                <option>小5</option>
+                <option>小6</option>
                 <option>中1</option>
                 <option>中2</option>
                 <option>中3</option>
                 <option>高1</option>
                 <option>高2</option>
                 <option>高3</option>
+                <option>その他</option>
               </select>
+              <p id="member-grade-note" class="member-save-status">生年月日から自動判定。修正できます。</p>
             </div>
             <div>
               <label for="member-region">地域</label>
