@@ -102,6 +102,27 @@ const defaultState = {
     },
     partyRoles: ["問いを深める人", "現地を記録する人", "社会とつなぐ人"],
   },
+  childProfile: {
+    id: "",
+    nickname: "",
+    age: 6,
+    region: "",
+    favoriteThings: "",
+    favoriteColor: "#2f8f63",
+    guardianId: "",
+    permissions: {
+      photoPost: false,
+      locationSave: false,
+      publicShare: false,
+      aiSuggestions: false,
+      driveSync: false,
+    },
+    updatedAt: "",
+  },
+  guardian: {
+    id: "",
+    passcode: "0000",
+  },
   quest: 72,
   joy: 84,
   drive: 36,
@@ -231,6 +252,19 @@ const els = {
   guardianChildMeta: document.querySelector("#guardian-child-meta"),
   guardianPendingCount: document.querySelector("#guardian-pending-count"),
   guardianActivityCount: document.querySelector("#guardian-activity-count"),
+  childProfileForm: document.querySelector("#child-profile-form"),
+  childProfileStatus: document.querySelector("#child-profile-status"),
+  childNickname: document.querySelector("#child-nickname"),
+  childAge: document.querySelector("#child-age"),
+  childRegion: document.querySelector("#child-region"),
+  childFavoriteColor: document.querySelector("#child-favorite-color"),
+  childFavoriteThings: document.querySelector("#child-favorite-things"),
+  childGuardianId: document.querySelector("#child-guardian-id"),
+  permissionPhotoPost: document.querySelector("#permission-photo-post"),
+  permissionLocationSave: document.querySelector("#permission-location-save"),
+  permissionPublicShare: document.querySelector("#permission-public-share"),
+  permissionAiSuggestions: document.querySelector("#permission-ai-suggestions"),
+  permissionDriveSync: document.querySelector("#permission-drive-sync"),
   heroGrowthTitle: document.querySelector("#hero-growth-title"),
   heroGrowthDimension: document.querySelector("#hero-growth-dimension"),
   heroLargeAvatar: document.querySelector("#hero-large-avatar"),
@@ -382,6 +416,8 @@ state.firebase = { ...defaultState.firebase, ...(state.firebase || {}) };
 state.maps = { ...defaultState.maps, ...(state.maps || {}) };
 state.auth = { ...defaultState.auth, ...(state.auth || {}) };
 state.member = { ...defaultState.member, ...(state.member || {}) };
+state.childProfile = normalizeChildProfile(state.childProfile);
+state.guardian = { ...defaultState.guardian, ...(state.guardian || {}) };
 state.member.avatar = normalizeAvatar(state.member.avatar);
 state.member.partyRoles = normalizePartyRoles(state.member.partyRoles);
 state.ui = { ...defaultState.ui, ...(state.ui || {}) };
@@ -411,6 +447,21 @@ let firebaseAutoSyncQueued = false;
 let firebaseAutoSyncReason = "";
 let pendingFieldPostImage = null;
 let pendingFieldPostLocation = null;
+
+function normalizeChildProfile(profile = {}) {
+  profile = profile || {};
+  const fallback = defaultState.childProfile;
+  const permissions = {
+    ...fallback.permissions,
+    ...(profile.permissions || {}),
+  };
+  return {
+    ...fallback,
+    ...profile,
+    age: Math.max(4, Math.min(10, Number(profile.age || fallback.age))),
+    permissions,
+  };
+}
 
 function normalizePartyRoles(roles) {
   const fallback = defaultState.member.partyRoles;
@@ -996,6 +1047,8 @@ async function loadFirebaseSnapshot(options = {}) {
     state.maps = { ...defaultState.maps, ...(state.maps || {}) };
     state.auth = { ...defaultState.auth, ...(state.auth || {}) };
     state.member = { ...defaultState.member, ...(state.member || {}) };
+    state.childProfile = normalizeChildProfile(state.childProfile);
+    state.guardian = { ...defaultState.guardian, ...(state.guardian || {}) };
     state.member.avatar = normalizeAvatar(state.member.avatar);
     state.member.partyRoles = normalizePartyRoles(state.member.partyRoles);
     state.ui = { ...defaultState.ui, ...(state.ui || {}) };
@@ -2664,7 +2717,16 @@ function renderHeroGrowth() {
 
 function renderKidsMode() {
   if (!els.kidsView) return;
+  const child = normalizeChildProfile(state.childProfile);
   renderAvatarElement(els.kidsAvatar, normalizeAvatar(state.member.avatar));
+  if (els.kidsView.querySelector(".kids-hero h2")) {
+    els.kidsView.querySelector(".kids-hero h2").textContent = child.nickname ? `${child.nickname}のぼうけん` : "きょうのぼうけん";
+  }
+  if (els.kidsView.querySelector(".kids-hero p")) {
+    els.kidsView.querySelector(".kids-hero p").textContent = child.favoriteThings
+      ? `すきなこと: ${child.favoriteThings}`
+      : "すき、ふしぎ、みつけたことから、ワクワクをひろげよう。";
+  }
   if (els.kidsQuestPower) els.kidsQuestPower.textContent = state.quest;
   if (els.kidsJoyPower) els.kidsJoyPower.textContent = state.joy;
   if (els.kidsPostCount) els.kidsPostCount.textContent = `${state.fieldPosts.length}`;
@@ -2672,10 +2734,11 @@ function renderKidsMode() {
 
 function renderGuardianMode() {
   if (!els.guardianView) return;
+  const child = normalizeChildProfile(state.childProfile);
   if (els.guardianStatus) els.guardianStatus.textContent = state.ui.mode === "guardian" ? "保護者確認済み" : "待機中";
-  if (els.guardianChildName) els.guardianChildName.textContent = state.member.name || "子どもプロフィール未設定";
+  if (els.guardianChildName) els.guardianChildName.textContent = child.nickname || state.member.name || "子どもプロフィール未設定";
   if (els.guardianChildMeta) {
-    const meta = [state.member.grade, state.member.region].filter(Boolean).join(" / ");
+    const meta = [`${child.age}歳`, child.region || state.member.region].filter(Boolean).join(" / ");
     els.guardianChildMeta.textContent = meta || "年齢・地域を保護者が確認します。";
   }
   if (els.guardianPendingCount) {
@@ -2683,6 +2746,62 @@ function renderGuardianMode() {
     els.guardianPendingCount.textContent = `${pendingPosts}件`;
   }
   if (els.guardianActivityCount) els.guardianActivityCount.textContent = `${state.activity.length}件`;
+  fillChildProfileForm();
+}
+
+function fillChildProfileForm() {
+  if (!els.childProfileForm) return;
+  const child = normalizeChildProfile(state.childProfile);
+  els.childNickname.value = child.nickname || "";
+  els.childAge.value = child.age || 6;
+  els.childRegion.value = child.region || "";
+  els.childFavoriteColor.value = child.favoriteColor || "#2f8f63";
+  els.childFavoriteThings.value = child.favoriteThings || "";
+  els.childGuardianId.value = child.guardianId || state.auth.email || "";
+  els.permissionPhotoPost.checked = Boolean(child.permissions.photoPost);
+  els.permissionLocationSave.checked = Boolean(child.permissions.locationSave);
+  els.permissionPublicShare.checked = Boolean(child.permissions.publicShare);
+  els.permissionAiSuggestions.checked = Boolean(child.permissions.aiSuggestions);
+  els.permissionDriveSync.checked = Boolean(child.permissions.driveSync);
+  if (els.childProfileStatus) {
+    els.childProfileStatus.textContent = child.updatedAt ? "保存済み" : "未保存";
+  }
+}
+
+function saveChildProfile(event) {
+  event.preventDefault();
+  const previous = normalizeChildProfile(state.childProfile);
+  const nickname = els.childNickname.value.trim();
+  const age = Math.max(4, Math.min(10, Number(els.childAge.value || previous.age || 6)));
+  state.childProfile = normalizeChildProfile({
+    ...previous,
+    id: previous.id || `child-${Date.now()}`,
+    nickname,
+    age,
+    region: els.childRegion.value.trim(),
+    favoriteColor: els.childFavoriteColor.value || previous.favoriteColor,
+    favoriteThings: els.childFavoriteThings.value.trim(),
+    guardianId: els.childGuardianId.value.trim() || state.auth.email || previous.guardianId,
+    permissions: {
+      photoPost: els.permissionPhotoPost.checked,
+      locationSave: els.permissionLocationSave.checked,
+      publicShare: els.permissionPublicShare.checked,
+      aiSuggestions: els.permissionAiSuggestions.checked,
+      driveSync: els.permissionDriveSync.checked,
+    },
+    updatedAt: new Date().toISOString(),
+  });
+  if (nickname && !state.member.name) {
+    state.member.name = nickname;
+  }
+  if (state.childProfile.region && !state.member.region) {
+    state.member.region = state.childProfile.region;
+  }
+  addActivity(`${state.childProfile.nickname || "子ども"}のプロフィールを保存`);
+  saveState();
+  render();
+  if (els.childProfileStatus) els.childProfileStatus.textContent = "保存しました";
+  queueFirebaseSync("子どもプロフィール更新");
 }
 
 function setMemberStatus(message, isError = false) {
@@ -3040,6 +3159,8 @@ async function initDatabase() {
 
     if (hasDbProfile) {
       Object.assign(state, dbState);
+      state.childProfile = normalizeChildProfile(state.childProfile);
+      state.guardian = { ...defaultState.guardian, ...(state.guardian || {}) };
       dedupeCustomEvents();
       await window.WakuwakuDB.writeState(appDb, state, getEncounters());
     } else {
@@ -3135,10 +3256,22 @@ function eventToDriveRecord(event) {
 }
 
 function memberToDriveRecord() {
+  const child = normalizeChildProfile(state.childProfile);
   return {
     id: state.auth.email || "local-user",
     display_name: state.member.name || "中高生ユーザー",
     role: "student",
+    child_id: child.id,
+    child_nickname: child.nickname,
+    child_age: child.age,
+    child_region: child.region,
+    child_favorite_things: child.favoriteThings,
+    child_guardian_id: child.guardianId,
+    permission_photo_post: Boolean(child.permissions.photoPost),
+    permission_location_save: Boolean(child.permissions.locationSave),
+    permission_public_share: Boolean(child.permissions.publicShare),
+    permission_ai_suggestions: Boolean(child.permissions.aiSuggestions),
+    permission_drive_sync: Boolean(child.permissions.driveSync),
     hero_role: state.member.heroRole || "ヒーロー",
     avatar_symbol: normalizeAvatar(state.member.avatar).symbol,
     avatar_color: normalizeAvatar(state.member.avatar).color,
@@ -4398,6 +4531,7 @@ els.backLoginButton.addEventListener("click", () => {
 });
 els.editMemberButton.addEventListener("click", showMemberForm);
 els.logoutButton.addEventListener("click", logout);
+els.childProfileForm?.addEventListener("submit", saveChildProfile);
 els.eventForm.addEventListener("submit", registerEvent);
 els.cancelEventEditButton?.addEventListener("click", () => resetEventFormToCreate());
 els.sampleEventButton.addEventListener("click", registerSampleEvent);

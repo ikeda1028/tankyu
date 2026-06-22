@@ -1674,6 +1674,74 @@ textarea {
   line-height: 1.5;
 }
 
+.child-profile-form {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.child-profile-grid {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr) 120px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.child-profile-form label,
+.permission-fieldset legend {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.child-profile-form input,
+.child-profile-form textarea {
+  width: 100%;
+  min-height: 38px;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  outline: 0;
+  background: #fbfdf9;
+}
+
+.child-profile-grid textarea {
+  grid-column: span 3;
+  min-height: 74px;
+  resize: vertical;
+}
+
+.permission-fieldset {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f7fbff;
+}
+
+.permission-fieldset legend {
+  padding: 0 4px;
+}
+
+.permission-fieldset label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.permission-fieldset input {
+  width: auto;
+  min-height: auto;
+}
+
 .feedback-main,
 .hero-growth-main,
 .settings-main,
@@ -3346,12 +3414,18 @@ textarea {
   .event-admin-shell,
   .kids-action-grid,
   .kids-status-row,
-  .guardian-grid {
+  .guardian-grid,
+  .child-profile-grid,
+  .permission-fieldset {
     grid-template-columns: 1fr;
   }
 
   .kids-hero {
     grid-template-columns: 1fr;
+  }
+
+  .child-profile-grid textarea {
+    grid-column: auto;
   }
 
   .hero-large-avatar {

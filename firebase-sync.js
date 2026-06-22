@@ -136,6 +136,8 @@ async function saveSnapshot(config, state, snapshot) {
   const avatarSnapshot = await uploadMemberAvatar(firebase, userId, snapshot);
   const uploadedSnapshot = await uploadFieldPostImages(firebase, userId, avatarSnapshot);
   const avatar = uploadedSnapshot.member?.avatar || {};
+  const childProfile = uploadedSnapshot.childProfile || {};
+  const permissions = childProfile.permissions || {};
   const stats = {
     quest: Number(state?.quest || 0),
     hp: Number(state?.quest || 0),
@@ -150,6 +152,26 @@ async function saveSnapshot(config, state, snapshot) {
       userId,
       email: state?.auth?.email || "",
       displayName: state?.member?.name || "",
+      childProfile: {
+        id: childProfile.id || "",
+        nickname: childProfile.nickname || "",
+        age: Number(childProfile.age || 0),
+        region: childProfile.region || "",
+        favoriteThings: childProfile.favoriteThings || "",
+        favoriteColor: childProfile.favoriteColor || "",
+        guardianId: childProfile.guardianId || "",
+        permissions: {
+          photoPost: Boolean(permissions.photoPost),
+          locationSave: Boolean(permissions.locationSave),
+          publicShare: Boolean(permissions.publicShare),
+          aiSuggestions: Boolean(permissions.aiSuggestions),
+          driveSync: Boolean(permissions.driveSync),
+        },
+        updatedAt: childProfile.updatedAt || "",
+      },
+      guardian: {
+        id: uploadedSnapshot.guardian?.id || "",
+      },
       stats,
       avatar: {
         symbol: avatar.symbol || "",

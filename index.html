@@ -709,6 +709,38 @@
                   <p>位置情報、外部公開、AI候補、同期設定を保護者側に集約します。</p>
                 </article>
               </div>
+              <form id="child-profile-form" class="child-profile-form">
+                <div class="section-head">
+                  <div>
+                    <p class="eyebrow">Unit 2</p>
+                    <h3>子どもプロフィール</h3>
+                  </div>
+                  <span id="child-profile-status" class="small-badge">未保存</span>
+                </div>
+                <div class="child-profile-grid">
+                  <label for="child-nickname">ニックネーム</label>
+                  <input id="child-nickname" type="text" placeholder="例：はる" />
+                  <label for="child-age">年齢</label>
+                  <input id="child-age" type="number" min="4" max="10" value="6" />
+                  <label for="child-region">地域</label>
+                  <input id="child-region" type="text" placeholder="例：東京都" />
+                  <label for="child-favorite-color">すきな色</label>
+                  <input id="child-favorite-color" type="color" value="#2f8f63" />
+                  <label for="child-favorite-things">すき・ワクワク</label>
+                  <textarea id="child-favorite-things" rows="3" placeholder="例：虫、電車、雲、工作、海"></textarea>
+                  <label for="child-guardian-id">保護者ID</label>
+                  <input id="child-guardian-id" type="text" placeholder="保護者メールなど" />
+                </div>
+                <fieldset class="permission-fieldset">
+                  <legend>保護者の許可</legend>
+                  <label><input id="permission-photo-post" type="checkbox" /> 写真投稿を許可</label>
+                  <label><input id="permission-location-save" type="checkbox" /> 位置情報保存を許可</label>
+                  <label><input id="permission-public-share" type="checkbox" /> 外部公開を許可</label>
+                  <label><input id="permission-ai-suggestions" type="checkbox" /> AI候補を表示</label>
+                  <label><input id="permission-drive-sync" type="checkbox" /> Google Drive同期を許可</label>
+                </fieldset>
+                <button class="primary-button" type="submit">子どもプロフィールを保存</button>
+              </form>
             </section>
           </div>
         </section>
