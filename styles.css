@@ -4892,6 +4892,24 @@ body:has(.map-canvas.kids-map-active) .kids-navigator-bot {
     overflow: hidden;
   }
 
+  body:has(#kids-onboarding-form:not(.hidden)) .kids-view {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  body:has(#kids-onboarding-form:not(.hidden)) .kids-shell {
+    display: grid;
+    grid-template-rows: auto auto;
+    min-height: auto;
+    height: auto;
+    padding-bottom: 28px;
+    overflow: visible;
+  }
+
+  body:has(#kids-onboarding-form:not(.hidden)) .kids-onboarding-card {
+    min-height: auto;
+  }
+
   body:has(.kids-view:not(.hidden)) .kids-hero {
     grid-template-columns: minmax(0, 1fr) 58px 76px;
     min-height: 0;
