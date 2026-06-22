@@ -5943,16 +5943,23 @@ document.querySelectorAll("[data-kids-record-stamp]").forEach((button) => {
 });
 document.querySelectorAll("[data-kids-point-scope]").forEach((button) => {
   button.addEventListener("click", () => {
-    state.ui.kidsPointScope = button.dataset.kidsPointScope || "own";
+    const scope = button.dataset.kidsPointScope || "own";
+    state.ui.kidsPointScope = scope;
     state.ui.kidsMapActive = true;
+    const candidate = getKidsMapCandidates()[0];
+    if (candidate) state.selected = candidate.id;
     saveState();
-    renderKidsMode();
+    showMode("quest", { kidsMap: true });
     renderKidsMapGuide();
     if (googleMap) {
       renderGoogleMapMarkers();
+      if (candidate && hasValidLatLng(candidate.position)) {
+        focusGoogleMapPoint({ lat: Number(candidate.position.lat), lng: Number(candidate.position.lng) }, Math.max(googleMap.getZoom(), 12));
+      }
     } else {
       initializeGoogleMap();
     }
+    setKidsMapStatus(scope === "friends" ? "ともだちの写真が見える場所を表示します。" : "じぶんの探検ポイントを表示します。");
   });
 });
 els.kidsRecordPhoto?.addEventListener("change", handleKidsRecordPhotoChange);
