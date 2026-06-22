@@ -3188,6 +3188,8 @@ function renderGuardianDashboard(child = normalizeChildProfile(state.childProfil
 
 function renderGuardianApprovals() {
   if (!els.guardianApprovalList) return;
+  const child = normalizeChildProfile(state.childProfile);
+  const permissions = child.permissions || {};
   const pendingPosts = (state.fieldPosts || [])
     .filter((post) => post.approvalStatus === "pending")
     .sort((a, b) => String(b.at || "").localeCompare(String(a.at || "")));
@@ -3199,15 +3201,25 @@ function renderGuardianApprovals() {
   els.guardianApprovalList.innerHTML = pendingPosts
     .map((post) => {
       const imageSrc = post.image?.dataUrl || post.image?.downloadUrl || "";
+      const tags = getGuardianApprovalTags(post, permissions);
+      const scope = permissions.publicShare ? "承認後: アプリ内表示・外部公開許可あり" : "承認後: アプリ内表示のみ";
       return `<article class="approval-card">
         ${imageSrc ? `<img src="${escapeHtml(imageSrc)}" alt="${escapeHtml(post.eventTitle || "投稿写真")}" />` : ""}
         <div>
-          <span>${escapeHtml(post.eventTitle || "ぼうけんポイント")} / ${formatTime(new Date(post.at))}</span>
+          <div class="approval-card-head">
+            <span>${escapeHtml(getGuardianApprovalKind(post))}</span>
+            <time>${formatTime(new Date(post.at))}</time>
+          </div>
+          <span>${escapeHtml(post.eventTitle || "ぼうけんポイント")}</span>
           <strong>${escapeHtml([post.stamp, post.text || "写真のみの投稿"].filter(Boolean).join(" / "))}</strong>
+          <div class="approval-tag-row">
+            ${tags.map((tag) => `<small class="${tag.warning ? "warning" : ""}">${escapeHtml(tag.label)}</small>`).join("")}
+          </div>
           <p>${post.location ? `位置情報あり / ${Number(post.location.lat).toFixed(5)}, ${Number(post.location.lng).toFixed(5)}` : "位置情報なし"}</p>
+          <p class="approval-scope">${escapeHtml(scope)}</p>
           <div class="approval-actions">
             <button class="secondary-button" type="button" data-approval-id="${escapeHtml(post.id)}" data-approval-action="rejected">非表示</button>
-            <button class="primary-button" type="button" data-approval-id="${escapeHtml(post.id)}" data-approval-action="approved">承認</button>
+            <button class="primary-button" type="button" data-approval-id="${escapeHtml(post.id)}" data-approval-action="approved">承認して保存</button>
           </div>
         </div>
       </article>`;
@@ -3218,10 +3230,33 @@ function renderGuardianApprovals() {
   });
 }
 
+function getGuardianApprovalKind(post) {
+  if (String(post.id || "").startsWith("kids-record-")) return "きょうのきろく";
+  if (post.image?.hasPhoto || post.image?.dataUrl || post.image?.downloadUrl) return "写真つき投稿";
+  if (post.sourceMode === "kids") return "みつけたこと";
+  return "現場投稿";
+}
+
+function getGuardianApprovalTags(post, permissions = {}) {
+  const hasPhoto = Boolean(post.image?.hasPhoto || post.image?.dataUrl || post.image?.downloadUrl);
+  const tags = [
+    { label: post.sourceMode === "kids" ? "子ども投稿" : "通常投稿" },
+    { label: post.stamp ? "スタンプあり" : "スタンプなし" },
+    { label: post.text ? "ひとことあり" : "ひとことなし" },
+    { label: hasPhoto ? "写真あり" : "写真なし", warning: hasPhoto && !permissions.photoPost },
+    { label: post.location ? "位置情報あり" : "位置情報なし", warning: Boolean(post.location && !permissions.locationSave) },
+    { label: permissions.publicShare ? "外部公開許可" : "外部公開オフ" },
+  ];
+  return tags;
+}
+
 function updatePostApproval(postId, approvalStatus) {
   const target = state.fieldPosts.find((post) => post.id === postId);
   if (!target) return;
+  const child = normalizeChildProfile(state.childProfile);
+  const publicShareAllowed = Boolean(child.permissions?.publicShare);
   target.approvalStatus = approvalStatus === "approved" ? "approved" : "rejected";
+  target.visibility = target.approvalStatus === "approved" && publicShareAllowed ? "public" : target.approvalStatus === "approved" ? "private" : "hidden";
   target.approvedBy = state.auth.email || state.guardian?.id || "guardian-local";
   target.approvedAt = new Date().toISOString();
   addActivity(`${target.eventTitle || "投稿"}を${target.approvalStatus === "approved" ? "承認" : "非表示"}に変更`);
@@ -3825,6 +3860,7 @@ function fieldPostToDriveRecord(post) {
     stamp: post.stamp || "",
     source_mode: post.sourceMode || "",
     approval_status: post.approvalStatus || "",
+    visibility: post.visibility || "",
     approved_by: post.approvedBy || "",
     approved_at: post.approvedAt || "",
     has_photo: Boolean(post.image?.dataUrl),

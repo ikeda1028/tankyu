@@ -2153,6 +2153,31 @@ textarea {
   gap: 6px;
 }
 
+.approval-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.approval-card-head span {
+  display: inline-grid;
+  min-height: 24px;
+  place-items: center;
+  padding: 0 10px;
+  border-radius: 999px;
+  color: white;
+  background: var(--green);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.approval-card-head time {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+}
+
 .approval-card span,
 .approval-card p {
   margin: 0;
@@ -2160,6 +2185,39 @@ textarea {
   font-size: 12px;
   font-weight: 800;
   line-height: 1.45;
+}
+
+.approval-tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.approval-tag-row small {
+  display: inline-grid;
+  min-height: 24px;
+  place-items: center;
+  padding: 0 8px;
+  border: 1px solid rgba(223, 230, 222, 0.95);
+  border-radius: 999px;
+  color: var(--muted);
+  background: white;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.approval-tag-row small.warning {
+  border-color: rgba(190, 86, 63, 0.35);
+  color: #9a3f2e;
+  background: #fff4ef;
+}
+
+.approval-card .approval-scope {
+  padding: 8px 10px;
+  border-radius: 8px;
+  color: var(--ink);
+  background: #eef8f2;
+  font-weight: 900;
 }
 
 .approval-card strong {
