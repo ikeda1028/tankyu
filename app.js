@@ -173,6 +173,8 @@ const defaultState = {
     themePanel: "compact",
     memberEditing: false,
     kidsMapActive: false,
+    kidsRecordOpen: false,
+    kidsPointScope: "own",
     editingEventId: "",
     aiCandidateSource: null,
   },
@@ -277,6 +279,15 @@ const els = {
   kidsActionGrid: document.querySelector(".kids-action-grid"),
   kidsStatusRow: document.querySelector(".kids-status-row"),
   kidsHomePanel: document.querySelector("#kids-home-panel"),
+  kidsGrowthAvatar: document.querySelector("#kids-growth-avatar"),
+  kidsGrowthStage: document.querySelector("#kids-growth-stage"),
+  kidsGrowthName: document.querySelector("#kids-growth-name"),
+  kidsGrowthText: document.querySelector("#kids-growth-text"),
+  kidsPhotoCount: document.querySelector("#kids-photo-count"),
+  kidsPhotoFeed: document.querySelector("#kids-photo-feed"),
+  kidsWorldRadius: document.querySelector("#kids-world-radius"),
+  kidsPointList: document.querySelector("#kids-point-list"),
+  kidsPointEmpty: document.querySelector("#kids-point-empty"),
   kidsTodayTitle: document.querySelector("#kids-today-title"),
   kidsTodayText: document.querySelector("#kids-today-text"),
   kidsRecentTitle: document.querySelector("#kids-recent-title"),
@@ -1966,15 +1977,8 @@ function renderEventList() {
 }
 
 function getKidsMapCandidates() {
-  const child = normalizeChildProfile(state.childProfile);
-  const favoriteWords = extractInterests(child.favoriteThings || state.member.initialInterest || state.interests.join("、"));
-  const ranked = rankedEncounters();
-  const matched = ranked.filter((encounter) =>
-    favoriteWords.some((word) =>
-      [encounter.title, encounter.impact, encounter.locationName, ...(encounter.tags || []), ...(encounter.keywords || [])].join(" ").includes(word)
-    )
-  );
-  return [...matched, ...ranked.filter((encounter) => !matched.some((item) => item.id === encounter.id))].slice(0, 4);
+  const scoped = getKidsScopedPoints(state.ui?.kidsPointScope || "own");
+  return scoped.slice(0, 4);
 }
 
 function renderKidsMapGuide() {
@@ -1983,8 +1987,8 @@ function renderKidsMapGuide() {
   els.kidsMapGuide.classList.toggle("hidden", !active);
   els.mapCanvas?.classList.toggle("kids-map-active", active);
   if (!active) return;
-  const selected = getSelectedEncounter();
   const candidates = getKidsMapCandidates();
+  const selected = candidates.find((encounter) => encounter.id === state.selected) || candidates[0] || null;
   if (els.kidsMapCenterButton) els.kidsMapCenterButton.disabled = !selected || !hasValidLatLng(selected.position);
   if (els.kidsMapStatus && !els.kidsMapStatus.textContent) {
     els.kidsMapStatus.textContent = "番号をえらぶと、その場所が地図の真ん中にきます。";
@@ -2006,6 +2010,15 @@ function renderKidsMapGuide() {
       .join("");
   }
   if (els.kidsMapList) {
+    if (!candidates.length) {
+      els.kidsMapList.innerHTML = "";
+      setKidsMapStatus(
+        state.ui?.kidsPointScope === "own"
+          ? "まだじぶんの冒険ポイントがありません。"
+          : `半径${formatKidsRadius(getKidsWorldRadius())}の中に、ともだちのポイントはまだありません。`
+      );
+      return;
+    }
     els.kidsMapList.innerHTML = candidates
       .map((encounter, index) => {
         const activeClass = encounter.id === state.selected ? " active" : "";
@@ -2029,11 +2042,13 @@ function setKidsMapStatus(message, isError = false) {
 }
 
 function centerKidsSelectedPoint() {
-  const selected = getSelectedEncounter();
+  const candidates = getKidsMapCandidates();
+  const selected = candidates.find((encounter) => encounter.id === state.selected) || candidates[0] || null;
   if (!selected || !hasValidLatLng(selected.position)) {
     setKidsMapStatus("この場所には、まだ地図の位置がありません。", true);
     return;
   }
+  state.selected = selected.id;
   state.ui.kidsMapActive = true;
   saveState();
   renderKidsMapGuide();
@@ -2951,19 +2966,58 @@ function setKidsParameter(valueEl, meterEl, noteEl, value, max, note) {
   if (noteEl) noteEl.textContent = note;
 }
 
+function getKidsWorldRadius() {
+  if (state.quest < 100) return 30;
+  if (state.quest < 150) return 100;
+  if (state.quest < 220) return 300;
+  if (state.quest < 320) return 1000;
+  return 3000;
+}
+
+function formatKidsRadius(radius) {
+  return radius >= 1000 ? `${Math.round(radius / 1000)}km` : `${radius}m`;
+}
+
+function getKidsWorldCenter() {
+  const ownPoint = state.customEvents.find((event) => hasValidLatLng(event.position));
+  if (ownPoint) return ownPoint.position;
+  const selected = getSelectedEncounter();
+  if (selected && hasValidLatLng(selected.position)) return selected.position;
+  const fallback = rankedEncounters().find((encounter) => hasValidLatLng(encounter.position));
+  return fallback?.position || null;
+}
+
+function getKidsScopedPoints(scope = state.ui?.kidsPointScope || "own") {
+  const radius = getKidsWorldRadius();
+  const center = getKidsWorldCenter();
+  const source = scope === "friends" ? seedEncounters : state.customEvents;
+  return source
+    .filter((encounter) => {
+      if (!hasValidLatLng(encounter.position) || !center) return true;
+      return getDistanceMeters(center, encounter.position) <= radius;
+    })
+    .slice(0, 12);
+}
+
 function renderKidsMode() {
   if (!els.kidsView) return;
   const child = normalizeChildProfile(state.childProfile);
   const avatar = normalizeAvatar(state.member.avatar);
   const onboardingComplete = Boolean(child.onboardingComplete);
   renderAvatarElement(els.kidsAvatar, avatar);
+  renderAvatarElement(els.kidsGrowthAvatar, avatar);
   if (els.kidsView.querySelector(".kids-hero h2")) {
-    els.kidsView.querySelector(".kids-hero h2").textContent = child.nickname ? `${child.nickname}のぼうけん` : "きょうのぼうけん";
+    els.kidsView.querySelector(".kids-hero h2").textContent = child.nickname ? `${child.nickname}` : "ぼうけんしゃ";
   }
   if (els.kidsView.querySelector(".kids-hero p")) {
     els.kidsView.querySelector(".kids-hero p").textContent = child.favoriteThings
-      ? `すきなこと: ${child.favoriteThings}`
-      : "すき、ふしぎ、みつけたことから、ワクワクをひろげよう。";
+      ? child.favoriteThings
+      : "すきなことから、世界をひろげよう。";
+  }
+  if (els.kidsGrowthStage) els.kidsGrowthStage.textContent = `${getHeroStageLabel()} / ${formatKidsRadius(getKidsWorldRadius())}`;
+  if (els.kidsGrowthName) els.kidsGrowthName.textContent = child.nickname || state.member.name || "ぼうけんしゃ";
+  if (els.kidsGrowthText) {
+    els.kidsGrowthText.textContent = `いま見える世界は半径${formatKidsRadius(getKidsWorldRadius())}。見つけたことがふえると、もっと遠くまで行けます。`;
   }
   const bestDepthLabel = depthLabels[getBestDepth() - 1].replace("まで", "");
   setKidsParameter(
@@ -2995,7 +3049,7 @@ function renderKidsMode() {
   els.kidsActionGrid?.classList.toggle("hidden", !onboardingComplete);
   els.kidsStatusRow?.classList.toggle("hidden", !onboardingComplete);
   els.kidsHomePanel?.classList.toggle("hidden", !onboardingComplete);
-  els.kidsRecordPanel?.classList.toggle("hidden", !onboardingComplete);
+  els.kidsRecordPanel?.classList.toggle("hidden", !onboardingComplete || !state.ui?.kidsRecordOpen);
   renderKidsHomePanel(child);
   renderKidsRecordPanel();
   fillKidsOnboardingForm(child, avatar);
@@ -3003,33 +3057,65 @@ function renderKidsMode() {
 
 function renderKidsHomePanel(child = normalizeChildProfile(state.childProfile)) {
   if (!els.kidsHomePanel) return;
-  const encounters = getEncounters();
-  const selected = getSelectedEncounter();
-  const favoriteWords = extractInterests(child.favoriteThings || state.member.initialInterest || state.interests.join("、"));
-  const recommended =
-    encounters.find((encounter) =>
-      favoriteWords.some((word) =>
-        [encounter.title, encounter.impact, ...(encounter.tags || []), ...(encounter.keywords || [])].join(" ").includes(word)
-      )
-    ) || selected || encounters[0];
-  const recentPost = (state.fieldPosts || [])[0];
-  if (els.kidsTodayTitle) els.kidsTodayTitle.textContent = recommended?.title || "ぼうけんをえらぼう";
-  if (els.kidsTodayText) {
-    els.kidsTodayText.textContent = recommended
-      ? `${recommended.locationName || "ちず"}で、${recommended.impact || "ワクワク"}をみつけよう。`
-      : "ちずから、ちかくのワクワクをみつけよう。";
+  renderKidsPhotoFeed();
+  renderKidsPointBoard();
+}
+
+function renderKidsPhotoFeed() {
+  if (!els.kidsPhotoFeed) return;
+  const posts = (state.fieldPosts || [])
+    .filter((post) => post.approvalStatus !== "rejected")
+    .slice(0, 12);
+  if (els.kidsPhotoCount) els.kidsPhotoCount.textContent = `${posts.length}こ`;
+  if (!posts.length) {
+    els.kidsPhotoFeed.innerHTML = `<article class="kids-photo-empty"><strong>まだありません</strong><span>見つけたことをのこそう</span></article>`;
+    return;
   }
-  if (els.kidsRecentTitle) els.kidsRecentTitle.textContent = recentPost?.eventTitle || "まだありません";
-  if (els.kidsRecentText) {
-    els.kidsRecentText.textContent = recentPost?.text || (recentPost?.image?.hasPhoto ? "しゃしんをのこしました。" : "しゃしんやことばで、みつけたことをのこそう。");
+  els.kidsPhotoFeed.innerHTML = posts
+    .map((post) => {
+      const imageSrc = post.image?.dataUrl || post.image?.downloadUrl || "";
+      const body = post.stamp || post.text || "みつけた";
+      return `<article class="kids-photo-card">
+        ${imageSrc ? `<img src="${escapeHtml(imageSrc)}" alt="${escapeHtml(post.eventTitle || "みつけたこと")}" />` : `<div>${escapeHtml(String(body).slice(0, 1) || "発")}</div>`}
+        <span>${escapeHtml(body)}</span>
+      </article>`;
+    })
+    .join("");
+}
+
+function renderKidsPointBoard() {
+  if (!els.kidsPointList) return;
+  const scope = state.ui?.kidsPointScope || "own";
+  const points = getKidsScopedPoints(scope);
+  const radius = getKidsWorldRadius();
+  if (els.kidsWorldRadius) els.kidsWorldRadius.textContent = `半径${formatKidsRadius(radius)}`;
+  document.querySelectorAll("[data-kids-point-scope]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.kidsPointScope === scope);
+  });
+  if (!points.length) {
+    els.kidsPointList.innerHTML = "";
+    if (els.kidsPointEmpty) {
+      els.kidsPointEmpty.textContent =
+        scope === "own"
+          ? "まだじぶんの冒険ポイントがありません。保護者と一緒に登録できます。"
+          : `半径${formatKidsRadius(radius)}の中に、ともだちのポイントはまだありません。`;
+    }
+    return;
   }
-  const nextTasks = getNextEvolutionTasks();
-  if (els.kidsNextStep) els.kidsNextStep.textContent = nextTasks[0] ? nextTasks[0].replace("探究ポイント", "ぼうけんポイント").replace("現場投稿", "みつけたこと") : "すきなものをさがす";
-  if (els.kidsNextText) {
-    els.kidsNextText.textContent = child.favoriteThings
-      ? `${child.favoriteThings}から、ふしぎをひとつえらんでみよう。`
-      : "ふしぎだなと思ったら、しゃしんをとってきろくしよう。";
-  }
+  if (els.kidsPointEmpty) els.kidsPointEmpty.textContent = "";
+  els.kidsPointList.innerHTML = points
+    .map((point, index) => {
+      const active = point.id === state.selected ? " active" : "";
+      return `<button class="kids-point-card${active}" type="button" data-kids-point-id="${escapeHtml(point.id)}">
+        <span>${index + 1}</span>
+        <strong>${escapeHtml(point.title)}</strong>
+        <small>${escapeHtml(point.locationName || point.impact || "ぼうけんポイント")}</small>
+      </button>`;
+    })
+    .join("");
+  els.kidsPointList.querySelectorAll("[data-kids-point-id]").forEach((button) => {
+    button.addEventListener("click", () => openKidsMapPoint(button.dataset.kidsPointId));
+  });
 }
 
 function renderKidsRecordPanel() {
@@ -5259,6 +5345,14 @@ document.querySelectorAll("[data-kids-stamp]").forEach((button) => {
 document.querySelectorAll("[data-kids-record-stamp]").forEach((button) => {
   button.addEventListener("click", () => selectKidsRecordStamp(button.dataset.kidsRecordStamp));
 });
+document.querySelectorAll("[data-kids-point-scope]").forEach((button) => {
+  button.addEventListener("click", () => {
+    state.ui.kidsPointScope = button.dataset.kidsPointScope || "own";
+    saveState();
+    renderKidsMode();
+    renderKidsMapGuide();
+  });
+});
 els.saveFieldPostButton?.addEventListener("click", saveFieldPost);
 els.saveKidsRecordButton?.addEventListener("click", saveKidsRecord);
 els.saveFeedbackButton.addEventListener("click", saveMentorFeedback);
@@ -5284,22 +5378,12 @@ document.querySelectorAll("[data-kids-action]").forEach((button) => {
       }
       return;
     }
-    if (action === "avatar") {
-      showMode("capital");
-      return;
-    }
-    if (action === "record") {
+    if (action === "photo") {
+      state.ui.kidsRecordOpen = true;
       showMode("kids");
       els.kidsRecordPanel?.scrollIntoView({ behavior: "smooth", block: "center" });
       els.kidsRecordText?.focus();
       return;
-    }
-    showMode("quest");
-    if (action === "photo") {
-      state.ui.fieldPostPanel = "open";
-      saveState();
-      renderFieldPostPanelState();
-      els.fieldPostPanel?.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   });
 });

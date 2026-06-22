@@ -1690,22 +1690,25 @@ textarea {
 
 .kids-hero {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  gap: 16px;
-  background: linear-gradient(135deg, #fffaf0 0%, #f0fbff 100%);
+  gap: 18px;
+  min-height: 180px;
+  background: #101914;
+  color: white;
 }
 
 .kids-hero h2 {
   margin: 0 0 6px;
-  font-size: 30px;
+  font-size: 42px;
+  line-height: 1;
 }
 
 .kids-hero p {
   margin: 0;
   max-width: 560px;
-  color: var(--muted);
-  font-size: 15px;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 16px;
   font-weight: 800;
   line-height: 1.7;
 }
@@ -1713,8 +1716,9 @@ textarea {
 .kids-avatar {
   display: grid;
   place-items: center;
-  width: 116px;
-  height: 116px;
+  grid-row: 1;
+  width: 132px;
+  height: 132px;
   border: 5px solid white;
   border-radius: 50%;
   overflow: hidden;
@@ -1779,37 +1783,39 @@ textarea {
 
 .kids-action-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 
 .kids-action-card {
   display: grid;
-  gap: 8px;
-  min-height: 128px;
-  padding: 16px;
-  border: 1px solid rgba(47, 111, 179, 0.16);
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  min-height: 96px;
+  padding: 18px;
+  border: 0;
   border-radius: 8px;
-  color: var(--ink);
-  background: white;
-  box-shadow: 0 10px 32px rgba(30, 48, 36, 0.08);
+  color: white;
+  background: var(--green);
+  box-shadow: 0 18px 42px rgba(30, 48, 36, 0.16);
   text-align: left;
 }
 
 .kids-action-card span {
   display: grid;
   place-items: center;
-  width: 48px;
-  height: 48px;
+  width: 58px;
+  height: 58px;
   border-radius: 50%;
-  color: white;
-  background: var(--green);
+  color: var(--green);
+  background: white;
   font-size: 13px;
   font-weight: 900;
 }
 
 .kids-action-card strong {
-  font-size: 20px;
+  font-size: 24px;
   line-height: 1.3;
 }
 
@@ -1877,8 +1883,222 @@ textarea {
 
 .kids-home-panel {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(240px, 0.9fr) minmax(320px, 1.2fr);
   gap: 12px;
+}
+
+.kids-growth-card,
+.kids-photo-feed,
+.kids-point-board {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid rgba(223, 230, 222, 0.9);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 10px 32px rgba(30, 48, 36, 0.08);
+}
+
+.kids-growth-card {
+  grid-row: span 2;
+  align-content: start;
+  min-height: 420px;
+}
+
+.kids-growth-avatar {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  width: min(100%, 320px);
+  justify-self: center;
+  overflow: hidden;
+  border-radius: 8px;
+  color: white;
+  background: var(--avatar-bg, linear-gradient(140deg, var(--green), #17211b));
+  box-shadow: inset 0 0 0 10px rgba(255, 255, 255, 0.44);
+  font-size: clamp(64px, 12vw, 120px);
+  font-weight: 900;
+}
+
+.kids-growth-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.kids-growth-card span,
+.kids-photo-feed .eyebrow,
+.kids-point-board .eyebrow {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.kids-growth-card strong {
+  color: var(--ink);
+  font-size: 28px;
+  line-height: 1.2;
+}
+
+.kids-growth-card p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.6;
+}
+
+.kids-photo-feed h3,
+.kids-point-board h3 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 20px;
+}
+
+.kids-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.kids-photo-card,
+.kids-photo-empty {
+  position: relative;
+  display: grid;
+  min-height: 110px;
+  overflow: hidden;
+  place-items: center;
+  border-radius: 8px;
+  color: white;
+  background: #17211b;
+}
+
+.kids-photo-card img {
+  width: 100%;
+  height: 100%;
+  min-height: 110px;
+  object-fit: cover;
+}
+
+.kids-photo-card div {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  min-height: 110px;
+  place-items: center;
+  background: linear-gradient(140deg, #2f8f63, #2f6fb3);
+  font-size: 36px;
+  font-weight: 900;
+}
+
+.kids-photo-card span {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  bottom: 6px;
+  overflow: hidden;
+  padding: 5px 7px;
+  border-radius: 999px;
+  background: rgba(16, 25, 20, 0.72);
+  font-size: 11px;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kids-photo-empty {
+  grid-column: 1 / -1;
+  min-height: 150px;
+  color: var(--ink);
+  background: #f7fbff;
+}
+
+.kids-photo-empty strong,
+.kids-photo-empty span {
+  display: block;
+  text-align: center;
+}
+
+.kids-point-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.kids-point-tabs button {
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  background: white;
+  font-weight: 900;
+}
+
+.kids-point-tabs button.active {
+  border-color: rgba(47, 143, 99, 0.38);
+  color: white;
+  background: var(--green);
+}
+
+.kids-point-list {
+  display: grid;
+  gap: 8px;
+}
+
+.kids-point-card {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 2px 10px;
+  align-items: center;
+  min-height: 58px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+  text-align: left;
+}
+
+.kids-point-card span {
+  display: grid;
+  grid-row: span 2;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 50%;
+  color: white;
+  background: var(--green);
+  font-weight: 900;
+}
+
+.kids-point-card strong,
+.kids-point-card small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kids-point-card strong {
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.kids-point-card small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.kids-point-card.active {
+  border-color: rgba(47, 143, 99, 0.4);
+  background: #f7fbff;
+}
+
+.kids-point-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.6;
 }
 
 .kids-today-card {

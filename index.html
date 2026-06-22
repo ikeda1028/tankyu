@@ -716,67 +716,48 @@
             </form>
             <div class="kids-action-grid">
               <button class="kids-action-card" type="button" data-kids-action="quest">
-                <span>ちず</span>
-                <strong>ぼうけんポイント</strong>
+                <span>冒険</span>
+                <strong>冒険ポイント</strong>
               </button>
               <button class="kids-action-card" type="button" data-kids-action="photo">
-                <span>しゃしん</span>
+                <span>発見</span>
                 <strong>みつけたこと</strong>
               </button>
-              <button class="kids-action-card" type="button" data-kids-action="avatar">
-                <span>アバター</span>
-                <strong>せいちょう</strong>
-              </button>
-              <button class="kids-action-card" type="button" data-kids-action="record">
-                <span>きろく</span>
-                <strong>きょうのワクワク</strong>
-              </button>
             </div>
-            <section class="kids-status-row">
-              <div class="kids-stat-card">
-                <span>たんけんパワー</span>
-                <strong id="kids-quest-power">72</strong>
-                <div class="kids-meter-track" aria-hidden="true"><i id="kids-quest-meter"></i></div>
-                <p id="kids-quest-note">ぼうけんの力</p>
-              </div>
-              <div class="kids-stat-card">
-                <span>ワクワク</span>
-                <strong id="kids-joy-power">84</strong>
-                <div class="kids-meter-track" aria-hidden="true"><i id="kids-joy-meter"></i></div>
-                <p id="kids-joy-note">すきが育つ</p>
-              </div>
-              <div class="kids-stat-card">
-                <span>どこまでしれた？</span>
-                <strong id="kids-drive-power">36</strong>
-                <div class="kids-meter-track" aria-hidden="true"><i id="kids-drive-meter"></i></div>
-                <p id="kids-drive-note">事実まで</p>
-              </div>
-              <div class="kids-stat-card">
-                <span>おうえん</span>
-                <strong id="kids-thanks-power">22</strong>
-                <div class="kids-meter-track" aria-hidden="true"><i id="kids-thanks-meter"></i></div>
-                <p id="kids-thanks-note">ありがとうの力</p>
-              </div>
-            </section>
-            <section id="kids-home-panel" class="kids-home-panel">
-              <article class="kids-today-card">
-                <span>きょうのおすすめ</span>
-                <strong id="kids-today-title">ぼうけんをえらぼう</strong>
-                <p id="kids-today-text">ちずから、ちかくのワクワクをみつけよう。</p>
-                <button class="secondary-button" type="button" data-kids-action="quest">ちずでみる</button>
+            <section id="kids-home-panel" class="kids-home-panel" aria-label="キッズホーム">
+              <article class="kids-growth-card">
+                <div id="kids-growth-avatar" class="kids-growth-avatar">?</div>
+                <div>
+                  <span id="kids-growth-stage">ソロ探究</span>
+                  <strong id="kids-growth-name">ぼうけんしゃ</strong>
+                  <p id="kids-growth-text">見つけたことがふえると、世界がひろがります。</p>
+                </div>
               </article>
-              <article class="kids-today-card">
-                <span>さいきんのみつけたこと</span>
-                <strong id="kids-recent-title">まだありません</strong>
-                <p id="kids-recent-text">しゃしんやことばで、みつけたことをのこそう。</p>
-                <button class="secondary-button" type="button" data-kids-action="photo">みつけたことを書く</button>
-              </article>
-              <article class="kids-today-card">
-                <span>つぎにやること</span>
-                <strong id="kids-next-step">すきなものをさがす</strong>
-                <p id="kids-next-text">ふしぎだなと思ったら、しゃしんをとってきろくしよう。</p>
-                <button class="secondary-button" type="button" data-kids-action="record">きろくする</button>
-              </article>
+              <section class="kids-photo-feed" aria-label="過去の写真">
+                <div class="section-head">
+                  <div>
+                    <p class="eyebrow">みつけたこと</p>
+                    <h3>これまでの写真</h3>
+                  </div>
+                  <span id="kids-photo-count" class="small-badge">0こ</span>
+                </div>
+                <div id="kids-photo-feed" class="kids-photo-grid"></div>
+              </section>
+              <section class="kids-point-board" aria-label="冒険ポイント">
+                <div class="section-head">
+                  <div>
+                    <p class="eyebrow">冒険ポイント</p>
+                    <h3>いける世界</h3>
+                  </div>
+                  <span id="kids-world-radius" class="small-badge">30m</span>
+                </div>
+                <div class="kids-point-tabs" role="tablist" aria-label="ポイント表示">
+                  <button class="active" type="button" data-kids-point-scope="own">じぶん</button>
+                  <button type="button" data-kids-point-scope="friends">ともだち</button>
+                </div>
+                <div id="kids-point-list" class="kids-point-list"></div>
+                <p id="kids-point-empty" class="kids-point-empty"></p>
+              </section>
             </section>
             <section id="kids-record-panel" class="kids-record-panel hidden" aria-label="きょうのきろく">
               <div class="section-head">
