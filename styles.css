@@ -1865,6 +1865,120 @@ textarea {
   line-height: 1.5;
 }
 
+.guardian-dashboard-section {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.guardian-dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.guardian-dashboard-grid article {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid rgba(223, 230, 222, 0.9);
+  border-radius: 8px;
+  background: #fbfdf9;
+}
+
+.guardian-dashboard-grid span,
+.guardian-dashboard-grid p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.guardian-dashboard-grid strong {
+  color: var(--ink);
+  font-size: 26px;
+}
+
+.guardian-dashboard-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(260px, 0.8fr);
+  gap: 12px;
+}
+
+.guardian-dashboard-columns section {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid rgba(223, 230, 222, 0.9);
+  border-radius: 8px;
+  background: white;
+}
+
+.guardian-dashboard-columns h4 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.guardian-recent-activity {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.guardian-recent-activity li {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+}
+
+.guardian-recent-activity time,
+.guardian-recent-activity span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.guardian-recent-activity span {
+  color: var(--ink);
+}
+
+.guardian-safety-list {
+  display: grid;
+  gap: 8px;
+}
+
+.guardian-safety-list div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfdf9;
+}
+
+.guardian-safety-list span,
+.guardian-safety-list strong {
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.guardian-safety-list strong.enabled {
+  color: var(--green);
+}
+
+.guardian-safety-list strong.disabled {
+  color: var(--muted);
+}
+
 .guardian-approval-section {
   display: grid;
   gap: 12px;
@@ -3802,6 +3916,8 @@ textarea {
   .event-admin-shell,
   .kids-encounter-actions,
   .approval-card,
+  .guardian-dashboard-grid,
+  .guardian-dashboard-columns,
   .kids-action-grid,
   .kids-onboarding-grid,
   .kids-home-panel,

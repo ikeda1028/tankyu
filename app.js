@@ -279,6 +279,15 @@ const els = {
   guardianChildMeta: document.querySelector("#guardian-child-meta"),
   guardianPendingCount: document.querySelector("#guardian-pending-count"),
   guardianActivityCount: document.querySelector("#guardian-activity-count"),
+  guardianDashboardStatus: document.querySelector("#guardian-dashboard-status"),
+  guardianQuestValue: document.querySelector("#guardian-quest-value"),
+  guardianQuestNote: document.querySelector("#guardian-quest-note"),
+  guardianJoyValue: document.querySelector("#guardian-joy-value"),
+  guardianJoyNote: document.querySelector("#guardian-joy-note"),
+  guardianPostSummary: document.querySelector("#guardian-post-summary"),
+  guardianPostNote: document.querySelector("#guardian-post-note"),
+  guardianRecentActivity: document.querySelector("#guardian-recent-activity"),
+  guardianSafetyList: document.querySelector("#guardian-safety-list"),
   approvalListStatus: document.querySelector("#approval-list-status"),
   guardianApprovalList: document.querySelector("#guardian-approval-list"),
   childProfileForm: document.querySelector("#child-profile-form"),
@@ -2999,8 +3008,51 @@ function renderGuardianMode() {
     els.guardianPendingCount.textContent = `${pendingPosts}件`;
   }
   if (els.guardianActivityCount) els.guardianActivityCount.textContent = `${state.activity.length}件`;
+  renderGuardianDashboard(child);
   renderGuardianApprovals();
   fillChildProfileForm();
+}
+
+function renderGuardianDashboard(child = normalizeChildProfile(state.childProfile)) {
+  if (!els.guardianDashboardStatus) return;
+  const posts = Array.isArray(state.fieldPosts) ? state.fieldPosts : [];
+  const pending = posts.filter((post) => post.approvalStatus === "pending").length;
+  const approved = posts.filter((post) => post.approvalStatus !== "pending" && post.approvalStatus !== "rejected").length;
+  const rejected = posts.filter((post) => post.approvalStatus === "rejected").length;
+  els.guardianDashboardStatus.textContent = child.nickname ? `${child.nickname}の状況` : "見守り中";
+  if (els.guardianQuestValue) els.guardianQuestValue.textContent = state.quest;
+  if (els.guardianQuestNote) {
+    els.guardianQuestNote.textContent = `${getHeroStageLabel()} / 次の目安 ${getHeroHpMax()}HP`;
+  }
+  if (els.guardianJoyValue) els.guardianJoyValue.textContent = state.joy;
+  if (els.guardianJoyNote) {
+    els.guardianJoyNote.textContent = child.favoriteThings ? `好き: ${child.favoriteThings}` : "好きなことをプロフィールに入れると見守りやすくなります。";
+  }
+  if (els.guardianPostSummary) els.guardianPostSummary.textContent = `${posts.length}件`;
+  if (els.guardianPostNote) {
+    els.guardianPostNote.textContent = `承認待ち ${pending} / 承認済み ${approved} / 非表示 ${rejected}`;
+  }
+  if (els.guardianRecentActivity) {
+    els.guardianRecentActivity.innerHTML = state.activity.length
+      ? state.activity
+          .slice(0, 5)
+          .map((item) => `<li><time>${formatTime(new Date(item.at))}</time><span>${escapeHtml(item.text)}</span></li>`)
+          .join("")
+      : "<li><time>未開始</time><span>ぼうけんを始めると活動がここに表示されます。</span></li>";
+  }
+  if (els.guardianSafetyList) {
+    const permissions = child.permissions || {};
+    const rows = [
+      ["写真投稿", permissions.photoPost],
+      ["位置情報保存", permissions.locationSave],
+      ["外部公開", permissions.publicShare],
+      ["AI候補表示", permissions.aiSuggestions],
+      ["Drive同期", permissions.driveSync],
+    ];
+    els.guardianSafetyList.innerHTML = rows
+      .map(([label, enabled]) => `<div><span>${escapeHtml(label)}</span><strong class="${enabled ? "enabled" : "disabled"}">${enabled ? "許可" : "オフ"}</strong></div>`)
+      .join("");
+  }
 }
 
 function renderGuardianApprovals() {
