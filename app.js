@@ -5961,6 +5961,23 @@ els.mapSearch.addEventListener("keydown", (event) => {
   searchThemeOnMap(els.mapSearch.value);
 });
 
+async function requestPortraitOrientationLock() {
+  if (!window.matchMedia("(max-width: 920px)").matches) return;
+  const orientation = screen?.orientation;
+  if (!orientation?.lock) return;
+  try {
+    await orientation.lock("portrait");
+  } catch {
+    // Browser support is limited unless the app is fullscreen/PWA. CSS still blocks landscape use.
+  }
+}
+
+["click", "touchstart"].forEach((eventName) => {
+  window.addEventListener(eventName, requestPortraitOrientationLock, { once: true, passive: true });
+});
+window.addEventListener("orientationchange", requestPortraitOrientationLock);
+window.addEventListener("resize", requestPortraitOrientationLock);
+
 render();
 if (state.auth.loggedIn && applyAgeBasedMode({ force: true })) {
   // 年齢に応じた初期表示を優先します。
