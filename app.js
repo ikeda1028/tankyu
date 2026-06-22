@@ -200,6 +200,12 @@ const els = {
   tags: document.querySelector("#tag-row"),
   media: document.querySelector("#encounter-media"),
   encounterPanel: document.querySelector(".encounter-panel"),
+  kidsEncounterCard: document.querySelector("#kids-encounter-card"),
+  kidsEncounterTitle: document.querySelector("#kids-encounter-title"),
+  kidsEncounterFocus: document.querySelector("#kids-encounter-focus"),
+  kidsTaskList: document.querySelector("#kids-task-list"),
+  kidsTakePhotoButton: document.querySelector("#kids-take-photo-button"),
+  kidsStartAdventureButton: document.querySelector("#kids-start-adventure-button"),
   compactEncounterButton: document.querySelector("#compact-encounter-button"),
   collapseEncounterButton: document.querySelector("#collapse-encounter-button"),
   motivation: document.querySelector("#motivation"),
@@ -2265,12 +2271,41 @@ function renderEncounter() {
     })
     .join("");
   renderCharacterCard(encounter);
+  renderKidsEncounterCard(encounter, questions);
+  els.encounterPanel?.classList.toggle("kids-detail", Boolean(state.ui?.kidsMapActive));
   els.media.style.setProperty(
     "--media",
     `radial-gradient(circle at 28% 26%, ${encounter.color || "#2f6fb3"} 0 10%, transparent 11%),
      linear-gradient(140deg, rgba(255,255,255,.28), rgba(255,255,255,0)),
      repeating-linear-gradient(35deg, ${encounter.color || "#2f6fb3"} 0 12px, #f7fbf6 12px 24px)`
   );
+}
+
+function renderKidsEncounterCard(encounter, questions = getEncounterQuestions(encounter)) {
+  if (!els.kidsEncounterCard) return;
+  const active = Boolean(state.ui?.kidsMapActive);
+  els.kidsEncounterCard.classList.toggle("hidden", !active);
+  if (!active) return;
+  const focus = encounter.impact || getEncounterTags(encounter)[0] || "ワクワク";
+  els.kidsEncounterTitle.textContent = "ここでなにをみつける？";
+  els.kidsEncounterFocus.textContent = `${encounter.locationName || "この場所"}で、${focus}につながるふしぎをさがそう。`;
+  const tasks = [
+    `「${questions[0] || "なにがあるかな？"}」を見つける`,
+    "気になったものをしゃしんにとる",
+    "びっくりしたことをひとこと書く",
+  ];
+  els.kidsTaskList.innerHTML = tasks
+    .map((task, index) => `<div class="kids-task"><span>${index + 1}</span><strong>${escapeHtml(task)}</strong></div>`)
+    .join("");
+}
+
+function openKidsFieldPost() {
+  state.ui.kidsMapActive = true;
+  state.ui.fieldPostPanel = "open";
+  saveState();
+  render();
+  els.fieldPostPanel?.scrollIntoView({ behavior: "smooth", block: "center" });
+  els.fieldPostText?.focus();
 }
 
 function renderCharacterCard(encounter) {
@@ -4691,6 +4726,8 @@ function renderRegisteredEvents() {
 
 document.querySelector("#start-button").addEventListener("click", startAdventure);
 document.querySelector("#thanks-button").addEventListener("click", receiveThanks);
+els.kidsTakePhotoButton?.addEventListener("click", openKidsFieldPost);
+els.kidsStartAdventureButton?.addEventListener("click", startAdventure);
 els.loginForm.addEventListener("submit", handleLogin);
 els.demoLoginButton.addEventListener("click", handleDemoLogin);
 els.memberForm.addEventListener("submit", saveMemberInfo);

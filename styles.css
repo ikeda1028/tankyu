@@ -2958,6 +2958,77 @@ textarea {
   margin-top: 10px;
 }
 
+.encounter-panel.kids-detail #encounter-description,
+.encounter-panel.kids-detail .reason-grid,
+.encounter-panel.kids-detail .question-card,
+.encounter-panel.kids-detail .character-card,
+.encounter-panel.kids-detail .reflection-box,
+.encounter-panel.kids-detail .action-row {
+  display: none;
+}
+
+.kids-encounter-card {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 14px;
+  border: 1px solid rgba(47, 143, 99, 0.22);
+  border-radius: 8px;
+  background: #f7fbff;
+}
+
+.kids-encounter-card h3 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.kids-encounter-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.6;
+}
+
+.kids-task-list {
+  display: grid;
+  gap: 8px;
+}
+
+.kids-task {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+}
+
+.kids-task span {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 50%;
+  color: white;
+  background: var(--green);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.kids-task strong {
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.kids-encounter-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
 .encounter-panel.collapsed {
   grid-template-columns: 1fr;
   grid-template-rows: 1fr;
@@ -3620,6 +3691,7 @@ textarea {
   .hero-showcase,
   .settings-grid,
   .event-admin-shell,
+  .kids-encounter-actions,
   .kids-action-grid,
   .kids-onboarding-grid,
   .kids-home-panel,
