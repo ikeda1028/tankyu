@@ -4341,6 +4341,182 @@ textarea {
 }
 
 @media (max-width: 620px) {
+  body:has(.kids-view:not(.hidden)) {
+    overflow: hidden;
+  }
+
+  body:has(.kids-view:not(.hidden)) .shell {
+    display: block;
+    height: 100dvh;
+    min-height: 100dvh;
+    overflow: hidden;
+  }
+
+  body:has(.kids-view:not(.hidden)) .sidebar,
+  body:has(.kids-view:not(.hidden)) .topbar {
+    display: none;
+  }
+
+  body:has(.kids-view:not(.hidden)) .map-area {
+    height: 100dvh;
+    min-height: 100dvh;
+    overflow: hidden;
+  }
+
+  body:has(.kids-view:not(.hidden)) .quest-view {
+    display: none;
+  }
+
+  body:has(.kids-view:not(.hidden)) .kids-view {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    margin: 0;
+    padding: 10px;
+    overflow: hidden;
+    background: #edf7f0;
+  }
+
+  body:has(.kids-view:not(.hidden)) .kids-shell {
+    display: grid;
+    grid-template-rows: 104px 74px minmax(0, 1fr);
+    gap: 8px;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  body:has(.kids-view:not(.hidden)) .kids-hero {
+    grid-template-columns: 76px minmax(0, 1fr);
+    min-height: 0;
+    padding: 10px;
+    gap: 10px;
+  }
+
+  body:has(.kids-view:not(.hidden)) .kids-hero .eyebrow,
+  body:has(.kids-view:not(.hidden)) .kids-hero p {
+    display: none;
+  }
+
+  body:has(.kids-view:not(.hidden)) .kids-hero h2 {
+    margin: 0;
+    overflow: hidden;
+    font-size: 28px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  body:has(.kids-view:not(.hidden)) .kids-avatar {
+    width: 76px;
+    height: 76px;
+    border-width: 3px;
+    font-size: 24px;
+  }
+
+  body:has(.kids-view:not(.hidden)) .kids-action-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  body:has(.kids-view:not(.hidden)) .kids-action-card {
+    grid-template-columns: 42px minmax(0, 1fr);
+    min-height: 0;
+    padding: 8px;
+    gap: 8px;
+  }
+
+  body:has(.kids-view:not(.hidden)) .kids-action-card span {
+    width: 42px;
+    height: 42px;
+    font-size: 11px;
+  }
+
+  body:has(.kids-view:not(.hidden)) .kids-action-card strong {
+    font-size: 17px;
+  }
+
+  body:has(.kids-view:not(.hidden)) .kids-home-panel {
+    display: grid;
+    grid-template-rows: 112px minmax(0, 1fr) minmax(0, 1fr);
+    gap: 8px;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  body:has(.kids-view:not(.hidden)) .kids-growth-card,
+  body:has(.kids-view:not(.hidden)) .kids-photo-feed,
+  body:has(.kids-view:not(.hidden)) .kids-point-board {
+    min-height: 0;
+    padding: 10px;
+    gap: 8px;
+    overflow: hidden;
+  }
+
+  body:has(.kids-view:not(.hidden)) .kids-growth-card {
+    grid-row: auto;
+    grid-template-columns: 92px minmax(0, 1fr);
+    align-items: center;
+  }
+
+  body:has(.kids-view:not(.hidden)) .kids-growth-avatar {
+    width: 92px;
+    font-size: 44px;
+  }
+
+  body:has(.kids-view:not(.hidden)) .kids-growth-card strong {
+    display: block;
+    overflow: hidden;
+    font-size: 20px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  body:has(.kids-view:not(.hidden)) .kids-growth-card p {
+    display: none;
+  }
+
+  body:has(.kids-view:not(.hidden)) .kids-photo-feed h3,
+  body:has(.kids-view:not(.hidden)) .kids-point-board h3 {
+    font-size: 16px;
+  }
+
+  body:has(.kids-view:not(.hidden)) .kids-photo-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    overflow: hidden;
+  }
+
+  body:has(.kids-view:not(.hidden)) .kids-photo-card,
+  body:has(.kids-view:not(.hidden)) .kids-photo-empty,
+  body:has(.kids-view:not(.hidden)) .kids-photo-card img,
+  body:has(.kids-view:not(.hidden)) .kids-photo-card div {
+    min-height: 72px;
+  }
+
+  body:has(.kids-view:not(.hidden)) .kids-point-tabs {
+    gap: 6px;
+  }
+
+  body:has(.kids-view:not(.hidden)) .kids-point-tabs button {
+    min-height: 34px;
+  }
+
+  body:has(.kids-view:not(.hidden)) .kids-point-list {
+    max-height: 124px;
+    overflow: hidden;
+  }
+
+  body:has(.kids-view:not(.hidden)) .kids-point-card {
+    min-height: 50px;
+    padding: 8px;
+  }
+
+  body:has(.kids-view:not(.hidden)) .kids-record-panel:not(.hidden) {
+    position: fixed;
+    inset: 10px;
+    z-index: 45;
+    overflow: hidden;
+  }
+
   body {
     overflow: auto;
   }
