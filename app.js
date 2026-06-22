@@ -542,6 +542,40 @@ let pendingKidsRecordImage = null;
 let kidsRecordImageAnalysisToken = 0;
 let kidsRecordSpeechRecognition = null;
 
+function cloneDefaultState() {
+  return JSON.parse(JSON.stringify(defaultState));
+}
+
+function resetPersonalStateForLogin(email) {
+  const preserved = {
+    maps: { ...defaultState.maps, ...(state.maps || {}) },
+    driveSync: { ...defaultState.driveSync, ...(state.driveSync || {}) },
+    firebase: { ...defaultState.firebase, ...(state.firebase || {}) },
+  };
+  const freshState = cloneDefaultState();
+  Object.assign(state, freshState, preserved, {
+    auth: {
+      loggedIn: true,
+      email,
+    },
+  });
+}
+
+function prepareLoginIdentity(email) {
+  const nextEmail = String(email || "").trim();
+  const previousEmail = String(state.auth?.email || "").trim();
+  const shouldResetPersonalData = Boolean(state.member?.name) && previousEmail.toLowerCase() !== nextEmail.toLowerCase();
+  if (shouldResetPersonalData) {
+    resetPersonalStateForLogin(nextEmail);
+  } else {
+    state.auth = {
+      loggedIn: true,
+      email: nextEmail,
+    };
+  }
+  return shouldResetPersonalData;
+}
+
 function normalizeChildProfile(profile = {}) {
   profile = profile || {};
   const fallback = defaultState.childProfile;
@@ -1067,12 +1101,12 @@ async function syncFirebase(options = {}) {
   const automatic = Boolean(options?.automatic);
   if (!window.WakuwakuFirebase) {
     if (!automatic) setFirebaseStatus("Firebase同期機能を読み込めません", true);
-    return;
+    return false;
   }
   const config = getFirebaseConfig();
   if (!window.WakuwakuFirebase.hasFirebaseConfig(config)) {
     if (!automatic) setFirebaseStatus("Firebase設定を入力してください", true);
-    return;
+    return false;
   }
 
   try {
@@ -1088,9 +1122,11 @@ async function syncFirebase(options = {}) {
     setFirebaseStatus(`${automatic ? "自動同期完了" : "Firestore保存完了"}: ${result.userId}`);
     saveState();
     renderFirebaseSettings();
+    return true;
   } catch (error) {
     setFirebaseStatus(`${automatic ? "Firebase自動同期" : "Firebase同期"}エラー。設定とFirestoreルールを確認してください`, true);
     console.error(error);
+    return false;
   }
 }
 
@@ -1136,21 +1172,22 @@ function shouldAutoLoadFirebaseSnapshot() {
 async function loadFirebaseSnapshot(options = {}) {
   if (!window.WakuwakuFirebase) {
     if (!options.silent) setFirebaseStatus("Firebase同期機能を読み込めません", true);
-    return;
+    return false;
   }
   const config = getFirebaseConfig();
   if (!window.WakuwakuFirebase.hasFirebaseConfig(config)) {
     if (!options.silent) setFirebaseStatus("Firebase設定を入力してください", true);
-    return;
+    return false;
   }
 
   try {
     setFirebaseStatus(options.silent ? "Firebase自動読込中..." : "Firebase読込中...");
     const savedConfig = state.firebase;
+    const requestedAuthEmail = String(options.authEmail || state.auth?.email || "").trim();
     const result = await window.WakuwakuFirebase.loadSnapshot(config, state);
     if (!result?.snapshot && !result?.stats) {
       if (!options.silent) setFirebaseStatus("Firebaseに保存データまたは数値がありません", true);
-      return;
+      return false;
     }
     const loadedSnapshot = result.snapshot ? { ...defaultState, ...result.snapshot } : { ...state };
     const appliedNumericFields = applyFirebaseNumericFields(loadedSnapshot, result);
@@ -1166,6 +1203,13 @@ async function loadFirebaseSnapshot(options = {}) {
     state.driveSync = { ...defaultState.driveSync, ...(state.driveSync || {}) };
     state.maps = { ...defaultState.maps, ...(state.maps || {}) };
     state.auth = { ...defaultState.auth, ...(state.auth || {}) };
+    if (requestedAuthEmail) {
+      state.auth = {
+        ...state.auth,
+        loggedIn: true,
+        email: requestedAuthEmail,
+      };
+    }
     state.member = { ...defaultState.member, ...(state.member || {}) };
     state.childProfile = normalizeChildProfile(state.childProfile);
     state.guardian = { ...defaultState.guardian, ...(state.guardian || {}) };
@@ -1177,9 +1221,11 @@ async function loadFirebaseSnapshot(options = {}) {
     saveState();
     render();
     applyAgeBasedMode({ force: true });
+    return true;
   } catch (error) {
     setFirebaseStatus("Firebase読込エラー。設定とFirestoreルールを確認してください", true);
     console.error(error);
+    return false;
   }
 }
 
@@ -4035,38 +4081,40 @@ function addPartyRole() {
   renderStats();
 }
 
-function handleLogin(event) {
+async function handleLogin(event) {
   event.preventDefault();
-  state.auth = {
-    loggedIn: true,
-    email: els.loginEmail.value.trim(),
-  };
-  if (!state.member.name) {
-    showMemberForm();
-  }
+  const email = els.loginEmail.value.trim();
+  prepareLoginIdentity(email);
   addActivity(`${state.auth.email || "デモユーザー"}でログイン`);
   saveState();
   render();
-  if (state.member.name) applyAgeBasedMode({ force: true });
-}
-
-function handleDemoLogin() {
-  els.loginEmail.value = "student@example.com";
-  els.loginPassword.value = "password";
-  state.auth = {
-    loggedIn: true,
-    email: "student@example.com",
-  };
-  if (!state.member.name) {
+  const loadedFromFirebase = await loadFirebaseSnapshot({ silent: true, authEmail: email });
+  if (!loadedFromFirebase && !state.member.name) {
     showMemberForm();
   }
-  addActivity("デモユーザーでログイン");
   saveState();
   render();
   if (state.member.name) applyAgeBasedMode({ force: true });
 }
 
-function saveMemberInfo(event) {
+async function handleDemoLogin() {
+  els.loginEmail.value = "student@example.com";
+  els.loginPassword.value = "password";
+  const email = "student@example.com";
+  prepareLoginIdentity(email);
+  addActivity("デモユーザーでログイン");
+  saveState();
+  render();
+  const loadedFromFirebase = await loadFirebaseSnapshot({ silent: true, authEmail: email });
+  if (!loadedFromFirebase && !state.member.name) {
+    showMemberForm();
+  }
+  saveState();
+  render();
+  if (state.member.name) applyAgeBasedMode({ force: true });
+}
+
+async function saveMemberInfo(event) {
   event.preventDefault();
   const isFirstMemberSetup = !state.member.name;
   const interestText = els.memberInterest.value.trim();
@@ -4116,7 +4164,16 @@ function saveMemberInfo(event) {
   if (getDriveUrl()) {
     postToDrive("users", memberToDriveRecord());
   }
-  queueFirebaseSync(isFirstMemberSetup ? "初回会員登録" : "会員情報更新");
+  if (hasFirebaseConfig()) {
+    setMemberStatus("会員情報を保存しました。クラウドへ同期中...");
+    const synced = await syncFirebase({ automatic: true, reason: isFirstMemberSetup ? "初回会員登録" : "会員情報更新" });
+    setMemberStatus(
+      synced
+        ? "会員情報を保存し、同じIDで使えるように同期しました"
+        : "会員情報は端末に保存しました。Firebase同期は設定を確認してください。",
+      !synced
+    );
+  }
 }
 
 function logout() {
