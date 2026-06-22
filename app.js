@@ -1060,6 +1060,43 @@ function getGeolocationErrorMessage(error) {
   return error?.message || "現在地を取得できませんでした。";
 }
 
+function isLocationSettingsWarning(message = "") {
+  return /位置情報|現在地|GPS|Wi-Fi|HTTPS|localhost/.test(String(message));
+}
+
+function isLocationSettingsError(message = "") {
+  return /取得できません|許可されていません|見つけられません|時間がかか|HTTPS|localhost|GPS|Wi-Fi/.test(String(message));
+}
+
+function markLocationSettingsLink(element, message = "", isError = false) {
+  if (!element) return;
+  const actionable = Boolean(isError && isLocationSettingsWarning(message));
+  element.classList.toggle("location-settings-link", actionable);
+  if (actionable) {
+    element.setAttribute("role", "button");
+    element.setAttribute("tabindex", "0");
+    element.setAttribute("title", "タップして位置情報の設定を開く");
+  } else {
+    element.removeAttribute("role");
+    element.removeAttribute("tabindex");
+    element.removeAttribute("title");
+  }
+}
+
+function openLocationSettingsFromWarning() {
+  showMode("guardian");
+  if (state.ui.mode !== "guardian") return;
+  renderGuardianMode();
+  const fieldset = els.permissionLocationSave?.closest("fieldset");
+  fieldset?.scrollIntoView({ behavior: "smooth", block: "center" });
+  fieldset?.classList.add("location-setting-focus");
+  window.setTimeout(() => fieldset?.classList.remove("location-setting-focus"), 2600);
+  els.permissionLocationSave?.focus();
+  if (els.childProfileStatus) {
+    els.childProfileStatus.textContent = "位置情報保存を許可して保存してください。ブラウザ側の位置情報許可も確認してください。";
+  }
+}
+
 async function requestCurrentPositionWithFallback() {
   try {
     return await requestCurrentPosition({ enableHighAccuracy: true, timeout: 12000, maximumAge: 15000 });
@@ -1483,6 +1520,7 @@ function setMapsStatus(message) {
   };
   if (els.mapsStatus) {
     els.mapsStatus.textContent = message;
+    markLocationSettingsLink(els.mapsStatus, message, isLocationSettingsError(message));
   }
 }
 
@@ -2570,8 +2608,9 @@ function renderKidsMapGuide() {
 
 function setKidsMapStatus(message, isError = false) {
   if (!els.kidsMapStatus) return;
-  els.kidsMapStatus.textContent = message;
+  els.kidsMapStatus.textContent = isError && isLocationSettingsWarning(message) ? `${message} タップして設定を確認` : message;
   els.kidsMapStatus.classList.toggle("error", Boolean(isError));
+  markLocationSettingsLink(els.kidsMapStatus, message, isError);
 }
 
 function centerKidsSelectedPoint() {
@@ -3697,8 +3736,9 @@ function renderKidsRecordPanel() {
 
 function setKidsRecordStatus(message, isError = false) {
   if (!els.kidsRecordStatus) return;
-  els.kidsRecordStatus.textContent = message;
+  els.kidsRecordStatus.textContent = isError && isLocationSettingsWarning(message) ? `${message} タップして設定を確認` : message;
   els.kidsRecordStatus.classList.toggle("error", Boolean(isError));
+  markLocationSettingsLink(els.kidsRecordStatus, message, isError);
 }
 
 function renderKidsPhotoAnalysis() {
@@ -6120,6 +6160,21 @@ els.saveMapsKeyButton.addEventListener("click", saveMapsKey);
 els.loadMapsButton.addEventListener("click", initializeGoogleMap);
 els.centerSearchButton?.addEventListener("click", centerGoogleMapOnSearch);
 els.currentLocationButton?.addEventListener("click", centerOnCurrentLocation);
+[
+  els.mapsStatus,
+  els.kidsMapStatus,
+  els.kidsRecordStatus,
+].forEach((statusElement) => {
+  statusElement?.addEventListener("click", () => {
+    if (statusElement.classList.contains("location-settings-link")) openLocationSettingsFromWarning();
+  });
+  statusElement?.addEventListener("keydown", (event) => {
+    if (!statusElement.classList.contains("location-settings-link")) return;
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    openLocationSettingsFromWarning();
+  });
+});
 els.kidsMapCenterButton?.addEventListener("click", centerKidsSelectedPoint);
 els.kidsMapCurrentButton?.addEventListener("click", centerKidsCurrentLocation);
 els.kidsMapPostButton?.addEventListener("click", openKidsFieldPost);

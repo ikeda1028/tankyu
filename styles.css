@@ -605,6 +605,17 @@ textarea {
   color: var(--rose);
 }
 
+.location-settings-link {
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.location-settings-link:focus-visible {
+  outline: 3px solid rgba(47, 143, 99, 0.32);
+  outline-offset: 3px;
+}
+
 .maps-api-box input {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
@@ -2707,6 +2718,11 @@ textarea {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #f7fbff;
+}
+
+.permission-fieldset.location-setting-focus {
+  border-color: rgba(47, 143, 99, 0.75);
+  box-shadow: 0 0 0 4px rgba(47, 143, 99, 0.14);
 }
 
 .permission-fieldset legend {
