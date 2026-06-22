@@ -79,7 +79,90 @@ const seedEncounters = [
   },
 ];
 
-const seedFriendPhotos = seedEncounters.flatMap((encounter, index) => {
+const kidsExplorationPoints = [
+  {
+    id: "kids-leaf-shape",
+    title: "はっぱのかたち",
+    index: 24,
+    description: "近くの木や草の葉っぱを見て、形、色、手ざわり、虫がいるかを見つけるキッズ専用の探検ポイント。",
+    tags: ["はっぱ", "しぜん", "かたち"],
+    keywords: ["葉", "木", "草", "虫", "自然"],
+    impact: "身近な自然観察",
+    questionPath: ["どんなかたちかな", "色は同じかな", "さわるとどうかな", "虫やあとがあるかな", "どうしてこの形なのかな"],
+    color: "#5a9f4a",
+    position: { x: 50, y: 50, lat: 35.681236, lng: 139.767125 },
+    locationName: "ちかくの木",
+    boost: { joy: 4, distance: 2, reflection: 1 },
+    kidsOnly: true,
+    scope: ["own", "friends"],
+  },
+  {
+    id: "kids-sound-hunt",
+    title: "まちのおと",
+    index: 28,
+    description: "耳をすまして、足音、風の音、車の音、鳥の声などを集めるキッズ専用の探検ポイント。",
+    tags: ["おと", "まち", "きく"],
+    keywords: ["音", "鳥", "風", "車", "声"],
+    impact: "音の観察",
+    questionPath: ["どんな音かな", "近いかな遠いかな", "大きいかな小さいかな", "何から出た音かな", "音の地図を作れるかな"],
+    color: "#3f8cc9",
+    position: { x: 52, y: 50, lat: 35.68139, lng: 139.76718 },
+    locationName: "みみをすます場所",
+    boost: { joy: 4, distance: 2, reflection: 1 },
+    kidsOnly: true,
+    scope: ["own", "friends"],
+  },
+  {
+    id: "kids-shadow-watch",
+    title: "かげのふしぎ",
+    index: 32,
+    description: "自分やものの影を見て、長さ、向き、時間で変わる様子を見つけるキッズ専用の探検ポイント。",
+    tags: ["かげ", "ひかり", "じかん"],
+    keywords: ["影", "太陽", "光", "時間"],
+    impact: "光と時間の観察",
+    questionPath: ["かげはどこにあるかな", "長いかな短いかな", "動くとどうなるかな", "時間で変わるかな", "太陽と関係あるかな"],
+    color: "#8b6ac8",
+    position: { x: 56, y: 52, lat: 35.68175, lng: 139.76745 },
+    locationName: "ひなたとひかげ",
+    boost: { joy: 4, distance: 3, reflection: 1 },
+    kidsOnly: true,
+    scope: ["own", "friends"],
+  },
+  {
+    id: "kids-water-sparkle",
+    title: "みずのきらきら",
+    index: 36,
+    description: "水たまりや池、蛇口の水を見て、反射、流れ、ゆれ方を見つけるキッズ専用の探検ポイント。",
+    tags: ["みず", "ひかり", "ながれ"],
+    keywords: ["水", "反射", "流れ", "光"],
+    impact: "水と光の観察",
+    questionPath: ["水はどこにあるかな", "何がうつるかな", "ゆれるとどうなるかな", "流れはあるかな", "光とどうつながるかな"],
+    color: "#2fa7b3",
+    position: { x: 62, y: 57, lat: 35.68215, lng: 139.76805 },
+    locationName: "みずが見える場所",
+    boost: { joy: 5, distance: 3, reflection: 2 },
+    kidsOnly: true,
+    scope: ["friends"],
+  },
+  {
+    id: "kids-stone-texture",
+    title: "いしのてざわり",
+    index: 42,
+    description: "石や地面を見て、ざらざら、つるつる、色や模様の違いを見つけるキッズ専用の探検ポイント。",
+    tags: ["いし", "じめん", "てざわり"],
+    keywords: ["石", "地面", "模様", "手ざわり"],
+    impact: "素材の観察",
+    questionPath: ["どんな色かな", "手ざわりはどうかな", "同じ形はあるかな", "どこから来たのかな", "集めるとどんな仲間分けができるかな"],
+    color: "#8d7a5b",
+    position: { x: 70, y: 63, lat: 35.6841, lng: 139.7702 },
+    locationName: "じめんの近く",
+    boost: { joy: 5, distance: 4, reflection: 2 },
+    kidsOnly: true,
+    scope: ["friends"],
+  },
+];
+
+const seedFriendPhotos = kidsExplorationPoints.flatMap((encounter, index) => {
   if (!hasValidSeedLatLng(encounter.position)) return [];
   const offset = 0.00008 + index * 0.00001;
   return [
@@ -766,6 +849,14 @@ function getNextEvolutionTasks() {
 
 function getEncounters() {
   return [...seedEncounters, ...state.customEvents];
+}
+
+function getKidsExplorationPoints(scope = "") {
+  return kidsExplorationPoints.filter((point) => !scope || (Array.isArray(point.scope) && point.scope.includes(scope)));
+}
+
+function getKidsPointById(pointId) {
+  return kidsExplorationPoints.find((point) => point.id === pointId) || null;
 }
 
 function normalizeThemePlace(place) {
@@ -1505,7 +1596,7 @@ function createPhotoMarkerIcon(imageSrc, color = "#2f8f63", label = "友") {
 }
 
 function getEncounterPositionById(eventId) {
-  const encounter = getEncounters().find((item) => item.id === eventId);
+  const encounter = getEncounters().find((item) => item.id === eventId) || getKidsPointById(eventId);
   return hasValidLatLng(encounter?.position) ? encounter.position : null;
 }
 
@@ -2162,7 +2253,7 @@ function rankedEncounters() {
 }
 
 function getSelectedEncounter() {
-  return getEncounters().find((encounter) => encounter.id === state.selected) || getEncounters()[0];
+  return getEncounters().find((encounter) => encounter.id === state.selected) || getKidsPointById(state.selected) || getEncounters()[0];
 }
 
 function renderStats(delta = 0) {
@@ -2344,7 +2435,7 @@ function centerKidsCurrentLocation() {
 }
 
 function openKidsMapPoint(eventId) {
-  const encounter = getEncounters().find((item) => item.id === eventId);
+  const encounter = getKidsPointById(eventId);
   if (!encounter) return;
   state.selected = encounter.id;
   state.ui.kidsMapActive = true;
@@ -3253,18 +3344,18 @@ function formatKidsRadius(radius) {
 }
 
 function getKidsWorldCenter() {
-  const ownPoint = state.customEvents.find((event) => hasValidLatLng(event.position));
+  const ownPoint = getKidsExplorationPoints("own").find((event) => hasValidLatLng(event.position));
   if (ownPoint) return ownPoint.position;
-  const selected = getSelectedEncounter();
+  const selected = getKidsPointById(state.selected) || getSelectedEncounter();
   if (selected && hasValidLatLng(selected.position)) return selected.position;
-  const fallback = rankedEncounters().find((encounter) => hasValidLatLng(encounter.position));
+  const fallback = kidsExplorationPoints.find((encounter) => hasValidLatLng(encounter.position));
   return fallback?.position || null;
 }
 
 function getKidsScopedPoints(scope = state.ui?.kidsPointScope || "own") {
   const radius = getKidsWorldRadius();
   const center = getKidsWorldCenter();
-  const source = scope === "friends" ? seedEncounters : state.customEvents;
+  const source = getKidsExplorationPoints(scope);
   return source
     .filter((encounter) => {
       if (!hasValidLatLng(encounter.position) || !center) return true;
