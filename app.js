@@ -302,6 +302,10 @@ const els = {
   guardianJoyNote: document.querySelector("#guardian-joy-note"),
   guardianPostSummary: document.querySelector("#guardian-post-summary"),
   guardianPostNote: document.querySelector("#guardian-post-note"),
+  guardianSetupPanel: document.querySelector("#guardian-setup-panel"),
+  guardianSetupStatus: document.querySelector("#guardian-setup-status"),
+  guardianSetupList: document.querySelector("#guardian-setup-list"),
+  guardianSetupProfileButton: document.querySelector("#guardian-setup-profile-button"),
   guardianRecentActivity: document.querySelector("#guardian-recent-activity"),
   guardianSafetyList: document.querySelector("#guardian-safety-list"),
   approvalListStatus: document.querySelector("#approval-list-status"),
@@ -3181,9 +3185,79 @@ function renderGuardianMode() {
     els.guardianPendingCount.textContent = `${pendingPosts}件`;
   }
   if (els.guardianActivityCount) els.guardianActivityCount.textContent = `${state.activity.length}件`;
+  renderGuardianSetup(child);
   renderGuardianDashboard(child);
   renderGuardianApprovals();
   fillChildProfileForm();
+}
+
+function getGuardianSetupItems(child = normalizeChildProfile(state.childProfile)) {
+  const permissions = child.permissions || {};
+  return [
+    {
+      label: "保護者パスコードを変更",
+      done: Boolean(state.guardian?.passcode && state.guardian.passcode !== "0000"),
+      detail: "初期値0000から変更すると、管理画面を守れます。",
+      required: true,
+    },
+    {
+      label: "子どもプロフィールを保存",
+      done: Boolean(child.nickname && child.updatedAt),
+      detail: "ニックネーム、年齢、地域、好きなことを確認します。",
+      required: true,
+    },
+    {
+      label: "写真投稿の許可を確認",
+      done: Boolean(permissions.photoPost),
+      detail: "写真を使う場合だけオンにします。初期状態は安全のためオフです。",
+      required: false,
+    },
+    {
+      label: "位置情報保存の許可を確認",
+      done: Boolean(permissions.locationSave),
+      detail: "現地体験を記録する場合だけオンにします。",
+      required: false,
+    },
+    {
+      label: "子ども初回体験を開始",
+      done: Boolean(child.onboardingComplete),
+      detail: "アバターと好きなことを決めて、子どもモードを始めます。",
+      required: true,
+    },
+  ];
+}
+
+function renderGuardianSetup(child = normalizeChildProfile(state.childProfile)) {
+  if (!els.guardianSetupPanel || !els.guardianSetupList) return;
+  const items = getGuardianSetupItems(child);
+  const requiredItems = items.filter((item) => item.required);
+  const requiredDone = requiredItems.filter((item) => item.done).length;
+  const doneCount = items.filter((item) => item.done).length;
+  const complete = requiredDone === requiredItems.length;
+  if (els.guardianSetupStatus) {
+    els.guardianSetupStatus.textContent = complete ? "基本設定完了" : `${requiredDone}/${requiredItems.length} 必須`;
+  }
+  els.guardianSetupPanel.classList.toggle("complete", complete);
+  els.guardianSetupList.innerHTML = items
+    .map(
+      (item) => `<article class="${item.done ? "done" : ""}">
+        <span>${item.done ? "完了" : item.required ? "必須" : "確認"}</span>
+        <div>
+          <strong>${escapeHtml(item.label)}</strong>
+          <p>${escapeHtml(item.detail)}</p>
+        </div>
+      </article>`
+    )
+    .join("");
+  if (els.guardianDashboardStatus && !complete) {
+    els.guardianDashboardStatus.textContent = `初回設定 ${doneCount}/${items.length}`;
+  }
+}
+
+function focusGuardianProfileSetup() {
+  showMode("guardian");
+  els.childProfileForm?.scrollIntoView({ behavior: "smooth", block: "start" });
+  els.childNickname?.focus();
 }
 
 function renderGuardianDashboard(child = normalizeChildProfile(state.childProfile)) {
@@ -3192,7 +3266,11 @@ function renderGuardianDashboard(child = normalizeChildProfile(state.childProfil
   const pending = posts.filter((post) => post.approvalStatus === "pending").length;
   const approved = posts.filter((post) => post.approvalStatus !== "pending" && post.approvalStatus !== "rejected").length;
   const rejected = posts.filter((post) => post.approvalStatus === "rejected").length;
-  els.guardianDashboardStatus.textContent = child.nickname ? `${child.nickname}の状況` : "見守り中";
+  const setupItems = getGuardianSetupItems(child);
+  const requiredItems = setupItems.filter((item) => item.required);
+  const requiredDone = requiredItems.filter((item) => item.done).length;
+  els.guardianDashboardStatus.textContent =
+    requiredDone === requiredItems.length ? (child.nickname ? `${child.nickname}の状況` : "見守り中") : `初回設定 ${requiredDone}/${requiredItems.length}`;
   if (els.guardianQuestValue) els.guardianQuestValue.textContent = state.quest;
   if (els.guardianQuestNote) {
     els.guardianQuestNote.textContent = `${getHeroStageLabel()} / 次の目安 ${getHeroHpMax()}HP`;
@@ -5124,6 +5202,7 @@ els.backLoginButton.addEventListener("click", () => {
 els.editMemberButton.addEventListener("click", showMemberForm);
 els.logoutButton.addEventListener("click", logout);
 els.childProfileForm?.addEventListener("submit", saveChildProfile);
+els.guardianSetupProfileButton?.addEventListener("click", focusGuardianProfileSetup);
 els.kidsOnboardingForm?.addEventListener("submit", saveKidsOnboarding);
 [
   els.kidsOnboardingSymbol,

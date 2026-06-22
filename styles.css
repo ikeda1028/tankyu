@@ -2150,6 +2150,79 @@ textarea {
   color: var(--muted);
 }
 
+.guardian-setup-panel {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px solid rgba(47, 143, 99, 0.22);
+  border-radius: 8px;
+  background: #f7fbff;
+  box-shadow: 0 10px 32px rgba(30, 48, 36, 0.08);
+}
+
+.guardian-setup-panel.complete {
+  background: #f7fbf3;
+}
+
+.guardian-setup-panel h3 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 18px;
+}
+
+.guardian-setup-list {
+  display: grid;
+  gap: 8px;
+}
+
+.guardian-setup-list article {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 10px;
+  border: 1px solid rgba(223, 230, 222, 0.9);
+  border-radius: 8px;
+  background: white;
+}
+
+.guardian-setup-list article > span {
+  display: inline-grid;
+  min-height: 26px;
+  place-items: center;
+  border-radius: 999px;
+  color: #9a3f2e;
+  background: #fff4ef;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.guardian-setup-list article.done > span {
+  color: white;
+  background: var(--green);
+}
+
+.guardian-setup-list strong {
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.guardian-setup-list p {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.5;
+}
+
+.guardian-setup-panel .secondary-button {
+  justify-self: start;
+  width: auto;
+  min-height: 38px;
+  padding: 0 14px;
+}
+
 .guardian-approval-section {
   display: grid;
   gap: 12px;
@@ -4145,6 +4218,7 @@ textarea {
   .event-admin-shell,
   .kids-encounter-actions,
   .approval-card,
+  .guardian-setup-list article,
   .guardian-dashboard-grid,
   .guardian-dashboard-columns,
   .kids-action-grid,
