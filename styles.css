@@ -2330,6 +2330,8 @@ body:has(.map-canvas.kids-map-active) .kids-navigator-bot {
   display: grid;
   align-content: start;
   gap: 12px;
+  max-height: min(78vh, 660px);
+  overflow: auto;
 }
 
 .kids-profile-main > span {
@@ -2356,6 +2358,41 @@ body:has(.map-canvas.kids-map-active) .kids-navigator-bot {
   color: var(--muted);
   font-weight: 900;
   line-height: 1.6;
+}
+
+.kids-profile-form {
+  display: grid;
+  grid-template-columns: 82px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(47, 143, 99, 0.18);
+  border-radius: 8px;
+  background: #f7fbff;
+}
+
+.kids-profile-form label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.kids-profile-form input,
+.kids-profile-form select {
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  background: #fff;
+  font: inherit;
+  font-weight: 900;
+}
+
+.kids-profile-form .primary-button {
+  grid-column: 1 / -1;
+  min-height: 42px;
 }
 
 .kids-item-grid {
@@ -5017,6 +5054,7 @@ body:has(.map-canvas.kids-map-active) .kids-navigator-bot {
   body:has(.map-canvas.kids-map-active) .kids-profile-main {
     gap: 8px;
     min-height: 0;
+    max-height: 56dvh;
   }
 
   body:has(.kids-view:not(.hidden)) .kids-profile-main h2,
@@ -5032,8 +5070,23 @@ body:has(.map-canvas.kids-map-active) .kids-navigator-bot {
   body:has(.kids-view:not(.hidden)) .kids-item-grid,
   body:has(.map-canvas.kids-map-active) .kids-item-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    max-height: 32dvh;
+    max-height: 25dvh;
     overflow: hidden;
+  }
+
+  body:has(.kids-view:not(.hidden)) .kids-profile-form,
+  body:has(.map-canvas.kids-map-active) .kids-profile-form {
+    grid-template-columns: 68px minmax(0, 1fr);
+    gap: 6px;
+    padding: 8px;
+  }
+
+  body:has(.kids-view:not(.hidden)) .kids-profile-form input,
+  body:has(.kids-view:not(.hidden)) .kids-profile-form select,
+  body:has(.map-canvas.kids-map-active) .kids-profile-form input,
+  body:has(.map-canvas.kids-map-active) .kids-profile-form select {
+    min-height: 34px;
+    font-size: 13px;
   }
 
   body:has(.kids-view:not(.hidden)) .kids-item-card,

@@ -444,6 +444,12 @@ const els = {
   kidsProfileStage: document.querySelector("#kids-profile-stage"),
   kidsProfileName: document.querySelector("#kids-profile-name"),
   kidsProfileText: document.querySelector("#kids-profile-text"),
+  kidsProfileForm: document.querySelector("#kids-profile-form"),
+  kidsProfileNameInput: document.querySelector("#kids-profile-name-input"),
+  kidsProfileFavoritesInput: document.querySelector("#kids-profile-favorites-input"),
+  kidsProfileSymbolInput: document.querySelector("#kids-profile-symbol-input"),
+  kidsProfileColorInput: document.querySelector("#kids-profile-color-input"),
+  kidsProfileAuraInput: document.querySelector("#kids-profile-aura-input"),
   kidsItemGrid: document.querySelector("#kids-item-grid"),
   guardianStatus: document.querySelector("#guardian-status"),
   guardianChildName: document.querySelector("#guardian-child-name"),
@@ -3871,6 +3877,7 @@ function renderKidsAvatarProfile() {
     const unlockedCount = items.filter((item) => item.unlocked).length;
     els.kidsProfileText.textContent = `${unlockedCount}このあいてむをみつけたよ。つけたいものをえらんでね。`;
   }
+  fillKidsProfileForm(child, avatar);
   els.kidsItemGrid.innerHTML = items
     .map((item) => {
       const active = equipped.has(item.id);
@@ -3884,6 +3891,63 @@ function renderKidsAvatarProfile() {
   els.kidsItemGrid.querySelectorAll("[data-kids-item-id]").forEach((button) => {
     button.addEventListener("click", () => toggleKidsAvatarItem(button.dataset.kidsItemId));
   });
+}
+
+function fillKidsProfileForm(child = normalizeChildProfile(state.childProfile), avatar = normalizeAvatar(state.member.avatar)) {
+  if (!els.kidsProfileForm) return;
+  if (els.kidsProfileNameInput) els.kidsProfileNameInput.value = child.nickname || state.member.name || "";
+  if (els.kidsProfileFavoritesInput) els.kidsProfileFavoritesInput.value = child.favoriteThings || state.member.initialInterest || "";
+  if (els.kidsProfileSymbolInput) els.kidsProfileSymbolInput.value = avatar.symbol || "ほし";
+  if (els.kidsProfileColorInput) els.kidsProfileColorInput.value = child.favoriteColor || avatar.color || "#2f8f63";
+  if (els.kidsProfileAuraInput) els.kidsProfileAuraInput.value = avatar.aura || "わくわく";
+}
+
+function updateKidsProfileAvatarPreview() {
+  if (!els.kidsProfileAvatar) return;
+  renderAvatarElement(
+    els.kidsProfileAvatar,
+    normalizeAvatar({
+      ...state.member.avatar,
+      symbol: els.kidsProfileSymbolInput?.value || state.member.avatar.symbol,
+      color: els.kidsProfileColorInput?.value || state.member.avatar.color,
+      aura: els.kidsProfileAuraInput?.value || state.member.avatar.aura,
+    })
+  );
+}
+
+function saveKidsProfileEdit(event) {
+  event.preventDefault();
+  const previous = normalizeChildProfile(state.childProfile);
+  const currentAvatar = normalizeAvatar(state.member.avatar);
+  const nickname = els.kidsProfileNameInput?.value.trim() || previous.nickname || state.member.name || "ぼうけんしゃ";
+  const favoriteThings = els.kidsProfileFavoritesInput?.value.trim() || previous.favoriteThings || state.member.initialInterest || "";
+  const avatar = normalizeAvatar({
+    ...currentAvatar,
+    symbol: els.kidsProfileSymbolInput?.value || currentAvatar.symbol,
+    color: els.kidsProfileColorInput?.value || currentAvatar.color,
+    aura: els.kidsProfileAuraInput?.value || currentAvatar.aura,
+  });
+  state.member.name = state.member.name || nickname;
+  state.member.initialInterest = favoriteThings || state.member.initialInterest;
+  state.member.avatar = avatar;
+  state.childProfile = normalizeChildProfile({
+    ...previous,
+    id: previous.id || `child-${Date.now()}`,
+    nickname,
+    favoriteThings,
+    favoriteColor: avatar.color,
+    onboardingComplete: true,
+    onboardingCompletedAt: previous.onboardingCompletedAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
+  if (favoriteThings) {
+    state.interests = [...new Set([...extractInterests(favoriteThings), ...state.interests])].slice(0, 10);
+  }
+  addActivity(`${nickname}のじぶんページをほぞん`);
+  saveState();
+  render();
+  renderKidsAvatarProfile();
+  queueFirebaseSync("キッズ個人設定更新");
 }
 
 function renderKidsPointBoard() {
@@ -6631,6 +6695,12 @@ els.kidsAvatarProfileClose?.addEventListener("click", closeKidsAvatarProfile);
 els.kidsAvatarProfile?.addEventListener("click", (event) => {
   if (event.target === els.kidsAvatarProfile) closeKidsAvatarProfile();
 });
+els.kidsProfileForm?.addEventListener("submit", saveKidsProfileEdit);
+[
+  els.kidsProfileSymbolInput,
+  els.kidsProfileColorInput,
+  els.kidsProfileAuraInput,
+].forEach((input) => input?.addEventListener("input", updateKidsProfileAvatarPreview));
 els.saveFieldPostButton?.addEventListener("click", saveFieldPost);
 els.saveKidsRecordButton?.addEventListener("click", saveKidsRecord);
 els.saveFeedbackButton.addEventListener("click", saveMentorFeedback);
