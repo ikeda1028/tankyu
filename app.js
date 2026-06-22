@@ -647,6 +647,8 @@ let googleMap = null;
 let googleMapsLoadPromise = null;
 let googleMapMarkers = [];
 let currentLocationMarker = null;
+let currentLocationCircle = null;
+let latestCurrentLocation = null;
 let googleMapFocusToken = 0;
 let mapsAutoLoadKey = "";
 let eventLocationMap = null;
@@ -1503,6 +1505,9 @@ async function initializeGoogleMap() {
     els.mapCanvas.classList.add("google-map-enabled");
     renderGoogleMapMarkers();
     setMapsStatus("Google Map表示中");
+    if (state.ui?.kidsMapActive) {
+      centerKidsCurrentLocation();
+    }
     saveState();
   } catch (error) {
     els.mapCanvas.classList.remove("google-map-enabled");
@@ -1529,23 +1534,17 @@ function centerOnCurrentLocation() {
         lat: position.coords.latitude,
         lng: position.coords.longitude,
       };
+      latestCurrentLocation = current;
+      updateCurrentLocationOverlay(current);
       googleMap.panTo(current);
-      googleMap.setZoom(13);
-      if (!currentLocationMarker) {
-        currentLocationMarker = new google.maps.Marker({
-          map: googleMap,
-          title: "現在地",
-          label: {
-            text: "自分",
-            color: "#ffffff",
-            fontSize: "10px",
-            fontWeight: "900",
-          },
-          icon: createMarkerIcon("#17211b"),
-        });
+      googleMap.setZoom(state.ui?.kidsMapActive ? getKidsMapZoomForRadius() : 13);
+      if (state.ui?.kidsMapActive) {
+        renderKidsMode();
+        renderKidsMapGuide();
+        renderGoogleMapMarkers();
+        setKidsMapStatus(`いまいる場所から半径${formatKidsRadius(getKidsWorldRadius())}だけ見えます。`);
       }
-      currentLocationMarker.setPosition(current);
-      setMapsStatus("現在地に移動しました");
+      setMapsStatus(state.ui?.kidsMapActive ? `現在地から半径${formatKidsRadius(getKidsWorldRadius())}を表示中` : "現在地に移動しました");
     },
     () => {
       setMapsStatus("現在地を取得できませんでした。ブラウザの位置情報許可を確認してください");
@@ -1568,6 +1567,52 @@ function createMarkerIcon(color) {
     strokeWeight: 3,
     scale: 15,
   };
+}
+
+function getKidsMapZoomForRadius(radius = getKidsWorldRadius()) {
+  if (radius <= 30) return 20;
+  if (radius <= 100) return 19;
+  if (radius <= 300) return 17;
+  if (radius <= 1000) return 15;
+  return 14;
+}
+
+function updateCurrentLocationOverlay(position) {
+  if (!googleMap || !window.google?.maps || !hasValidLatLng(position)) return;
+  const current = { lat: Number(position.lat), lng: Number(position.lng) };
+  if (!currentLocationMarker) {
+    currentLocationMarker = new google.maps.Marker({
+      map: googleMap,
+      title: "現在地",
+      label: {
+        text: "自分",
+        color: "#ffffff",
+        fontSize: "10px",
+        fontWeight: "900",
+      },
+      icon: createMarkerIcon("#17211b"),
+    });
+  }
+  currentLocationMarker.setMap(googleMap);
+  currentLocationMarker.setPosition(current);
+  if (state.ui?.kidsMapActive) {
+    const radius = getKidsWorldRadius();
+    if (!currentLocationCircle) {
+      currentLocationCircle = new google.maps.Circle({
+        map: googleMap,
+        strokeColor: "#2f8f63",
+        strokeOpacity: 0.82,
+        strokeWeight: 2,
+        fillColor: "#2f8f63",
+        fillOpacity: 0.12,
+      });
+    }
+    currentLocationCircle.setMap(googleMap);
+    currentLocationCircle.setCenter(current);
+    currentLocationCircle.setRadius(radius);
+  } else if (currentLocationCircle) {
+    currentLocationCircle.setMap(null);
+  }
 }
 
 function createFriendPhotoDataUrl(color = "#2f8f63", label = "友") {
@@ -2433,6 +2478,10 @@ function centerKidsCurrentLocation() {
   saveState();
   renderKidsMapGuide();
   setKidsMapStatus("いまいる場所をさがしています...");
+  if (!googleMap) {
+    initializeGoogleMap();
+    return;
+  }
   centerOnCurrentLocation();
 }
 
@@ -3346,6 +3395,7 @@ function formatKidsRadius(radius) {
 }
 
 function getKidsWorldCenter() {
+  if (hasValidLatLng(latestCurrentLocation)) return latestCurrentLocation;
   const ownPoint = getKidsExplorationPoints("own").find((event) => hasValidLatLng(event.position));
   if (ownPoint) return ownPoint.position;
   const selected = getKidsPointById(state.selected) || getSelectedEncounter();
@@ -5953,13 +6003,11 @@ document.querySelectorAll("[data-kids-point-scope]").forEach((button) => {
     renderKidsMapGuide();
     if (googleMap) {
       renderGoogleMapMarkers();
-      if (candidate && hasValidLatLng(candidate.position)) {
-        focusGoogleMapPoint({ lat: Number(candidate.position.lat), lng: Number(candidate.position.lng) }, Math.max(googleMap.getZoom(), 12));
-      }
+      centerKidsCurrentLocation();
     } else {
       initializeGoogleMap();
     }
-    setKidsMapStatus(scope === "friends" ? "ともだちの写真が見える場所を表示します。" : "じぶんの探検ポイントを表示します。");
+    setKidsMapStatus(scope === "friends" ? "いまいる場所から見える、ともだちの写真を探します。" : "いまいる場所から見える探検ポイントを探します。");
   });
 });
 els.kidsRecordPhoto?.addEventListener("change", handleKidsRecordPhotoChange);
