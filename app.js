@@ -296,6 +296,10 @@ const els = {
   kidsNextText: document.querySelector("#kids-next-text"),
   kidsRecordPanel: document.querySelector("#kids-record-panel"),
   kidsRecordCount: document.querySelector("#kids-record-count"),
+  kidsRecordPhoto: document.querySelector("#kids-record-photo"),
+  kidsRecordPhotoButton: document.querySelector("#kids-record-photo-button"),
+  kidsRecordVoiceButton: document.querySelector("#kids-record-voice-button"),
+  kidsRecordPhotoPreview: document.querySelector("#kids-record-photo-preview"),
   kidsRecordText: document.querySelector("#kids-record-text"),
   kidsRecordSelected: document.querySelector("#kids-record-selected"),
   saveKidsRecordButton: document.querySelector("#save-kids-record-button"),
@@ -528,6 +532,8 @@ let pendingFieldPostImage = null;
 let pendingFieldPostLocation = null;
 let pendingKidsStamp = "";
 let pendingKidsRecordStamp = "";
+let pendingKidsRecordImage = null;
+let kidsRecordSpeechRecognition = null;
 
 function normalizeChildProfile(profile = {}) {
   profile = profile || {};
@@ -3123,6 +3129,7 @@ function renderKidsRecordPanel() {
   const records = (state.fieldPosts || []).filter((post) => post.sourceMode === "kids").slice(0, 5);
   if (els.kidsRecordCount) els.kidsRecordCount.textContent = `${records.length}こ`;
   if (els.kidsRecordSelected) els.kidsRecordSelected.textContent = pendingKidsRecordStamp || "スタンプなし";
+  renderKidsRecordPhotoPreview();
   document.querySelectorAll("[data-kids-record-stamp]").forEach((button) => {
     button.classList.toggle("active", button.dataset.kidsRecordStamp === pendingKidsRecordStamp);
   });
@@ -3156,22 +3163,89 @@ function selectKidsRecordStamp(stamp) {
   renderKidsRecordPanel();
 }
 
+function renderKidsRecordPhotoPreview() {
+  if (!els.kidsRecordPhotoPreview) return;
+  els.kidsRecordPhotoPreview.classList.toggle("hidden", !pendingKidsRecordImage?.dataUrl);
+  els.kidsRecordPhotoPreview.innerHTML = pendingKidsRecordImage?.dataUrl
+    ? `<img src="${escapeHtml(pendingKidsRecordImage.dataUrl)}" alt="きろくする写真" />`
+    : "";
+}
+
+async function handleKidsRecordPhotoChange(event) {
+  const file = event.target.files?.[0];
+  if (!file) {
+    pendingKidsRecordImage = null;
+    renderKidsRecordPhotoPreview();
+    return;
+  }
+  setKidsRecordStatus("写真を読み込み中...");
+  try {
+    pendingKidsRecordImage = await compressImageFile(file);
+    renderKidsRecordPhotoPreview();
+    setKidsRecordStatus("写真を追加しました");
+  } catch (error) {
+    pendingKidsRecordImage = null;
+    renderKidsRecordPhotoPreview();
+    setKidsRecordStatus(error.message || "写真を追加できませんでした", true);
+  }
+}
+
+function openKidsRecordCamera() {
+  els.kidsRecordPhoto?.click();
+}
+
+function startKidsRecordVoice() {
+  const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!Recognition) {
+    setKidsRecordStatus("このブラウザでは音声入力が使えません", true);
+    return;
+  }
+  if (kidsRecordSpeechRecognition) {
+    kidsRecordSpeechRecognition.stop();
+    kidsRecordSpeechRecognition = null;
+    return;
+  }
+  const recognition = new Recognition();
+  kidsRecordSpeechRecognition = recognition;
+  recognition.lang = "ja-JP";
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+  if (els.kidsRecordVoiceButton) els.kidsRecordVoiceButton.textContent = "聞いています";
+  setKidsRecordStatus("話してください...");
+  recognition.onresult = (event) => {
+    const transcript = Array.from(event.results)
+      .map((result) => result[0]?.transcript || "")
+      .join("")
+      .trim();
+    if (transcript && els.kidsRecordText) {
+      els.kidsRecordText.value = [els.kidsRecordText.value.trim(), transcript].filter(Boolean).join(" ");
+    }
+    setKidsRecordStatus(transcript ? "声を文字にしました" : "声を聞き取れませんでした", !transcript);
+  };
+  recognition.onerror = () => setKidsRecordStatus("音声入力が止まりました。もう一度試してください", true);
+  recognition.onend = () => {
+    kidsRecordSpeechRecognition = null;
+    if (els.kidsRecordVoiceButton) els.kidsRecordVoiceButton.textContent = "声でのこす";
+  };
+  recognition.start();
+}
+
 function saveKidsRecord() {
   const text = els.kidsRecordText?.value.trim() || "";
-  if (!text && !pendingKidsRecordStamp) {
-    setKidsRecordStatus("スタンプか、ひとことを入れてください", true);
+  if (!text && !pendingKidsRecordStamp && !pendingKidsRecordImage?.dataUrl) {
+    setKidsRecordStatus("写真、声、スタンプのどれかを入れてください", true);
     return;
   }
   const encounter = getSelectedEncounter();
   const depth = Math.max(1, getDepth());
-  const questDelta = Math.max(2, depth + 2);
-  const joyDelta = pendingKidsRecordStamp ? 4 : 3;
+  const questDelta = Math.max(2, depth + 2 + (pendingKidsRecordImage ? 2 : 0));
+  const joyDelta = pendingKidsRecordStamp ? 4 : pendingKidsRecordImage ? 4 : 3;
   const post = {
     id: `kids-record-${Date.now()}`,
     eventId: encounter.id,
     eventTitle: encounter.title,
     text,
-    image: null,
+    image: pendingKidsRecordImage,
     location: null,
     stamp: pendingKidsRecordStamp,
     sourceMode: "kids",
@@ -3188,7 +3262,10 @@ function saveKidsRecord() {
   state.thanks = clamp(state.thanks + 2);
   addActivity(`きょうのきろくを保存。たんけんパワー +${questDelta} / ワクワク +${joyDelta}`);
   if (els.kidsRecordText) els.kidsRecordText.value = "";
+  if (els.kidsRecordPhoto) els.kidsRecordPhoto.value = "";
+  pendingKidsRecordImage = null;
   pendingKidsRecordStamp = "";
+  renderKidsRecordPhotoPreview();
   setKidsRecordStatus("きろくしました。保護者確認待ちです");
   saveState();
   render();
@@ -5353,6 +5430,9 @@ document.querySelectorAll("[data-kids-point-scope]").forEach((button) => {
     renderKidsMapGuide();
   });
 });
+els.kidsRecordPhoto?.addEventListener("change", handleKidsRecordPhotoChange);
+els.kidsRecordPhotoButton?.addEventListener("click", openKidsRecordCamera);
+els.kidsRecordVoiceButton?.addEventListener("click", startKidsRecordVoice);
 els.saveFieldPostButton?.addEventListener("click", saveFieldPost);
 els.saveKidsRecordButton?.addEventListener("click", saveKidsRecord);
 els.saveFeedbackButton.addEventListener("click", saveMentorFeedback);
