@@ -172,6 +172,7 @@ const defaultState = {
     fieldPostPanel: "open",
     themePanel: "compact",
     memberEditing: false,
+    kidsMapActive: false,
     editingEventId: "",
     aiCandidateSource: null,
   },
@@ -325,6 +326,11 @@ const els = {
   mapsStatus: document.querySelector("#maps-status"),
   mapCanvas: document.querySelector(".map-canvas"),
   googleMapCanvas: document.querySelector("#google-map-canvas"),
+  kidsMapGuide: document.querySelector("#kids-map-guide"),
+  kidsMapTitle: document.querySelector("#kids-map-title"),
+  kidsMapText: document.querySelector("#kids-map-text"),
+  kidsMapBadges: document.querySelector("#kids-map-badges"),
+  kidsMapList: document.querySelector("#kids-map-list"),
   centerSearchButton: document.querySelector("#center-search-button"),
   currentLocationButton: document.querySelector("#current-location-button"),
   themeEvaluationPanel: document.querySelector("#theme-evaluation-panel"),
@@ -1913,6 +1919,72 @@ function renderEventList() {
   });
 }
 
+function getKidsMapCandidates() {
+  const child = normalizeChildProfile(state.childProfile);
+  const favoriteWords = extractInterests(child.favoriteThings || state.member.initialInterest || state.interests.join("、"));
+  const ranked = rankedEncounters();
+  const matched = ranked.filter((encounter) =>
+    favoriteWords.some((word) =>
+      [encounter.title, encounter.impact, encounter.locationName, ...(encounter.tags || []), ...(encounter.keywords || [])].join(" ").includes(word)
+    )
+  );
+  return [...matched, ...ranked.filter((encounter) => !matched.some((item) => item.id === encounter.id))].slice(0, 4);
+}
+
+function renderKidsMapGuide() {
+  if (!els.kidsMapGuide) return;
+  const active = Boolean(state.ui?.kidsMapActive);
+  els.kidsMapGuide.classList.toggle("hidden", !active);
+  els.mapCanvas?.classList.toggle("kids-map-active", active);
+  if (!active) return;
+  const selected = getSelectedEncounter();
+  const candidates = getKidsMapCandidates();
+  if (els.kidsMapTitle) els.kidsMapTitle.textContent = selected?.title || "ぼうけんポイント";
+  if (els.kidsMapText) {
+    els.kidsMapText.textContent = selected
+      ? `${selected.locationName || "この場所"}で、${selected.impact || "ワクワク"}をみつけよう。`
+      : "気になる場所をえらんで、みつけたことをのこそう。";
+  }
+  if (els.kidsMapBadges) {
+    els.kidsMapBadges.innerHTML = [
+      `${selected?.index || state.quest}パワー`,
+      getEventPeriodLabel(selected || {}),
+      selected?.character?.name ? "キャラあり" : "みつける",
+    ]
+      .filter(Boolean)
+      .map((label) => `<span>${escapeHtml(label)}</span>`)
+      .join("");
+  }
+  if (els.kidsMapList) {
+    els.kidsMapList.innerHTML = candidates
+      .map((encounter, index) => {
+        const activeClass = encounter.id === state.selected ? " active" : "";
+        return `<button class="kids-map-point${activeClass}" type="button" data-id="${escapeHtml(encounter.id)}">
+          <span>${index + 1}</span>
+          <strong>${escapeHtml(encounter.title)}</strong>
+          <small>${escapeHtml(encounter.locationName || encounter.impact || "ぼうけんポイント")}</small>
+        </button>`;
+      })
+      .join("");
+    els.kidsMapList.querySelectorAll("[data-id]").forEach((button) => {
+      button.addEventListener("click", () => openKidsMapPoint(button.dataset.id));
+    });
+  }
+}
+
+function openKidsMapPoint(eventId) {
+  const encounter = getEncounters().find((item) => item.id === eventId);
+  if (!encounter) return;
+  state.selected = encounter.id;
+  state.ui.kidsMapActive = true;
+  grantJoy(2, `${encounter.title}をぼうけんマップで見た`, `kids-map:${encounter.id}`);
+  saveState();
+  render();
+  if (googleMap && hasValidLatLng(encounter.position)) {
+    focusGoogleMapPoint({ lat: Number(encounter.position.lat), lng: Number(encounter.position.lng) }, Math.max(googleMap.getZoom(), 11));
+  }
+}
+
 function renderEventDrawer() {
   const mode = state.ui?.eventsPanel || "compact";
   els.eventDrawer.classList.toggle("compact", mode === "compact");
@@ -2632,6 +2704,7 @@ function render() {
   renderSpots();
   renderEventList();
   renderEncounter();
+  renderKidsMapGuide();
   renderFieldPostPanelState();
   renderFieldPosts();
   renderHeroGrowth();
@@ -3752,7 +3825,7 @@ function confirmGuardianMode() {
   return false;
 }
 
-function showMode(mode) {
+function showMode(mode, options = {}) {
   if (mode === "guardian" && state.ui.mode !== "guardian" && !confirmGuardianMode()) {
     return;
   }
@@ -3763,6 +3836,9 @@ function showMode(mode) {
   const kids = mode === "kids";
   const guardian = mode === "guardian";
   state.ui.mode = mode;
+  if (mode !== "quest" || !options.kidsMap) {
+    state.ui.kidsMapActive = false;
+  }
   saveState();
   els.questViews.forEach((view) => view.classList.toggle("hidden", feedback || eventAdmin || capital || settings || kids || guardian));
   els.feedbackView.classList.toggle("hidden", !feedback);
@@ -4709,6 +4785,18 @@ els.exportDbButton.addEventListener("click", exportDatabase);
 document.querySelectorAll("[data-kids-action]").forEach((button) => {
   button.addEventListener("click", () => {
     const action = button.dataset.kidsAction;
+    if (action === "quest") {
+      state.ui.kidsMapActive = true;
+      const candidate = getKidsMapCandidates()[0];
+      if (candidate) state.selected = candidate.id;
+      saveState();
+      showMode("quest", { kidsMap: true });
+      renderKidsMapGuide();
+      if (candidate && googleMap && hasValidLatLng(candidate.position)) {
+        focusGoogleMapPoint({ lat: Number(candidate.position.lat), lng: Number(candidate.position.lng) }, Math.max(googleMap.getZoom(), 10));
+      }
+      return;
+    }
     if (action === "avatar") {
       showMode("capital");
       return;
