@@ -4255,19 +4255,13 @@ function getKidsReadableText(scope = "home") {
         : els.kidsView;
   if (!root) return "";
   return toKidsText(
-    Array.from(root.querySelectorAll("h2, h3, p, strong, span, button:not(.kids-listen-button), textarea"))
+    Array.from(root.querySelectorAll("h2, h3, p, strong, span, button, textarea"))
       .filter((node) => !node.closest(".hidden"))
       .map((node) => (node.tagName === "TEXTAREA" ? node.value || node.getAttribute("placeholder") || "" : node.textContent || ""))
       .join("。")
       .replace(/\s+/g, " ")
       .trim()
   );
-}
-
-function setKidsListenButtonsText(text) {
-  document.querySelectorAll("[data-kids-listen]").forEach((button) => {
-    button.textContent = text;
-  });
 }
 
 function stopKidsTtsAudio() {
@@ -4279,7 +4273,7 @@ function stopKidsTtsAudio() {
   if ("speechSynthesis" in window && window.speechSynthesis.speaking) {
     window.speechSynthesis.cancel();
   }
-  setKidsListenButtonsText("よむ");
+  if (els.kidsNavigatorBot?.querySelector("strong")) els.kidsNavigatorBot.querySelector("strong").textContent = "なび";
   els.kidsNavigatorBot?.classList.remove("speaking", "loading");
 }
 
@@ -4296,21 +4290,20 @@ function speakKidsTextWithBrowser(text) {
   utterance.lang = "ja-JP";
   utterance.rate = 0.86;
   utterance.pitch = 1.08;
-  utterance.onend = () => setKidsListenButtonsText("よむ");
-  utterance.onerror = () => setKidsListenButtonsText("よむ");
-  setKidsListenButtonsText("とめる");
+  utterance.onend = stopKidsTtsAudio;
+  utterance.onerror = stopKidsTtsAudio;
+  if (els.kidsNavigatorBot?.querySelector("strong")) els.kidsNavigatorBot.querySelector("strong").textContent = "とめる";
   window.speechSynthesis.speak(utterance);
 }
 
 async function playKidsOpenAiSpeech(text, options = {}) {
   const buttonText = options.loadingText || "つくる";
-  const restoreText = options.restoreText || "よむ";
   if (kidsTtsAudio || ("speechSynthesis" in window && window.speechSynthesis.speaking)) {
     stopKidsTtsAudio();
     return false;
   }
   if (!text) return;
-  setKidsListenButtonsText(buttonText);
+  if (els.kidsNavigatorBot?.querySelector("strong")) els.kidsNavigatorBot.querySelector("strong").textContent = buttonText;
   els.kidsNavigatorBot?.classList.toggle("loading", Boolean(options.navigator));
   try {
     const response = await fetch("/api/tts", {
@@ -4330,7 +4323,7 @@ async function playKidsOpenAiSpeech(text, options = {}) {
     kidsTtsAudio = new Audio(audioUrl);
     kidsTtsAudio.onended = stopKidsTtsAudio;
     kidsTtsAudio.onerror = stopKidsTtsAudio;
-    setKidsListenButtonsText("とめる");
+    if (els.kidsNavigatorBot?.querySelector("strong")) els.kidsNavigatorBot.querySelector("strong").textContent = "とめる";
     els.kidsNavigatorBot?.classList.remove("loading");
     els.kidsNavigatorBot?.classList.toggle("speaking", Boolean(options.navigator));
     await kidsTtsAudio.play();
@@ -4340,20 +4333,7 @@ async function playKidsOpenAiSpeech(text, options = {}) {
     console.warn("OpenAI TTS fallback:", error);
     return false;
   } finally {
-    if (!kidsTtsAudio) setKidsListenButtonsText(restoreText);
-  }
-}
-
-async function speakKidsText(scope = "home") {
-  if (kidsTtsAudio || ("speechSynthesis" in window && window.speechSynthesis.speaking)) {
-    stopKidsTtsAudio();
-    return;
-  }
-  const text = getKidsReadableText(scope);
-  if (!text) return;
-  const played = await playKidsOpenAiSpeech(text);
-  if (!played) {
-    speakKidsTextWithBrowser(text);
+    if (!kidsTtsAudio && els.kidsNavigatorBot?.querySelector("strong")) els.kidsNavigatorBot.querySelector("strong").textContent = "なび";
   }
 }
 
@@ -6736,9 +6716,6 @@ document.querySelectorAll("[data-kids-stamp]").forEach((button) => {
 });
 document.querySelectorAll("[data-kids-record-stamp]").forEach((button) => {
   button.addEventListener("click", () => selectKidsRecordStamp(button.dataset.kidsRecordStamp));
-});
-document.querySelectorAll("[data-kids-listen]").forEach((button) => {
-  button.addEventListener("click", () => speakKidsText(button.dataset.kidsListen || "home"));
 });
 document.querySelectorAll("[data-kids-point-scope]").forEach((button) => {
   button.addEventListener("click", () => {
