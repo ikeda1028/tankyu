@@ -117,6 +117,8 @@ const defaultState = {
       aiSuggestions: false,
       driveSync: false,
     },
+    onboardingComplete: false,
+    onboardingCompletedAt: "",
     updatedAt: "",
   },
   guardian: {
@@ -247,6 +249,15 @@ const els = {
   kidsQuestPower: document.querySelector("#kids-quest-power"),
   kidsJoyPower: document.querySelector("#kids-joy-power"),
   kidsPostCount: document.querySelector("#kids-post-count"),
+  kidsOnboardingForm: document.querySelector("#kids-onboarding-form"),
+  kidsOnboardingName: document.querySelector("#kids-onboarding-name"),
+  kidsOnboardingFavorites: document.querySelector("#kids-onboarding-favorites"),
+  kidsOnboardingSymbol: document.querySelector("#kids-onboarding-symbol"),
+  kidsOnboardingColor: document.querySelector("#kids-onboarding-color"),
+  kidsOnboardingAura: document.querySelector("#kids-onboarding-aura"),
+  kidsOnboardingStatus: document.querySelector("#kids-onboarding-status"),
+  kidsActionGrid: document.querySelector(".kids-action-grid"),
+  kidsStatusRow: document.querySelector(".kids-status-row"),
   guardianStatus: document.querySelector("#guardian-status"),
   guardianChildName: document.querySelector("#guardian-child-name"),
   guardianChildMeta: document.querySelector("#guardian-child-meta"),
@@ -2718,7 +2729,9 @@ function renderHeroGrowth() {
 function renderKidsMode() {
   if (!els.kidsView) return;
   const child = normalizeChildProfile(state.childProfile);
-  renderAvatarElement(els.kidsAvatar, normalizeAvatar(state.member.avatar));
+  const avatar = normalizeAvatar(state.member.avatar);
+  const onboardingComplete = Boolean(child.onboardingComplete);
+  renderAvatarElement(els.kidsAvatar, avatar);
   if (els.kidsView.querySelector(".kids-hero h2")) {
     els.kidsView.querySelector(".kids-hero h2").textContent = child.nickname ? `${child.nickname}のぼうけん` : "きょうのぼうけん";
   }
@@ -2730,6 +2743,69 @@ function renderKidsMode() {
   if (els.kidsQuestPower) els.kidsQuestPower.textContent = state.quest;
   if (els.kidsJoyPower) els.kidsJoyPower.textContent = state.joy;
   if (els.kidsPostCount) els.kidsPostCount.textContent = `${state.fieldPosts.length}`;
+  els.kidsOnboardingForm?.classList.toggle("hidden", onboardingComplete);
+  els.kidsActionGrid?.classList.toggle("hidden", !onboardingComplete);
+  els.kidsStatusRow?.classList.toggle("hidden", !onboardingComplete);
+  fillKidsOnboardingForm(child, avatar);
+}
+
+function fillKidsOnboardingForm(child = normalizeChildProfile(state.childProfile), avatar = normalizeAvatar(state.member.avatar)) {
+  if (!els.kidsOnboardingForm || child.onboardingComplete) return;
+  els.kidsOnboardingName.value = child.nickname || state.member.name || "";
+  els.kidsOnboardingFavorites.value = child.favoriteThings || state.member.initialInterest || "";
+  els.kidsOnboardingSymbol.value = avatar.symbol || "星";
+  els.kidsOnboardingColor.value = child.favoriteColor || avatar.color || "#2f8f63";
+  els.kidsOnboardingAura.value = avatar.aura || "ワクワク";
+}
+
+function updateKidsOnboardingAvatarPreview() {
+  if (!els.kidsAvatar) return;
+  renderAvatarElement(
+    els.kidsAvatar,
+    normalizeAvatar({
+      ...state.member.avatar,
+      symbol: els.kidsOnboardingSymbol?.value || state.member.avatar.symbol,
+      color: els.kidsOnboardingColor?.value || state.member.avatar.color,
+      aura: els.kidsOnboardingAura?.value || state.member.avatar.aura,
+    })
+  );
+}
+
+function saveKidsOnboarding(event) {
+  event.preventDefault();
+  const previous = normalizeChildProfile(state.childProfile);
+  const avatar = normalizeAvatar({
+    ...state.member.avatar,
+    symbol: els.kidsOnboardingSymbol.value,
+    color: els.kidsOnboardingColor.value,
+    aura: els.kidsOnboardingAura.value,
+    prompt: state.member.avatar.prompt || `${els.kidsOnboardingFavorites.value.trim()}がすきな、シンプルな初期アバター`,
+  });
+  const nickname = els.kidsOnboardingName.value.trim() || previous.nickname || state.member.name || "ぼうけんしゃ";
+  const favoriteThings = els.kidsOnboardingFavorites.value.trim() || previous.favoriteThings;
+  state.member.avatar = avatar;
+  state.member.name = state.member.name || nickname;
+  state.member.initialInterest = state.member.initialInterest || favoriteThings;
+  state.childProfile = normalizeChildProfile({
+    ...previous,
+    id: previous.id || `child-${Date.now()}`,
+    nickname,
+    favoriteThings,
+    favoriteColor: avatar.color,
+    onboardingComplete: true,
+    onboardingCompletedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
+  if (favoriteThings) {
+    state.interests = [...new Set([...extractInterests(favoriteThings), ...state.interests])].slice(0, 10);
+    state.sparks.unshift({ text: favoriteThings, source: "kids-onboarding", at: new Date().toISOString() });
+    state.sparks = state.sparks.slice(0, 20);
+  }
+  addActivity(`${nickname}がぼうけんを開始`);
+  saveState();
+  render();
+  if (els.kidsOnboardingStatus) els.kidsOnboardingStatus.textContent = "ぼうけんをはじめました";
+  queueFirebaseSync("Kids初回体験完了");
 }
 
 function renderGuardianMode() {
@@ -3272,6 +3348,8 @@ function memberToDriveRecord() {
     permission_public_share: Boolean(child.permissions.publicShare),
     permission_ai_suggestions: Boolean(child.permissions.aiSuggestions),
     permission_drive_sync: Boolean(child.permissions.driveSync),
+    child_onboarding_complete: Boolean(child.onboardingComplete),
+    child_onboarding_completed_at: child.onboardingCompletedAt,
     hero_role: state.member.heroRole || "ヒーロー",
     avatar_symbol: normalizeAvatar(state.member.avatar).symbol,
     avatar_color: normalizeAvatar(state.member.avatar).color,
@@ -4532,6 +4610,12 @@ els.backLoginButton.addEventListener("click", () => {
 els.editMemberButton.addEventListener("click", showMemberForm);
 els.logoutButton.addEventListener("click", logout);
 els.childProfileForm?.addEventListener("submit", saveChildProfile);
+els.kidsOnboardingForm?.addEventListener("submit", saveKidsOnboarding);
+[
+  els.kidsOnboardingSymbol,
+  els.kidsOnboardingColor,
+  els.kidsOnboardingAura,
+].forEach((input) => input?.addEventListener("input", updateKidsOnboardingAvatarPreview));
 els.eventForm.addEventListener("submit", registerEvent);
 els.cancelEventEditButton?.addEventListener("click", () => resetEventFormToCreate());
 els.sampleEventButton.addEventListener("click", registerSampleEvent);

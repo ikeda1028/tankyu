@@ -167,6 +167,8 @@ async function saveSnapshot(config, state, snapshot) {
           aiSuggestions: Boolean(permissions.aiSuggestions),
           driveSync: Boolean(permissions.driveSync),
         },
+        onboardingComplete: Boolean(childProfile.onboardingComplete),
+        onboardingCompletedAt: childProfile.onboardingCompletedAt || "",
         updatedAt: childProfile.updatedAt || "",
       },
       guardian: {

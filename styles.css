@@ -1595,6 +1595,52 @@ textarea {
   object-fit: cover;
 }
 
+.kids-onboarding-card {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid rgba(47, 143, 99, 0.2);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 10px 32px rgba(30, 48, 36, 0.08);
+}
+
+.kids-onboarding-card h3 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.kids-onboarding-grid {
+  display: grid;
+  grid-template-columns: 90px minmax(0, 1fr) 90px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.kids-onboarding-grid label {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.kids-onboarding-grid input,
+.kids-onboarding-grid select {
+  width: 100%;
+  min-height: 46px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  outline: 0;
+  background: #fbfdf9;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.kids-onboarding-card .primary-button {
+  min-height: 48px;
+  font-size: 16px;
+}
+
 .kids-action-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -3413,6 +3459,7 @@ textarea {
   .settings-grid,
   .event-admin-shell,
   .kids-action-grid,
+  .kids-onboarding-grid,
   .kids-status-row,
   .guardian-grid,
   .child-profile-grid,

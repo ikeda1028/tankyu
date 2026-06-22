@@ -642,6 +642,43 @@
               </div>
               <div id="kids-avatar" class="kids-avatar">?</div>
             </section>
+            <form id="kids-onboarding-form" class="kids-onboarding-card">
+              <div>
+                <p class="eyebrow">はじめてのぼうけん</p>
+                <h3>じぶんのアバターをきめよう</h3>
+              </div>
+              <div class="kids-onboarding-grid">
+                <label for="kids-onboarding-name">よびな</label>
+                <input id="kids-onboarding-name" type="text" placeholder="はる" />
+                <label for="kids-onboarding-favorites">すきなこと</label>
+                <input id="kids-onboarding-favorites" type="text" placeholder="むし、でんしゃ、くも、こうさく" />
+                <label for="kids-onboarding-symbol">しるし</label>
+                <select id="kids-onboarding-symbol">
+                  <option value="星">星</option>
+                  <option value="炎">炎</option>
+                  <option value="水">水</option>
+                  <option value="森">森</option>
+                  <option value="雷">雷</option>
+                  <option value="光">光</option>
+                  <option value="知">知</option>
+                  <option value="翼">翼</option>
+                </select>
+                <label for="kids-onboarding-color">いろ</label>
+                <input id="kids-onboarding-color" type="color" value="#2f8f63" />
+                <label for="kids-onboarding-aura">ちから</label>
+                <select id="kids-onboarding-aura">
+                  <option value="探究">探究</option>
+                  <option value="ワクワク">ワクワク</option>
+                  <option value="ゆうき">ゆうき</option>
+                  <option value="共創">共創</option>
+                  <option value="はっけん">はっけん</option>
+                  <option value="やさしさ">やさしさ</option>
+                  <option value="ひらめき">ひらめき</option>
+                </select>
+              </div>
+              <button class="primary-button" type="submit">ぼうけんをはじめる</button>
+              <p id="kids-onboarding-status" class="member-save-status" aria-live="polite"></p>
+            </form>
             <div class="kids-action-grid">
               <button class="kids-action-card" type="button" data-kids-action="quest">
                 <span>ちず</span>
