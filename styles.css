@@ -3092,6 +3092,53 @@ textarea {
   font-weight: 900;
 }
 
+.field-post-panel.kids-post-mode .section-head h2 {
+  font-size: 0;
+}
+
+.field-post-panel.kids-post-mode .section-head h2::after {
+  content: "みつけたこと";
+  font-size: 18px;
+}
+
+.kids-post-tools {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid rgba(47, 143, 99, 0.18);
+  border-radius: 8px;
+  background: #f7fbff;
+}
+
+.kids-post-tools > span,
+.kids-post-tools strong {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.kids-stamp-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.kids-stamp-row button {
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  background: white;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.kids-stamp-row button.active {
+  border-color: rgba(47, 143, 99, 0.4);
+  color: white;
+  background: var(--green);
+}
+
 .field-post-panel input[type="file"],
 .field-post-panel textarea {
   width: 100%;

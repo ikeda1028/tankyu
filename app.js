@@ -243,6 +243,8 @@ const els = {
   fieldPostPhoto: document.querySelector("#field-post-photo"),
   fieldPhotoPreview: document.querySelector("#field-photo-preview"),
   fieldPostText: document.querySelector("#field-post-text"),
+  kidsPostTools: document.querySelector("#kids-post-tools"),
+  kidsSelectedStamp: document.querySelector("#kids-selected-stamp"),
   usePostLocationButton: document.querySelector("#use-post-location-button"),
   saveFieldPostButton: document.querySelector("#save-field-post-button"),
   fieldPostStatus: document.querySelector("#field-post-status"),
@@ -477,6 +479,7 @@ let firebaseAutoSyncQueued = false;
 let firebaseAutoSyncReason = "";
 let pendingFieldPostImage = null;
 let pendingFieldPostLocation = null;
+let pendingKidsStamp = "";
 
 function normalizeChildProfile(profile = {}) {
   profile = profile || {};
@@ -2362,6 +2365,13 @@ function renderFieldPosts() {
   if (!els.fieldPostPanel) return;
   const encounter = getSelectedEncounter();
   const posts = getSelectedFieldPosts();
+  const kidsMode = Boolean(state.ui?.kidsMapActive);
+  els.fieldPostPanel.classList.toggle("kids-post-mode", kidsMode);
+  els.kidsPostTools?.classList.toggle("hidden", !kidsMode);
+  if (els.kidsSelectedStamp) els.kidsSelectedStamp.textContent = pendingKidsStamp || "スタンプなし";
+  document.querySelectorAll("[data-kids-stamp]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.kidsStamp === pendingKidsStamp);
+  });
   els.fieldPostTarget.textContent = encounter.title;
   els.fieldPostCount.textContent = `${posts.length}件`;
   els.fieldPostList.innerHTML = posts.length
@@ -2374,8 +2384,11 @@ function renderFieldPosts() {
             ${imageSrc ? `<img src="${imageSrc}" alt="${escapeHtml(post.eventTitle)}の現場写真" />` : ""}
             <div>
               <time>${formatTime(new Date(post.at))}</time>
-              <p>${escapeHtml(post.text || "写真のみの投稿")}</p>
-              <small>${post.location ? `位置 ${Number(post.location.lat).toFixed(5)}, ${Number(post.location.lng).toFixed(5)}` : "位置なし"}</small>
+              <p>${escapeHtml([post.stamp, post.text || "写真のみの投稿"].filter(Boolean).join(" / "))}</p>
+              <small>${[
+                post.approvalStatus === "pending" ? "保護者確認待ち" : "",
+                post.location ? `位置 ${Number(post.location.lat).toFixed(5)}, ${Number(post.location.lng).toFixed(5)}` : "位置なし",
+              ].filter(Boolean).join(" / ")}</small>
             </div>
           </article>`;
           }
@@ -2466,11 +2479,20 @@ function attachFieldPostLocation() {
   );
 }
 
+function selectKidsStamp(stamp) {
+  pendingKidsStamp = stamp || "";
+  if (els.kidsSelectedStamp) els.kidsSelectedStamp.textContent = pendingKidsStamp || "スタンプなし";
+  document.querySelectorAll("[data-kids-stamp]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.kidsStamp === pendingKidsStamp);
+  });
+}
+
 function saveFieldPost() {
   const encounter = getSelectedEncounter();
   const text = els.fieldPostText.value.trim();
-  if (!text && !pendingFieldPostImage?.dataUrl) {
-    setFieldPostStatus("写真か文章を入れてください", true);
+  const kidsMode = Boolean(state.ui?.kidsMapActive);
+  if (!text && !pendingFieldPostImage?.dataUrl && !pendingKidsStamp) {
+    setFieldPostStatus(kidsMode ? "しゃしん、スタンプ、ひとことのどれかを入れてください" : "写真か文章を入れてください", true);
     return;
   }
 
@@ -2484,6 +2506,9 @@ function saveFieldPost() {
     text,
     image: pendingFieldPostImage,
     location: pendingFieldPostLocation,
+    stamp: pendingKidsStamp,
+    sourceMode: kidsMode ? "kids" : "teens",
+    approvalStatus: kidsMode ? "pending" : "approved",
     depth,
     questDelta,
     joyDelta,
@@ -2498,10 +2523,12 @@ function saveFieldPost() {
 
   els.fieldPostText.value = "";
   els.fieldPostPhoto.value = "";
+  pendingKidsStamp = "";
+  selectKidsStamp("");
   pendingFieldPostImage = null;
   pendingFieldPostLocation = null;
   renderFieldPhotoPreview();
-  setFieldPostStatus("現場投稿を保存しました");
+  setFieldPostStatus(kidsMode ? "みつけたことを保存しました。保護者確認待ちです" : "現場投稿を保存しました");
   saveState();
   render();
   if (getDriveUrl()) {
@@ -3565,6 +3592,9 @@ function fieldPostToDriveRecord(post) {
     event_id: post.eventId,
     event_title: post.eventTitle,
     text: post.text,
+    stamp: post.stamp || "",
+    source_mode: post.sourceMode || "",
+    approval_status: post.approvalStatus || "",
     has_photo: Boolean(post.image?.dataUrl),
     photo_name: post.image?.name || "",
     latitude: post.location?.lat || "",
@@ -4810,6 +4840,9 @@ els.compactFieldPostButton?.addEventListener("click", toggleCompactFieldPost);
 els.collapseFieldPostButton?.addEventListener("click", toggleCollapseFieldPost);
 els.fieldPostPhoto?.addEventListener("change", handleFieldPhotoChange);
 els.usePostLocationButton?.addEventListener("click", attachFieldPostLocation);
+document.querySelectorAll("[data-kids-stamp]").forEach((button) => {
+  button.addEventListener("click", () => selectKidsStamp(button.dataset.kidsStamp));
+});
 els.saveFieldPostButton?.addEventListener("click", saveFieldPost);
 els.saveFeedbackButton.addEventListener("click", saveMentorFeedback);
 els.quickFeedbackButtons.forEach((button) => {

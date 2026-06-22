@@ -399,6 +399,16 @@
           <div id="field-photo-preview" class="field-photo-preview hidden"></div>
           <label for="field-post-text">気づき・問い・次の一歩</label>
           <textarea id="field-post-text" rows="3" placeholder="例：看板の言葉が気になった。なぜこの場所に人が集まるのか調べたい。"></textarea>
+          <div id="kids-post-tools" class="kids-post-tools hidden" aria-label="みつけたことスタンプ">
+            <span>きもち</span>
+            <div class="kids-stamp-row">
+              <button type="button" data-kids-stamp="たのしかった">たのしい</button>
+              <button type="button" data-kids-stamp="びっくりした">びっくり</button>
+              <button type="button" data-kids-stamp="ふしぎ">ふしぎ</button>
+              <button type="button" data-kids-stamp="もっとしりたい">もっと</button>
+            </div>
+            <strong id="kids-selected-stamp">スタンプなし</strong>
+          </div>
           <div class="field-post-actions">
             <button id="use-post-location-button" class="secondary-button" type="button">現在地を添付</button>
             <button id="save-field-post-button" class="primary-button" type="button">投稿する</button>
