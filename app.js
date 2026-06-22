@@ -314,6 +314,7 @@ const els = {
   childFavoriteColor: document.querySelector("#child-favorite-color"),
   childFavoriteThings: document.querySelector("#child-favorite-things"),
   childGuardianId: document.querySelector("#child-guardian-id"),
+  guardianPasscode: document.querySelector("#guardian-passcode"),
   permissionPhotoPost: document.querySelector("#permission-photo-post"),
   permissionLocationSave: document.querySelector("#permission-location-save"),
   permissionPublicShare: document.querySelector("#permission-public-share"),
@@ -3215,14 +3216,18 @@ function renderGuardianDashboard(child = normalizeChildProfile(state.childProfil
   if (els.guardianSafetyList) {
     const permissions = child.permissions || {};
     const rows = [
-      ["写真投稿", permissions.photoPost],
-      ["位置情報保存", permissions.locationSave],
-      ["外部公開", permissions.publicShare],
-      ["AI候補表示", permissions.aiSuggestions],
-      ["Drive同期", permissions.driveSync],
+      ["写真投稿", permissions.photoPost, "許可", "オフ"],
+      ["位置情報保存", permissions.locationSave, "許可", "オフ"],
+      ["外部公開", permissions.publicShare, "許可", "オフ"],
+      ["AI候補表示", permissions.aiSuggestions, "許可", "オフ"],
+      ["Drive同期", permissions.driveSync, "許可", "オフ"],
+      ["保護者パスコード", Boolean(state.guardian?.passcode), "設定済み", "未設定"],
     ];
     els.guardianSafetyList.innerHTML = rows
-      .map(([label, enabled]) => `<div><span>${escapeHtml(label)}</span><strong class="${enabled ? "enabled" : "disabled"}">${enabled ? "許可" : "オフ"}</strong></div>`)
+      .map(
+        ([label, enabled, enabledText, disabledText]) =>
+          `<div><span>${escapeHtml(label)}</span><strong class="${enabled ? "enabled" : "disabled"}">${enabled ? enabledText : disabledText}</strong></div>`
+      )
       .join("");
   }
 }
@@ -3315,6 +3320,7 @@ function fillChildProfileForm() {
   els.childFavoriteColor.value = child.favoriteColor || "#2f8f63";
   els.childFavoriteThings.value = child.favoriteThings || "";
   els.childGuardianId.value = child.guardianId || state.auth.email || "";
+  if (els.guardianPasscode) els.guardianPasscode.value = "";
   els.permissionPhotoPost.checked = Boolean(child.permissions.photoPost);
   els.permissionLocationSave.checked = Boolean(child.permissions.locationSave);
   els.permissionPublicShare.checked = Boolean(child.permissions.publicShare);
@@ -3330,6 +3336,11 @@ function saveChildProfile(event) {
   const previous = normalizeChildProfile(state.childProfile);
   const nickname = els.childNickname.value.trim();
   const age = Math.max(4, Math.min(10, Number(els.childAge.value || previous.age || 6)));
+  const nextPasscode = els.guardianPasscode?.value.trim() || "";
+  if (nextPasscode && nextPasscode.length < 4) {
+    if (els.childProfileStatus) els.childProfileStatus.textContent = "パスコードは4文字以上にしてください";
+    return;
+  }
   state.childProfile = normalizeChildProfile({
     ...previous,
     id: previous.id || `child-${Date.now()}`,
@@ -3353,6 +3364,13 @@ function saveChildProfile(event) {
   }
   if (state.childProfile.region && !state.member.region) {
     state.member.region = state.childProfile.region;
+  }
+  if (nextPasscode) {
+    state.guardian = {
+      ...state.guardian,
+      passcode: nextPasscode,
+      updatedAt: new Date().toISOString(),
+    };
   }
   addActivity(`${state.childProfile.nickname || "子ども"}のプロフィールを保存`);
   saveState();
@@ -4199,9 +4217,13 @@ function confirmGuardianMode() {
   return false;
 }
 
+function requiresGuardianConfirmation(mode) {
+  return state.ui.mode === "kids" && ["guardian", "event-admin", "feedback", "settings"].includes(mode);
+}
+
 function showMode(mode, options = {}) {
-  if (mode === "guardian" && state.ui.mode !== "guardian" && !confirmGuardianMode()) {
-    return;
+  if ((mode === "guardian" && state.ui.mode !== "guardian") || requiresGuardianConfirmation(mode)) {
+    if (!confirmGuardianMode()) return;
   }
   const feedback = mode === "feedback";
   const eventAdmin = mode === "event-admin";
