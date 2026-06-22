@@ -670,6 +670,7 @@ let pendingKidsRecordImage = null;
 let kidsRecordImageAnalysisToken = 0;
 let kidsPhotoAnalysisState = { status: "idle", message: "", text: "", labels: [] };
 let kidsRecordSpeechRecognition = null;
+let kidsTtsAudio = null;
 
 function cloneDefaultState() {
   return JSON.parse(JSON.stringify(defaultState));
@@ -3984,18 +3985,27 @@ function setKidsListenButtonsText(text) {
   });
 }
 
-function speakKidsText(scope = "home") {
+function stopKidsTtsAudio() {
+  if (kidsTtsAudio) {
+    kidsTtsAudio.pause();
+    if (kidsTtsAudio.src?.startsWith("blob:")) URL.revokeObjectURL(kidsTtsAudio.src);
+    kidsTtsAudio = null;
+  }
+  if ("speechSynthesis" in window && window.speechSynthesis.speaking) {
+    window.speechSynthesis.cancel();
+  }
+  setKidsListenButtonsText("よむ");
+}
+
+function speakKidsTextWithBrowser(text) {
   if (!("speechSynthesis" in window) || typeof SpeechSynthesisUtterance === "undefined") {
     setKidsRecordStatus("このブラウザではよみあげがつかえません。", true);
     return;
   }
   if (window.speechSynthesis.speaking) {
-    window.speechSynthesis.cancel();
-    setKidsListenButtonsText("よむ");
+    stopKidsTtsAudio();
     return;
   }
-  const text = getKidsReadableText(scope);
-  if (!text) return;
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = "ja-JP";
   utterance.rate = 0.86;
@@ -4004,6 +4014,41 @@ function speakKidsText(scope = "home") {
   utterance.onerror = () => setKidsListenButtonsText("よむ");
   setKidsListenButtonsText("とめる");
   window.speechSynthesis.speak(utterance);
+}
+
+async function speakKidsText(scope = "home") {
+  if (kidsTtsAudio || ("speechSynthesis" in window && window.speechSynthesis.speaking)) {
+    stopKidsTtsAudio();
+    return;
+  }
+  const text = getKidsReadableText(scope);
+  if (!text) return;
+  setKidsListenButtonsText("つくる");
+  try {
+    const response = await fetch("/api/tts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        text,
+        voice: "coral",
+      }),
+    });
+    if (!response.ok) {
+      const errorJson = await response.json().catch(() => ({}));
+      throw new Error(errorJson.error || "よみあげをつくれませんでした");
+    }
+    const blob = await response.blob();
+    const audioUrl = URL.createObjectURL(blob);
+    kidsTtsAudio = new Audio(audioUrl);
+    kidsTtsAudio.onended = stopKidsTtsAudio;
+    kidsTtsAudio.onerror = stopKidsTtsAudio;
+    setKidsListenButtonsText("とめる");
+    await kidsTtsAudio.play();
+  } catch (error) {
+    stopKidsTtsAudio();
+    console.warn("OpenAI TTS fallback:", error);
+    speakKidsTextWithBrowser(text);
+  }
 }
 
 function getSpeechErrorMessage(errorType = "") {
