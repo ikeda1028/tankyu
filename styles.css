@@ -4676,6 +4676,105 @@ textarea {
     display: none;
   }
 
+  body:has(.map-canvas.kids-map-active) {
+    overflow: hidden;
+  }
+
+  body:has(.map-canvas.kids-map-active) .shell {
+    display: block;
+    height: 100dvh;
+    min-height: 100dvh;
+    overflow: hidden;
+  }
+
+  body:has(.map-canvas.kids-map-active) .sidebar,
+  body:has(.map-canvas.kids-map-active) .topbar,
+  body:has(.map-canvas.kids-map-active) .quest-view:not(.map-canvas) {
+    display: none;
+  }
+
+  body:has(.map-canvas.kids-map-active) .map-area {
+    position: fixed;
+    inset: 0;
+    height: 100dvh;
+    min-height: 100dvh;
+    overflow: hidden;
+  }
+
+  body:has(.map-canvas.kids-map-active) .map-canvas {
+    position: fixed;
+    inset: 0;
+    display: block;
+    height: 100dvh;
+    min-height: 100dvh;
+  }
+
+  body:has(.map-canvas.kids-map-active) .map-controls {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    z-index: 60;
+    margin: 0;
+  }
+
+  body:has(.map-canvas.kids-map-active) .map-controls button {
+    width: auto;
+    min-height: 38px;
+    padding: 0 10px;
+    font-size: 12px;
+  }
+
+  body:has(.map-canvas.kids-map-active) .kids-map-guide {
+    position: fixed;
+    inset: auto 10px 10px 10px;
+    z-index: 61;
+    width: auto;
+    max-height: 42dvh;
+    margin: 0;
+    padding: 10px;
+    overflow: hidden;
+    transform: none;
+  }
+
+  body:has(.map-canvas.kids-map-active) .kids-map-guide .eyebrow,
+  body:has(.map-canvas.kids-map-active) .kids-map-badges {
+    display: none;
+  }
+
+  body:has(.map-canvas.kids-map-active) .kids-map-guide h2 {
+    font-size: 18px;
+  }
+
+  body:has(.map-canvas.kids-map-active) .kids-map-guide p {
+    font-size: 12px;
+    line-height: 1.35;
+  }
+
+  body:has(.map-canvas.kids-map-active) .kids-map-actions {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  body:has(.map-canvas.kids-map-active) .kids-map-actions button {
+    min-height: 38px;
+    padding: 0 6px;
+    font-size: 11px;
+  }
+
+  body:has(.map-canvas.kids-map-active) .kids-map-actions button:first-child {
+    grid-column: auto;
+  }
+
+  body:has(.map-canvas.kids-map-active) .kids-map-list {
+    max-height: 96px;
+    overflow: hidden;
+  }
+
+  body:has(.map-canvas.kids-map-active) .kids-map-point {
+    min-height: 40px;
+    padding: 7px;
+  }
+
   body {
     overflow: auto;
   }
