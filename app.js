@@ -545,9 +545,35 @@ function normalizeChildProfile(profile = {}) {
   return {
     ...fallback,
     ...profile,
-    age: Math.max(4, Math.min(10, Number(profile.age || fallback.age))),
+    age: Math.max(4, Math.min(18, Number(profile.age || fallback.age))),
     permissions,
   };
+}
+
+function hasExplicitChildAgeProfile(child = normalizeChildProfile(state.childProfile)) {
+  return Boolean(child.updatedAt || child.onboardingComplete || child.nickname || child.guardianId);
+}
+
+function getModeForUserAge() {
+  const child = normalizeChildProfile(state.childProfile);
+  if (!hasExplicitChildAgeProfile(child)) return "";
+  const age = Number(child.age);
+  if (!Number.isFinite(age)) return "";
+  return age >= 4 && age <= 10 ? "kids" : "quest";
+}
+
+function applyAgeBasedMode(options = {}) {
+  if (!state.auth?.loggedIn || state.ui?.memberEditing) return false;
+  const mode = getModeForUserAge();
+  if (!mode) return false;
+  const protectedModes = ["guardian", "settings", "event-admin", "feedback"];
+  if (!options.force && protectedModes.includes(state.ui?.mode)) return false;
+  state.ui.mode = mode;
+  state.ui.kidsMapActive = false;
+  if (mode === "kids") state.ui.kidsRecordOpen = false;
+  saveState();
+  showMode(mode, { skipAgeRedirect: true });
+  return true;
 }
 
 function normalizePartyRoles(roles) {
@@ -1143,6 +1169,7 @@ async function loadFirebaseSnapshot(options = {}) {
     dedupeCustomEvents();
     saveState();
     render();
+    applyAgeBasedMode({ force: true });
   } catch (error) {
     setFirebaseStatus("Firebase読込エラー。設定とFirestoreルールを確認してください", true);
     console.error(error);
@@ -3576,7 +3603,7 @@ function saveChildProfile(event) {
   event.preventDefault();
   const previous = normalizeChildProfile(state.childProfile);
   const nickname = els.childNickname.value.trim();
-  const age = Math.max(4, Math.min(10, Number(els.childAge.value || previous.age || 6)));
+  const age = Math.max(4, Math.min(18, Number(els.childAge.value || previous.age || 6)));
   const nextPasscode = els.guardianPasscode?.value.trim() || "";
   if (nextPasscode && nextPasscode.length < 4) {
     if (els.childProfileStatus) els.childProfileStatus.textContent = "パスコードは4文字以上にしてください";
@@ -3617,6 +3644,7 @@ function saveChildProfile(event) {
   saveState();
   render();
   if (els.childProfileStatus) els.childProfileStatus.textContent = "保存しました";
+  applyAgeBasedMode();
   queueFirebaseSync("子どもプロフィール更新");
 }
 
@@ -3901,6 +3929,7 @@ function handleLogin(event) {
   addActivity(`${state.auth.email || "デモユーザー"}でログイン`);
   saveState();
   render();
+  if (state.member.name) applyAgeBasedMode({ force: true });
 }
 
 function handleDemoLogin() {
@@ -3916,6 +3945,7 @@ function handleDemoLogin() {
   addActivity("デモユーザーでログイン");
   saveState();
   render();
+  if (state.member.name) applyAgeBasedMode({ force: true });
 }
 
 function saveMemberInfo(event) {
@@ -3941,6 +3971,7 @@ function saveMemberInfo(event) {
   state.ui.memberEditing = false;
   const saved = saveState();
   render();
+  applyAgeBasedMode({ force: true });
   setMemberStatus(
     saved
       ? isFirstMemberSetup
@@ -5494,7 +5525,9 @@ els.mapSearch.addEventListener("keydown", (event) => {
 });
 
 render();
-if (state.ui.mode && state.ui.mode !== "quest" && state.ui.mode !== "guardian") {
+if (state.auth.loggedIn && applyAgeBasedMode({ force: true })) {
+  // 年齢に応じた初期表示を優先します。
+} else if (state.ui.mode && state.ui.mode !== "quest" && state.ui.mode !== "guardian") {
   showMode(state.ui.mode);
 } else if (state.ui.mode === "guardian") {
   state.ui.mode = "quest";
