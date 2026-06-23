@@ -2743,6 +2743,17 @@ function applyKidsMapOnlyVisibility() {
   }
 }
 
+function renderModeNavigation() {
+  const audienceMode = getModeForUserAge();
+  const isKidsAudience = audienceMode === "kids";
+  const isKidsScreen = state.ui?.mode === "kids" || Boolean(state.ui?.kidsMapActive);
+  document.body.classList.toggle("kids-screen-active", isKidsScreen);
+  document.querySelectorAll(".mode-tabs button").forEach((button) => {
+    const mode = button.dataset.mode;
+    button.classList.toggle("hidden", !isKidsAudience && mode === "kids");
+  });
+}
+
 function setKidsMapStatus(message, isError = false) {
   if (!els.kidsMapStatus) return;
   const kidsMessage = toKidsText(message);
@@ -3590,6 +3601,7 @@ function render() {
   renderFirebaseSettings();
   renderMapsSettings();
   renderDatabaseStatus();
+  renderModeNavigation();
   applyKidsMapOnlyVisibility();
 }
 
@@ -5791,6 +5803,7 @@ function showMode(mode, options = {}) {
   });
   renderKidsMode();
   renderGuardianMode();
+  renderModeNavigation();
   applyKidsMapOnlyVisibility();
 }
 

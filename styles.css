@@ -952,6 +952,10 @@ textarea {
   box-shadow: 0 4px 14px rgba(30, 48, 36, 0.09);
 }
 
+body.kids-screen-active .topbar {
+  display: none;
+}
+
 .hero-stream {
   position: absolute;
   z-index: 8;
