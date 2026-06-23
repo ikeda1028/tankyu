@@ -270,6 +270,7 @@
           <div class="mode-tabs" role="tablist" aria-label="表示モード">
             <button type="button" data-mode="kids" onclick="window.setQuestMode && window.setQuestMode('kids')">キッズ</button>
             <button class="active" type="button" data-mode="quest" onclick="window.setQuestMode && window.setQuestMode('quest')">探究</button>
+            <button type="button" data-mode="worlds" onclick="window.setQuestMode && window.setQuestMode('worlds')">ワールド</button>
             <button type="button" data-mode="event-admin" onclick="window.setQuestMode && window.setQuestMode('event-admin')">探究ポイント登録</button>
             <button type="button" data-mode="feedback" onclick="window.setQuestMode && window.setQuestMode('feedback')">フィードバック</button>
             <button type="button" data-mode="guardian" onclick="window.setQuestMode && window.setQuestMode('guardian')">保護者</button>
@@ -750,6 +751,10 @@
                 <span>はっけん</span>
                 <strong>みつけたこと</strong>
               </button>
+              <button class="kids-action-card" type="button" data-kids-action="world">
+                <span>ひみつ</span>
+                <strong>ワールド</strong>
+              </button>
             </div>
             <section id="kids-home-panel" class="kids-home-panel" aria-label="きっずほーむ">
               <article class="kids-growth-card">
@@ -1055,6 +1060,51 @@
                 </section>
               </div>
             </section>
+          </div>
+        </section>
+
+        <section class="worlds-view hidden" aria-label="ワールド作成">
+          <div class="worlds-shell">
+            <section class="worlds-main">
+              <div class="section-head">
+                <div>
+                  <p class="eyebrow">ワールド</p>
+                  <h2>自分のワールドを作る</h2>
+                </div>
+                <span id="world-status" class="small-badge">未作成</span>
+              </div>
+              <form id="world-form" class="world-form">
+                <label for="world-title">ワールド名</label>
+                <input id="world-title" type="text" placeholder="例：時間の森、未来商店街" />
+                <label for="world-concept">コンセプト</label>
+                <textarea id="world-concept" rows="4" placeholder="どんな世界か。何を見つけると開くのかを書いてください。"></textarea>
+                <label for="world-entrance">入口を隠す現実の場所</label>
+                <input id="world-entrance" type="text" placeholder="例：駅前の時計、公園の大きな木、商店街の看板" />
+                <label for="world-riddle">入口の謎</label>
+                <textarea id="world-riddle" rows="3" placeholder="例：この場所に残る昔の役割と、未来に必要な役割を見つける。"></textarea>
+                <label for="world-required-items">必要アイテム</label>
+                <input id="world-required-items" type="text" placeholder="例：光のかけら, 風のメモ, ありがとうのしるし" />
+                <div class="world-actions">
+                  <button id="generate-world-button" class="primary-button" type="button">AIでマップ生成</button>
+                  <button id="save-world-button" class="secondary-button" type="submit">保存</button>
+                </div>
+              </form>
+              <div id="world-map-preview" class="world-map-preview"></div>
+            </section>
+            <aside class="worlds-side">
+              <section>
+                <div class="section-head">
+                  <h3>作ったワールド</h3>
+                  <span id="world-count" class="small-badge">0件</span>
+                </div>
+                <div id="world-list" class="world-list"></div>
+              </section>
+              <section>
+                <h3>発見をマッピング</h3>
+                <p>最新の「みつけたこと」や現場投稿を、選択中のワールドに置きます。</p>
+                <button id="map-latest-discovery-button" class="secondary-button" type="button">最新の発見を置く</button>
+              </section>
+            </aside>
           </div>
         </section>
 

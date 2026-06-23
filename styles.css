@@ -1728,6 +1728,7 @@ body:has(.map-canvas.kids-map-active) #theme-evaluation-panel {
 .feedback-view,
 .hero-growth-view,
 .settings-view,
+.worlds-view,
 .kids-view,
 .guardian-view {
   position: absolute;
@@ -1746,6 +1747,7 @@ body:has(.map-canvas.kids-map-active) #theme-evaluation-panel {
 .feedback-shell,
 .hero-growth-shell,
 .settings-shell,
+.worlds-shell,
 .event-admin-shell {
   display: grid;
   grid-template-columns: minmax(420px, 1fr) minmax(260px, 340px);
@@ -1757,11 +1759,159 @@ body:has(.map-canvas.kids-map-active) #theme-evaluation-panel {
   grid-template-columns: minmax(460px, 1fr) minmax(300px, 360px);
 }
 
+.worlds-shell {
+  grid-template-columns: minmax(440px, 1fr) minmax(280px, 360px);
+}
+
 .kids-shell,
 .guardian-shell {
   display: grid;
   gap: 14px;
   min-height: 100%;
+}
+
+.worlds-main,
+.worlds-side > section {
+  padding: 16px;
+  border: 1px solid rgba(223, 230, 222, 0.9);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 10px 32px rgba(30, 48, 36, 0.08);
+}
+
+.worlds-side {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+}
+
+.worlds-side p {
+  color: var(--muted);
+  font-weight: 800;
+  line-height: 1.6;
+}
+
+.world-form {
+  display: grid;
+  gap: 10px;
+}
+
+.world-form label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.world-form input,
+.world-form textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+}
+
+.world-actions,
+.world-discoveries {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.world-map-preview {
+  margin-top: 14px;
+}
+
+.world-map-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(47, 143, 99, 0.12), rgba(47, 111, 179, 0.1)),
+    #fff;
+}
+
+.world-map-card > span,
+.world-map-card small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.world-map-card h3,
+.world-map-card p {
+  margin: 0;
+}
+
+.world-zone-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.world-zone {
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid rgba(47, 143, 99, 0.18);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.world-zone span {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 50%;
+  color: white;
+  background: var(--green);
+  font-weight: 900;
+}
+
+.world-zone p {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.5;
+}
+
+.world-discoveries strong {
+  width: 100%;
+}
+
+.world-discoveries span {
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: #eef8f2;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.world-list {
+  display: grid;
+  gap: 8px;
+}
+
+.world-list-card {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  text-align: left;
+}
+
+.world-list-card.active {
+  border-color: rgba(47, 143, 99, 0.42);
+  background: #f4fbf1;
 }
 
 .kids-hero,
@@ -5542,6 +5692,7 @@ body:has(.map-canvas.kids-map-active) .kids-navigator-bot {
   .feedback-view,
   .hero-growth-view,
   .settings-view,
+  .worlds-view,
   .kids-view,
   .guardian-view {
     position: relative;
@@ -5577,6 +5728,8 @@ body:has(.map-canvas.kids-map-active) .kids-navigator-bot {
   .hero-growth-shell,
   .hero-showcase,
   .settings-grid,
+  .worlds-shell,
+  .world-zone-grid,
   .event-admin-shell,
   .kids-encounter-actions,
   .approval-card,

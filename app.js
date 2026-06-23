@@ -268,6 +268,7 @@ const defaultState = {
   feedbacks: [],
   fieldPosts: [],
   customEvents: [],
+  worlds: [],
   aiSuggestions: [],
   themeSearch: {
     query: "",
@@ -305,6 +306,7 @@ const defaultState = {
     kidsRecordTextOpen: false,
     kidsPointScope: "own",
     editingEventId: "",
+    selectedWorldId: "",
     aiCandidateSource: null,
   },
   selectedReflection: "",
@@ -383,6 +385,7 @@ const els = {
   questViews: document.querySelectorAll(".quest-view"),
   heroGrowthView: document.querySelector(".hero-growth-view"),
   settingsView: document.querySelector(".settings-view"),
+  worldsView: document.querySelector(".worlds-view"),
   kidsView: document.querySelector(".kids-view"),
   guardianView: document.querySelector(".guardian-view"),
   kidsAvatar: document.querySelector("#kids-avatar"),
@@ -520,6 +523,18 @@ const els = {
   dbStatus: document.querySelector("#db-status"),
   dbCounts: document.querySelector("#db-counts"),
   exportDbButton: document.querySelector("#export-db-button"),
+  worldForm: document.querySelector("#world-form"),
+  worldTitle: document.querySelector("#world-title"),
+  worldConcept: document.querySelector("#world-concept"),
+  worldEntrance: document.querySelector("#world-entrance"),
+  worldRiddle: document.querySelector("#world-riddle"),
+  worldRequiredItems: document.querySelector("#world-required-items"),
+  generateWorldButton: document.querySelector("#generate-world-button"),
+  worldStatus: document.querySelector("#world-status"),
+  worldMapPreview: document.querySelector("#world-map-preview"),
+  worldCount: document.querySelector("#world-count"),
+  worldList: document.querySelector("#world-list"),
+  mapLatestDiscoveryButton: document.querySelector("#map-latest-discovery-button"),
   driveApiUrl: document.querySelector("#drive-api-url"),
   saveDriveUrlButton: document.querySelector("#save-drive-url-button"),
   syncDriveButton: document.querySelector("#sync-drive-button"),
@@ -2571,6 +2586,13 @@ function getGenerateImageApiPath() {
   return "/api/generate-image";
 }
 
+function getGenerateWorldApiPath() {
+  if (location.protocol === "file:" || location.hostname === "127.0.0.1" || location.hostname === "localhost") {
+    return `${PUBLIC_API_BASE}/api/generate-world`;
+  }
+  return "/api/generate-world";
+}
+
 function getAnalyzePhotoApiPath() {
   if (location.protocol === "file:" || location.hostname === "127.0.0.1" || location.hostname === "localhost") {
     return `${PUBLIC_API_BASE}/api/analyze-photo`;
@@ -3083,6 +3105,244 @@ function renderThemeEvaluation() {
       });
     });
   }
+}
+
+function splitWorldItems(value) {
+  return String(value || "")
+    .split(/[、,\n]/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .slice(0, 8);
+}
+
+function createFallbackWorldMap(concept, entrance, requiredItems) {
+  const base = concept || "まだ名前のないワールド";
+  return {
+    summary: `${base}は、現実の場所に隠れた入口から入る探究ワールドです。`,
+    zones: [
+      { name: "入口の門", clue: `${entrance || "身近な場所"}に残る昔の役割を見つける`, item: requiredItems[0] || "入口のしるし" },
+      { name: "記憶の広場", clue: "見つけたものが昔の人の工夫とどうつながるか調べる", item: requiredItems[1] || "記憶のかけら" },
+      { name: "未来の道", clue: "その発見が未来の誰を助けるか考える", item: requiredItems[2] || "未来のメモ" },
+    ],
+    entranceRiddle: `${entrance || "入口"}で、むかし・いま・みらいをつなぐ証拠を3つ見つける。`,
+  };
+}
+
+function normalizeWorldMap(data, concept, entrance, requiredItems) {
+  const fallback = createFallbackWorldMap(concept, entrance, requiredItems);
+  const zones = Array.isArray(data?.zones)
+    ? data.zones
+        .map((zone) => ({
+          name: String(zone?.name || "").trim().slice(0, 40),
+          clue: String(zone?.clue || "").trim().slice(0, 120),
+          item: String(zone?.item || "").trim().slice(0, 40),
+        }))
+        .filter((zone) => zone.name)
+        .slice(0, 6)
+    : [];
+  return {
+    summary: String(data?.summary || fallback.summary).trim().slice(0, 260),
+    zones: zones.length ? zones : fallback.zones,
+    entranceRiddle: String(data?.entranceRiddle || fallback.entranceRiddle).trim().slice(0, 180),
+  };
+}
+
+function getWorldPayloadFromForm() {
+  const requiredItems = splitWorldItems(els.worldRequiredItems?.value);
+  const concept = els.worldConcept?.value.trim() || "";
+  const entrance = els.worldEntrance?.value.trim() || "";
+  return {
+    title: els.worldTitle?.value.trim() || (concept ? `${concept.slice(0, 18)}ワールド` : "ひみつのワールド"),
+    concept,
+    entrance,
+    riddle: els.worldRiddle?.value.trim() || "",
+    requiredItems,
+  };
+}
+
+function setWorldStatus(message, isError = false) {
+  if (!els.worldStatus) return;
+  els.worldStatus.textContent = message;
+  els.worldStatus.classList.toggle("error", Boolean(isError));
+}
+
+async function generateWorldMap() {
+  const payload = getWorldPayloadFromForm();
+  if (!payload.concept) {
+    setWorldStatus("コンセプトを入力してください", true);
+    return null;
+  }
+  setWorldStatus("AIがマップ生成中...");
+  if (els.generateWorldButton) els.generateWorldButton.disabled = true;
+  try {
+    const response = await fetch(getGenerateWorldApiPath(), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...payload,
+        ageMode: getModeForUserAge() === "kids" ? "kids" : "standard",
+        interests: state.interests,
+        region: state.member.region || normalizeChildProfile(state.childProfile).region,
+      }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+    setWorldStatus("AIマップ生成済み");
+    return normalizeWorldMap(data.world, payload.concept, payload.entrance, payload.requiredItems);
+  } catch (error) {
+    console.warn("World generation fallback:", error);
+    setWorldStatus("ローカル生成で作成", false);
+    return createFallbackWorldMap(payload.concept, payload.entrance, payload.requiredItems);
+  } finally {
+    if (els.generateWorldButton) els.generateWorldButton.disabled = false;
+  }
+}
+
+function renderWorldMapPreview(world = getSelectedWorld()) {
+  if (!els.worldMapPreview) return;
+  if (!world) {
+    els.worldMapPreview.innerHTML = `<p class="empty-note">コンセプトを入れて、AIでマップを生成できます。</p>`;
+    return;
+  }
+  const zones = Array.isArray(world.map?.zones) ? world.map.zones : [];
+  const discoveries = Array.isArray(world.discoveries) ? world.discoveries : [];
+  els.worldMapPreview.innerHTML = `<article class="world-map-card">
+    <span>${escapeHtml(world.entrance || "入口未設定")}</span>
+    <h3>${escapeHtml(world.title)}</h3>
+    <p>${escapeHtml(world.map?.summary || world.concept || "")}</p>
+    <strong>入口の謎: ${escapeHtml(world.map?.entranceRiddle || world.riddle || "未設定")}</strong>
+    <div class="world-zone-grid">
+      ${zones
+        .map(
+          (zone, index) => `<div class="world-zone">
+        <span>${index + 1}</span>
+        <strong>${escapeHtml(zone.name)}</strong>
+        <p>${escapeHtml(zone.clue)}</p>
+        <small>${escapeHtml(zone.item || "アイテム未設定")}</small>
+      </div>`
+        )
+        .join("")}
+    </div>
+    <div class="world-discoveries">
+      <strong>マッピングした発見 ${discoveries.length}件</strong>
+      ${discoveries
+        .slice(0, 6)
+        .map((item) => `<span>${escapeHtml(item.title || item.text || "発見")}</span>`)
+        .join("")}
+    </div>
+  </article>`;
+}
+
+function getSelectedWorld() {
+  return state.worlds.find((world) => world.id === state.ui?.selectedWorldId) || state.worlds[0] || null;
+}
+
+function fillWorldForm(world) {
+  if (!world) return;
+  if (els.worldTitle) els.worldTitle.value = world.title || "";
+  if (els.worldConcept) els.worldConcept.value = world.concept || "";
+  if (els.worldEntrance) els.worldEntrance.value = world.entrance || "";
+  if (els.worldRiddle) els.worldRiddle.value = world.riddle || "";
+  if (els.worldRequiredItems) els.worldRequiredItems.value = (world.requiredItems || []).join(", ");
+}
+
+async function saveWorld(event) {
+  event?.preventDefault();
+  const payload = getWorldPayloadFromForm();
+  if (!payload.concept) {
+    setWorldStatus("コンセプトを入力してください", true);
+    return;
+  }
+  const existing = getSelectedWorld();
+  const map = existing?.map && existing.concept === payload.concept ? existing.map : await generateWorldMap();
+  if (!map) return;
+  const world = {
+    id: existing?.id || `world-${Date.now()}`,
+    ...payload,
+    map,
+    discoveries: existing?.discoveries || [],
+    createdAt: existing?.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  const index = state.worlds.findIndex((item) => item.id === world.id);
+  if (index >= 0) state.worlds[index] = world;
+  else state.worlds.unshift(world);
+  state.ui.selectedWorldId = world.id;
+  addActivity(`${world.title}をワールド保存`);
+  saveState();
+  renderWorlds();
+  queueFirebaseSync("ワールド保存");
+}
+
+async function generateAndSaveWorld() {
+  const payload = getWorldPayloadFromForm();
+  const map = await generateWorldMap();
+  if (!map) return;
+  const world = {
+    id: `world-${Date.now()}`,
+    ...payload,
+    map,
+    discoveries: [],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  state.worlds.unshift(world);
+  state.ui.selectedWorldId = world.id;
+  addActivity(`${world.title}をAI生成`);
+  saveState();
+  renderWorlds();
+  queueFirebaseSync("ワールドAI生成");
+}
+
+function mapLatestDiscoveryToWorld() {
+  const world = getSelectedWorld();
+  const latest = [...(state.fieldPosts || [])].sort((a, b) => String(b.at || "").localeCompare(String(a.at || "")))[0];
+  if (!world) {
+    setWorldStatus("先にワールドを作ってください", true);
+    return;
+  }
+  if (!latest) {
+    setWorldStatus("まだマッピングできる発見がありません", true);
+    return;
+  }
+  const discovery = {
+    id: latest.id || `discovery-${Date.now()}`,
+    title: latest.eventTitle || latest.stamp || "みつけたこと",
+    text: latest.text || latest.stamp || "",
+    at: latest.at || new Date().toISOString(),
+    location: latest.location || null,
+  };
+  world.discoveries = [discovery, ...(world.discoveries || []).filter((item) => item.id !== discovery.id)].slice(0, 20);
+  world.updatedAt = new Date().toISOString();
+  addActivity(`${world.title}に発見をマッピング`);
+  saveState();
+  renderWorlds();
+  queueFirebaseSync("ワールド発見マッピング");
+}
+
+function renderWorlds() {
+  if (!els.worldsView) return;
+  const worlds = Array.isArray(state.worlds) ? state.worlds : [];
+  if (els.worldCount) els.worldCount.textContent = `${worlds.length}件`;
+  const selected = getSelectedWorld();
+  if (selected) fillWorldForm(selected);
+  renderWorldMapPreview(selected);
+  if (!els.worldList) return;
+  els.worldList.innerHTML = worlds.length
+    ? worlds
+        .map((world) => `<button class="world-list-card${world.id === selected?.id ? " active" : ""}" type="button" data-world-id="${escapeHtml(world.id)}">
+        <strong>${escapeHtml(world.title)}</strong>
+        <span>${escapeHtml(world.entrance || "入口未設定")} / アイテム ${(world.requiredItems || []).length}こ</span>
+      </button>`)
+        .join("")
+    : `<p class="empty-note">まだワールドはありません。</p>`;
+  els.worldList.querySelectorAll("[data-world-id]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.ui.selectedWorldId = button.dataset.worldId;
+      saveState();
+      renderWorlds();
+    });
+  });
 }
 
 function toggleCompactEvents() {
@@ -3663,6 +3923,7 @@ function render() {
   renderActivity();
   renderGrowthPath();
   renderFeedbackView();
+  renderWorlds();
   renderThemeEvaluation();
   renderAiSuggestions();
   renderRegisteredEvents();
@@ -5932,6 +6193,7 @@ function showMode(mode, options = {}) {
   const eventAdmin = mode === "event-admin";
   const capital = mode === "capital";
   const settings = mode === "settings";
+  const worlds = mode === "worlds";
   const kids = mode === "kids";
   const guardian = mode === "guardian";
   state.ui.mode = mode;
@@ -5941,12 +6203,13 @@ function showMode(mode, options = {}) {
   saveState();
   const kidsMapOnly = mode === "quest" && Boolean(options.kidsMap);
   els.questViews.forEach((view) =>
-    view.classList.toggle("hidden", feedback || eventAdmin || capital || settings || kids || guardian || (kidsMapOnly && !view.classList.contains("map-canvas")))
+    view.classList.toggle("hidden", feedback || eventAdmin || capital || settings || worlds || kids || guardian || (kidsMapOnly && !view.classList.contains("map-canvas")))
   );
   els.feedbackView.classList.toggle("hidden", !feedback);
   els.eventAdminView.classList.toggle("hidden", !eventAdmin);
   els.heroGrowthView?.classList.toggle("hidden", !capital);
   els.settingsView?.classList.toggle("hidden", !settings);
+  els.worldsView?.classList.toggle("hidden", !worlds);
   els.kidsView?.classList.toggle("hidden", !kids);
   els.guardianView?.classList.toggle("hidden", !guardian);
   document.querySelectorAll(".mode-tabs button").forEach((item) => {
@@ -5954,6 +6217,7 @@ function showMode(mode, options = {}) {
   });
   renderKidsMode();
   renderGuardianMode();
+  renderWorlds();
   renderModeNavigation();
   applyKidsMapOnlyVisibility();
 }
@@ -6971,6 +7235,9 @@ document.querySelector("#analyze-button").addEventListener("click", selectRecomm
 document.querySelector("#import-button").addEventListener("click", importMockApps);
 document.querySelector("#reset-button").addEventListener("click", resetState);
 els.exportDbButton.addEventListener("click", exportDatabase);
+els.worldForm?.addEventListener("submit", saveWorld);
+els.generateWorldButton?.addEventListener("click", generateAndSaveWorld);
+els.mapLatestDiscoveryButton?.addEventListener("click", mapLatestDiscoveryToWorld);
 document.querySelectorAll("[data-kids-action]").forEach((button) => {
   button.addEventListener("click", () => {
     const action = button.dataset.kidsAction;
@@ -6995,6 +7262,10 @@ document.querySelectorAll("[data-kids-action]").forEach((button) => {
       showMode("kids");
       els.kidsRecordPanel?.scrollIntoView({ behavior: "smooth", block: "center" });
       startKidsRecordVoice();
+      return;
+    }
+    if (action === "world") {
+      showMode("worlds");
       return;
     }
   });
