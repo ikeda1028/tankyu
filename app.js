@@ -296,10 +296,11 @@ const defaultState = {
   },
   ui: {
     mode: "quest",
-    eventsPanel: "compact",
-    encounterPanel: "open",
+    eventsPanel: "collapsed",
+    encounterPanel: "collapsed",
     fieldPostPanel: "open",
-    themePanel: "compact",
+    themePanel: "collapsed",
+    mapClickHintShown: false,
     memberEditing: false,
     kidsMapActive: false,
     kidsRecordOpen: false,
@@ -353,6 +354,7 @@ const els = {
   impactField: document.querySelector("#impact-field"),
   mapSearch: document.querySelector("#map-search"),
   mapSearchButton: document.querySelector("#map-search-button"),
+  heroStream: document.querySelector(".hero-stream"),
   heroStreamTrack: document.querySelector("#hero-stream-track"),
   heroStreamCount: document.querySelector("#hero-stream-count"),
   explorationDepth: document.querySelector("#exploration-depth"),
@@ -680,6 +682,10 @@ state.guardian = { ...defaultState.guardian, ...(state.guardian || {}) };
 state.member.avatar = normalizeAvatar(state.member.avatar);
 state.member.partyRoles = normalizePartyRoles(state.member.partyRoles);
 state.ui = { ...defaultState.ui, ...(state.ui || {}) };
+state.ui.eventsPanel = "collapsed";
+state.ui.encounterPanel = "collapsed";
+state.ui.themePanel = "collapsed";
+state.ui.mapClickHintShown = false;
 state.joyActions = Array.isArray(state.joyActions) ? state.joyActions : [];
 state.visitedCharacters = Array.isArray(state.visitedCharacters) ? state.visitedCharacters : [];
 state.fieldPosts = Array.isArray(state.fieldPosts) ? state.fieldPosts : [];
@@ -1709,6 +1715,12 @@ async function initializeGoogleMap() {
       gestureHandling: "greedy",
       styles: state.ui?.kidsMapActive ? getKidsSafeMapStyles() : null,
     });
+    googleMap.addListener("click", () => {
+      if (state.ui?.kidsMapActive) return;
+      openEncounterFromMap();
+      saveState();
+      render();
+    });
     els.mapCanvas.classList.add("google-map-enabled");
     renderGoogleMapMarkers();
     setMapsStatus("Google Map表示中");
@@ -2057,6 +2069,20 @@ function focusGoogleMapPoint(position, zoom = 9) {
   }, 160);
 }
 
+function pauseQuestSidePanels() {
+  state.ui.eventsPanel = "collapsed";
+  state.ui.encounterPanel = "collapsed";
+  state.ui.themePanel = "collapsed";
+}
+
+function openEncounterFromMap(encounterId = state.selected) {
+  if (encounterId) state.selected = encounterId;
+  state.ui.encounterPanel = "open";
+  state.ui.eventsPanel = "collapsed";
+  state.ui.themePanel = "collapsed";
+  state.ui.mapClickHintShown = true;
+}
+
 function renderGoogleMapMarkers() {
   if (!googleMap || !window.google?.maps) return;
   clearGoogleMapMarkers();
@@ -2081,7 +2107,7 @@ function renderGoogleMapMarkers() {
       icon: createMarkerIcon(encounter.color),
     });
     marker.addListener("click", () => {
-      state.selected = encounter.id;
+      openEncounterFromMap(encounter.id);
       grantJoy(3, `${encounter.title}の地図ピンを開いた`, `event-view:${encounter.id}`);
       saveState();
       render();
@@ -2698,7 +2724,7 @@ function renderSpots() {
     .join("");
   els.spotsLayer.querySelectorAll(".spot").forEach((spot) => {
     spot.addEventListener("click", () => {
-      state.selected = spot.dataset.id;
+      openEncounterFromMap(spot.dataset.id);
       grantJoy(3, `${getEventTitle(spot.dataset.id)}の詳細を開いた`, `event-view:${spot.dataset.id}`);
       saveState();
       render();
@@ -2901,6 +2927,7 @@ function openKidsMapPoint(eventId, options = {}) {
 
 function renderEventDrawer() {
   const mode = state.ui?.eventsPanel || "compact";
+  els.eventDrawer.classList.toggle("hidden", mode === "collapsed");
   els.eventDrawer.classList.toggle("compact", mode === "compact");
   els.eventDrawer.classList.toggle("collapsed", mode === "collapsed");
   els.compactEventsButton.textContent = mode === "compact" ? "▣" : "□";
@@ -2918,6 +2945,7 @@ function renderEventDrawer() {
 function renderEncounterPanelState() {
   if (!els.encounterPanel) return;
   const mode = state.ui?.encounterPanel || "open";
+  els.encounterPanel.classList.toggle("hidden", mode === "collapsed");
   els.encounterPanel.classList.toggle("compact", mode === "compact");
   els.encounterPanel.classList.toggle("collapsed", mode === "collapsed");
   if (els.compactEncounterButton) {
@@ -2960,6 +2988,7 @@ function renderFieldPostPanelState() {
 function renderThemePanelState() {
   if (!els.themeEvaluationPanel) return;
   const mode = state.ui?.themePanel || "compact";
+  els.themeEvaluationPanel.classList.toggle("hidden", mode === "collapsed");
   els.themeEvaluationPanel.classList.toggle("compact", mode === "compact");
   els.themeEvaluationPanel.classList.toggle("collapsed", mode === "collapsed");
   if (els.compactThemeButton) {
@@ -2989,7 +3018,7 @@ function renderThemeEvaluation() {
   if (els.mapSearch && document.activeElement !== els.mapSearch) {
     els.mapSearch.value = query || "";
   }
-  els.themeEvaluationPanel.classList.toggle("hidden", !query);
+  els.themeEvaluationPanel.classList.toggle("hidden", !query || state.ui?.themePanel === "collapsed");
   if (!query) return;
 
   const bases = getThemeBaseRankings().slice(0, 4);
@@ -4011,6 +4040,7 @@ function attachHeroStreamHandlers() {
 
 function renderHeroStream() {
   if (!els.heroStreamTrack || !els.heroStreamCount) return;
+  els.heroStream?.classList.add("hidden");
   const items = getHeroStreamItems();
   els.heroStreamCount.textContent = `${items.length}件`;
   if (!items.length) {
@@ -6339,6 +6369,10 @@ function showMode(mode, options = {}) {
   if (mode !== "quest" || !options.kidsMap) {
     state.ui.kidsMapActive = false;
   }
+  if (mode === "quest" && !options.kidsMap) {
+    pauseQuestSidePanels();
+    els.heroStream?.classList.add("hidden");
+  }
   saveState();
   const kidsMapOnly = mode === "quest" && Boolean(options.kidsMap);
   els.questViews.forEach((view) =>
@@ -7433,6 +7467,13 @@ els.mapSearch.addEventListener("keydown", (event) => {
   if (event.key !== "Enter") return;
   event.preventDefault();
   searchThemeOnMap(els.mapSearch.value);
+});
+els.mapCanvas?.addEventListener("click", (event) => {
+  if (state.ui?.kidsMapActive) return;
+  if (event.target.closest(".spot, .map-controls, .kids-map-guide")) return;
+  openEncounterFromMap();
+  saveState();
+  render();
 });
 els.openingSkipButton?.addEventListener("click", closeOpeningScreen);
 els.openingVideo?.addEventListener("ended", closeOpeningScreen);
