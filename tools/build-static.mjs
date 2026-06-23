@@ -5,11 +5,17 @@ const root = new URL("..", import.meta.url).pathname;
 const dist = join(root, "dist");
 
 const publicFiles = ["index.html", "styles.css", "app.js", "database.js", "firebase-sync.js"];
+const assetFiles = ["opening-kids.mp4"];
 
 await mkdir(dist, { recursive: true });
+await mkdir(join(dist, "assets"), { recursive: true });
 
 for (const file of publicFiles) {
   await copyFile(join(root, file), join(dist, file));
+}
+
+for (const file of assetFiles) {
+  await copyFile(join(root, "assets", file), join(dist, "assets", file));
 }
 
 function getEnv(...names) {

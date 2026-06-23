@@ -549,6 +549,10 @@ const els = {
   themeKeywords: document.querySelector("#theme-keywords"),
   themePlaces: document.querySelector("#theme-places"),
   themeEvaluationBases: document.querySelector("#theme-evaluation-bases"),
+  openingScreen: document.querySelector("#opening-screen"),
+  openingVideo: document.querySelector("#opening-video"),
+  openingSkipButton: document.querySelector("#opening-skip-button"),
+  openingSoundButton: document.querySelector("#opening-sound-button"),
   authScreen: document.querySelector("#auth-screen"),
   loginForm: document.querySelector("#login-form"),
   memberForm: document.querySelector("#member-form"),
@@ -2752,6 +2756,30 @@ function renderModeNavigation() {
     const mode = button.dataset.mode;
     button.classList.toggle("hidden", !isKidsAudience && mode === "kids");
   });
+}
+
+function closeOpeningScreen() {
+  els.openingVideo?.pause();
+  els.openingScreen?.classList.add("hidden");
+}
+
+function playOpeningVideo() {
+  if (!els.openingScreen || !els.openingVideo) return;
+  els.openingScreen.classList.remove("hidden");
+  els.openingVideo.currentTime = 0;
+  els.openingVideo.muted = true;
+  els.openingVideo.play().catch(() => {
+    if (els.openingSoundButton) els.openingSoundButton.textContent = "さいせい";
+  });
+}
+
+function toggleOpeningSound() {
+  if (!els.openingVideo) return;
+  if (els.openingVideo.paused) {
+    els.openingVideo.play().catch(() => {});
+  }
+  els.openingVideo.muted = !els.openingVideo.muted;
+  if (els.openingSoundButton) els.openingSoundButton.textContent = els.openingVideo.muted ? "おと" : "しずかに";
 }
 
 function setKidsMapStatus(message, isError = false) {
@@ -6866,6 +6894,9 @@ els.mapSearch.addEventListener("keydown", (event) => {
   event.preventDefault();
   searchThemeOnMap(els.mapSearch.value);
 });
+els.openingSkipButton?.addEventListener("click", closeOpeningScreen);
+els.openingVideo?.addEventListener("ended", closeOpeningScreen);
+els.openingSoundButton?.addEventListener("click", toggleOpeningSound);
 
 async function requestPortraitOrientationLock() {
   if (!window.matchMedia("(max-width: 920px)").matches) return;
@@ -6885,6 +6916,7 @@ window.addEventListener("orientationchange", requestPortraitOrientationLock);
 window.addEventListener("resize", requestPortraitOrientationLock);
 
 render();
+playOpeningVideo();
 if (state.auth.loggedIn && applyAgeBasedMode({ force: true })) {
   // 年齢に応じた初期表示を優先します。
 } else if (state.ui.mode && state.ui.mode !== "quest" && state.ui.mode !== "guardian") {

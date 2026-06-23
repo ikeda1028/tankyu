@@ -48,6 +48,40 @@ button {
   display: none;
 }
 
+.opening-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: #050805;
+}
+
+.opening-screen video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #050805;
+}
+
+.opening-actions {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 121;
+  display: flex;
+  gap: 8px;
+}
+
+.opening-actions button {
+  min-height: 42px;
+  padding: 0 16px;
+  border-radius: 999px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
+  font-weight: 900;
+}
+
 .auth-screen {
   position: fixed;
   inset: 0;
