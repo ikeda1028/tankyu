@@ -2721,7 +2721,7 @@ body:has(.map-canvas.kids-map-active) .kids-navigator-bot {
 
 .kids-record-capture {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(86px, 0.65fr);
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr);
   gap: 8px;
 }
 
@@ -2737,6 +2737,11 @@ body:has(.map-canvas.kids-map-active) .kids-navigator-bot {
   min-height: 58px;
   font-size: 16px;
   font-weight: 900;
+}
+
+.kids-record-capture .primary-button {
+  min-height: 66px;
+  font-size: 18px;
 }
 
 .kids-record-photo-preview {
@@ -2825,9 +2830,9 @@ body:has(.map-canvas.kids-map-active) .kids-navigator-bot {
 }
 
 .kids-record-actions {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
-  justify-content: space-between;
   gap: 10px;
 }
 
@@ -5268,13 +5273,19 @@ body:has(.map-canvas.kids-map-active) .kids-navigator-bot {
   }
 
   body:has(.kids-view:not(.hidden)) .kids-record-capture {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 6px;
   }
 
   body:has(.kids-view:not(.hidden)) .kids-record-capture button {
     min-height: 48px;
     font-size: 14px;
+  }
+
+  body:has(.kids-view:not(.hidden)) .kids-record-capture .primary-button {
+    grid-column: 1 / -1;
+    min-height: 58px;
+    font-size: 17px;
   }
 
   body:has(.kids-view:not(.hidden)) .kids-record-photo-preview img {
@@ -5314,7 +5325,7 @@ body:has(.map-canvas.kids-map-active) .kids-navigator-bot {
 
   body:has(.kids-view:not(.hidden)) .kids-record-actions {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(120px, auto);
+    grid-template-columns: minmax(0, 1fr) auto auto;
     gap: 8px;
     align-items: center;
   }

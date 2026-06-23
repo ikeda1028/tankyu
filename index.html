@@ -802,14 +802,16 @@
               </div>
               <div class="kids-record-capture">
                 <input id="kids-record-photo" type="file" accept="image/*" capture="environment" />
-                <button id="kids-record-photo-button" class="primary-button" type="button">すぐしゃしん</button>
-                <button id="kids-record-voice-button" class="secondary-button" type="button">こえでのこす</button>
+                <button id="kids-record-voice-button" class="primary-button" type="button">こえでのこす</button>
+                <button id="kids-record-photo-button" class="secondary-button" type="button">すぐしゃしん</button>
+                <button id="kids-record-text-button" class="secondary-button" type="button">もじでのこす</button>
               </div>
               <div id="kids-record-photo-preview" class="kids-record-photo-preview hidden"></div>
               <div id="kids-photo-analysis" class="kids-photo-analysis hidden" aria-live="polite"></div>
-              <textarea id="kids-record-text" rows="3" placeholder="はなしたことや、みつけたことがここにはいります"></textarea>
+              <textarea id="kids-record-text" class="hidden" rows="3" placeholder="はなしたことや、みつけたことがここにはいります"></textarea>
               <div class="kids-record-actions">
                 <strong id="kids-record-selected">すたんぷなし</strong>
+                <button id="kids-record-back-button" class="secondary-button" type="button">もどる</button>
                 <button id="save-kids-record-button" class="primary-button" type="button">きろくする</button>
               </div>
               <p id="kids-record-status" class="field-post-status" aria-live="polite"></p>

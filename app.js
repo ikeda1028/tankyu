@@ -302,6 +302,7 @@ const defaultState = {
     memberEditing: false,
     kidsMapActive: false,
     kidsRecordOpen: false,
+    kidsRecordTextOpen: false,
     kidsPointScope: "own",
     editingEventId: "",
     aiCandidateSource: null,
@@ -427,6 +428,8 @@ const els = {
   kidsRecordPhoto: document.querySelector("#kids-record-photo"),
   kidsRecordPhotoButton: document.querySelector("#kids-record-photo-button"),
   kidsRecordVoiceButton: document.querySelector("#kids-record-voice-button"),
+  kidsRecordTextButton: document.querySelector("#kids-record-text-button"),
+  kidsRecordBackButton: document.querySelector("#kids-record-back-button"),
   kidsRecordPhotoPreview: document.querySelector("#kids-record-photo-preview"),
   kidsPhotoAnalysis: document.querySelector("#kids-photo-analysis"),
   kidsRecordText: document.querySelector("#kids-record-text"),
@@ -4198,6 +4201,11 @@ function renderKidsRecordPanel() {
   const records = (state.fieldPosts || []).filter((post) => post.sourceMode === "kids").slice(0, 5);
   if (els.kidsRecordCount) els.kidsRecordCount.textContent = `${records.length}こ`;
   if (els.kidsRecordSelected) els.kidsRecordSelected.textContent = pendingKidsRecordStamp || "すたんぷなし";
+  const textOpen = Boolean(state.ui?.kidsRecordTextOpen);
+  els.kidsRecordText?.classList.toggle("hidden", !textOpen);
+  if (els.kidsRecordTextButton) {
+    els.kidsRecordTextButton.textContent = textOpen ? "もじをとじる" : "もじでのこす";
+  }
   renderKidsRecordPhotoPreview();
   renderKidsPhotoAnalysis();
   document.querySelectorAll("[data-kids-record-stamp]").forEach((button) => {
@@ -4220,6 +4228,21 @@ function renderKidsRecordPanel() {
       </article>`;
     })
     .join("");
+}
+
+function toggleKidsRecordTextInput() {
+  state.ui.kidsRecordTextOpen = !state.ui.kidsRecordTextOpen;
+  saveState();
+  renderKidsRecordPanel();
+  if (state.ui.kidsRecordTextOpen) els.kidsRecordText?.focus();
+}
+
+function closeKidsRecordPanel() {
+  state.ui.kidsRecordOpen = false;
+  state.ui.kidsRecordTextOpen = false;
+  stopKidsRecordVoice();
+  saveState();
+  showMode("kids");
 }
 
 function setKidsRecordStatus(message, isError = false) {
@@ -4532,6 +4555,13 @@ function getSpeechErrorMessage(errorType = "") {
   return messages[errorType] || "こえのにゅうりょくがとまりました。もういちどためしてください。";
 }
 
+function stopKidsRecordVoice() {
+  if (!kidsRecordSpeechRecognition) return;
+  kidsRecordSpeechRecognition.stop();
+  kidsRecordSpeechRecognition = null;
+  if (els.kidsRecordVoiceButton) els.kidsRecordVoiceButton.textContent = "こえでのこす";
+}
+
 function startKidsRecordVoice() {
   const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!Recognition) {
@@ -4539,8 +4569,7 @@ function startKidsRecordVoice() {
     return;
   }
   if (kidsRecordSpeechRecognition) {
-    kidsRecordSpeechRecognition.stop();
-    kidsRecordSpeechRecognition = null;
+    stopKidsRecordVoice();
     return;
   }
   const recognition = new Recognition();
@@ -4558,6 +4587,9 @@ function startKidsRecordVoice() {
       .trim();
     if (transcript && els.kidsRecordText) {
       els.kidsRecordText.value = [els.kidsRecordText.value.trim(), transcript].filter(Boolean).join(" ");
+      state.ui.kidsRecordTextOpen = true;
+      saveState();
+      renderKidsRecordPanel();
     }
     setKidsRecordStatus(transcript ? "こえをもじにしました" : "こえをききとれませんでした", !transcript);
   };
@@ -4623,6 +4655,7 @@ async function saveKidsRecord() {
   addActivity(`きょうのきろくを保存。たんけんパワー +${questDelta} / ワクワク +${joyDelta}`);
   if (els.kidsRecordText) els.kidsRecordText.value = "";
   if (els.kidsRecordPhoto) els.kidsRecordPhoto.value = "";
+  state.ui.kidsRecordTextOpen = false;
   kidsRecordImageAnalysisToken += 1;
   setKidsPhotoAnalysis({ status: "idle" });
   pendingKidsRecordImage = null;
@@ -6863,6 +6896,8 @@ document.querySelectorAll("[data-kids-point-scope]").forEach((button) => {
 els.kidsRecordPhoto?.addEventListener("change", handleKidsRecordPhotoChange);
 els.kidsRecordPhotoButton?.addEventListener("click", openKidsRecordCamera);
 els.kidsRecordVoiceButton?.addEventListener("click", startKidsRecordVoice);
+els.kidsRecordTextButton?.addEventListener("click", toggleKidsRecordTextInput);
+els.kidsRecordBackButton?.addEventListener("click", closeKidsRecordPanel);
 els.kidsNavigatorBot?.addEventListener("click", askKidsNavigator);
 [
   els.kidsAvatar,
@@ -6925,9 +6960,10 @@ document.querySelectorAll("[data-kids-action]").forEach((button) => {
     }
     if (action === "photo") {
       state.ui.kidsRecordOpen = true;
+      state.ui.kidsRecordTextOpen = false;
       showMode("kids");
       els.kidsRecordPanel?.scrollIntoView({ behavior: "smooth", block: "center" });
-      els.kidsRecordText?.focus();
+      startKidsRecordVoice();
       return;
     }
   });
