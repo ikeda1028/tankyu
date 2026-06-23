@@ -1529,6 +1529,37 @@ function isAdminUser() {
   return Boolean(email && getAdminEmails().includes(email));
 }
 
+function isAdminEmail(email) {
+  const normalized = String(email || "").trim().toLowerCase();
+  return Boolean(normalized && getAdminEmails().includes(normalized));
+}
+
+function ensureAdminProfile(email = state.auth?.email) {
+  if (!isAdminEmail(email) || state.member?.name) return false;
+  state.member = {
+    ...defaultState.member,
+    ...(state.member || {}),
+    name: "管理者",
+    age: 18,
+    grade: "その他",
+    initialInterest: "探究プラットフォーム運営",
+    heroRole: "管理者",
+    avatar: normalizeAvatar(state.member?.avatar),
+  };
+  state.childProfile = normalizeChildProfile(state.childProfile);
+  state.ui = {
+    ...defaultState.ui,
+    ...(state.ui || {}),
+    mode: "quest",
+    memberEditing: false,
+    kidsMapActive: false,
+    kidsRecordOpen: false,
+  };
+  addActivity(`${email}を管理者プロフィールで開始`);
+  saveState();
+  return true;
+}
+
 function getMapsKeySource() {
   if (getPublicConfig().googleMapsApiKey) return "public";
   if (state.maps?.apiKey) return "saved";
@@ -5296,7 +5327,7 @@ async function handleLogin(event) {
   render();
   const loadedFromFirebase = await loadFirebaseSnapshot({ silent: true, authEmail: email });
   if (!loadedFromFirebase && !state.member.name) {
-    showMemberForm();
+    if (!ensureAdminProfile(email)) showMemberForm();
   }
   saveState();
   render();
@@ -5313,7 +5344,7 @@ async function handleDemoLogin() {
   render();
   const loadedFromFirebase = await loadFirebaseSnapshot({ silent: true, authEmail: email });
   if (!loadedFromFirebase && !state.member.name) {
-    showMemberForm();
+    if (!ensureAdminProfile(email)) showMemberForm();
   }
   saveState();
   render();

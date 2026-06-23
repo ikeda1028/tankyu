@@ -42,6 +42,19 @@ function getFirebaseUserId(state) {
   return String(rawId).trim().replace(/[/.#[\]\s]/g, "_") || "demo-student";
 }
 
+function getFirebaseUserIdAliases(state) {
+  const rawId = String(state?.auth?.email || state?.member?.name || "demo-student").trim() || "demo-student";
+  return [
+    getFirebaseUserId(state),
+    rawId,
+    rawId.toLowerCase(),
+    rawId.replace(/[^a-zA-Z0-9_-]/g, "_"),
+    rawId.toLowerCase().replace(/[^a-zA-Z0-9_-]/g, "_"),
+  ]
+    .filter((id) => id && !id.includes("/"))
+    .filter((id, index, ids) => ids.indexOf(id) === index);
+}
+
 function dataUrlToBlob(dataUrl) {
   const [meta = "", base64 = ""] = String(dataUrl).split(",");
   const contentType = meta.match(/data:(.*?);base64/)?.[1] || "image/jpeg";
@@ -197,10 +210,13 @@ async function saveSnapshot(config, state, snapshot) {
 
 async function loadSnapshot(config, state) {
   const { firestore, db } = await connectFirebase(config);
-  const userId = getFirebaseUserId(state);
-  const ref = firestore.doc(db, FIREBASE_COLLECTION, userId);
-  const snap = await firestore.getDoc(ref);
-  return snap.exists() ? { userId, ...snap.data() } : null;
+  const userIds = getFirebaseUserIdAliases(state);
+  for (const userId of userIds) {
+    const ref = firestore.doc(db, FIREBASE_COLLECTION, userId);
+    const snap = await firestore.getDoc(ref);
+    if (snap.exists()) return { userId, ...snap.data() };
+  }
+  return null;
 }
 
 window.WakuwakuFirebase = {
