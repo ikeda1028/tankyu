@@ -2769,7 +2769,7 @@ function playOpeningVideo() {
   els.openingVideo.currentTime = 0;
   els.openingVideo.muted = true;
   els.openingVideo.play().catch(() => {
-    if (els.openingSoundButton) els.openingSoundButton.textContent = "さいせい";
+    if (els.openingSoundButton) els.openingSoundButton.textContent = "▶";
   });
 }
 
@@ -2779,7 +2779,7 @@ function toggleOpeningSound() {
     els.openingVideo.play().catch(() => {});
   }
   els.openingVideo.muted = !els.openingVideo.muted;
-  if (els.openingSoundButton) els.openingSoundButton.textContent = els.openingVideo.muted ? "おと" : "しずかに";
+  if (els.openingSoundButton) els.openingSoundButton.textContent = els.openingVideo.muted ? "♪" : "♪×";
 }
 
 function setKidsMapStatus(message, isError = false) {
