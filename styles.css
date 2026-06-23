@@ -1846,6 +1846,88 @@ body:has(.map-canvas.kids-map-active) #theme-evaluation-panel {
   margin: 0;
 }
 
+.world-visual-map {
+  position: relative;
+  display: grid;
+  min-height: 260px;
+  overflow: hidden;
+  border: 1px solid rgba(47, 143, 99, 0.18);
+  border-radius: 8px;
+  background: #e9f5ef;
+}
+
+.world-visual-map img {
+  width: 100%;
+  height: 100%;
+  min-height: 260px;
+  object-fit: cover;
+}
+
+.world-visual-fallback {
+  display: grid;
+  min-height: 260px;
+  place-items: center;
+  gap: 6px;
+  padding: 18px;
+  text-align: center;
+  color: var(--muted);
+  background:
+    radial-gradient(circle at 18% 72%, rgba(47, 143, 99, 0.2), transparent 22%),
+    radial-gradient(circle at 72% 28%, rgba(47, 111, 179, 0.18), transparent 24%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.75), rgba(47, 143, 99, 0.12));
+}
+
+.world-visual-fallback strong {
+  color: var(--ink);
+  font-size: 18px;
+}
+
+.world-position-marker {
+  position: absolute;
+  left: var(--marker-x);
+  top: var(--marker-y);
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border: 3px solid white;
+  border-radius: 50%;
+  color: white;
+  background: #d84b3a;
+  box-shadow: 0 10px 24px rgba(42, 55, 47, 0.28);
+  font-weight: 1000;
+  transform: translate(-50%, -50%);
+}
+
+.world-move-controls {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) 42px auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.world-move-controls button {
+  min-height: 38px;
+  border: 1px solid rgba(47, 143, 99, 0.22);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.world-move-controls button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.world-move-controls strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .world-zone-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1859,6 +1941,15 @@ body:has(.map-canvas.kids-map-active) #theme-evaluation-panel {
   border: 1px solid rgba(47, 143, 99, 0.18);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.9);
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.world-zone.active {
+  border-color: rgba(216, 75, 58, 0.55);
+  box-shadow: 0 0 0 2px rgba(216, 75, 58, 0.12);
 }
 
 .world-zone span {
@@ -1881,6 +1972,26 @@ body:has(.map-canvas.kids-map-active) #theme-evaluation-panel {
 
 .world-discoveries strong {
   width: 100%;
+}
+
+@media (max-width: 720px) {
+  .world-visual-map,
+  .world-visual-map img,
+  .world-visual-fallback {
+    min-height: 220px;
+  }
+
+  .world-move-controls {
+    grid-template-columns: 40px minmax(0, 1fr) 40px;
+  }
+
+  .world-move-controls button[data-world-regenerate-map] {
+    grid-column: 1 / -1;
+  }
+
+  .world-zone-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .world-discoveries span {

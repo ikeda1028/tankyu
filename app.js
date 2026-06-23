@@ -3166,6 +3166,70 @@ function setWorldStatus(message, isError = false) {
   els.worldStatus.classList.toggle("error", Boolean(isError));
 }
 
+const WORLD_ZONE_POSITIONS = [
+  { x: 15, y: 72 },
+  { x: 28, y: 42 },
+  { x: 46, y: 60 },
+  { x: 62, y: 34 },
+  { x: 78, y: 52 },
+  { x: 88, y: 24 },
+];
+
+function getWorldZonePosition(index) {
+  return WORLD_ZONE_POSITIONS[index % WORLD_ZONE_POSITIONS.length] || WORLD_ZONE_POSITIONS[0];
+}
+
+function getWorldCurrentZoneIndex(world) {
+  const zones = Array.isArray(world?.map?.zones) ? world.map.zones : [];
+  if (!zones.length) return 0;
+  const rawIndex = Number(world?.currentZoneIndex || 0);
+  return Math.max(0, Math.min(zones.length - 1, Number.isFinite(rawIndex) ? rawIndex : 0));
+}
+
+function buildWorldVisualPrompt(world) {
+  const zones = Array.isArray(world?.map?.zones) ? world.map.zones : [];
+  const zoneLines = zones
+    .map((zone, index) => `${index + 1}. ${zone.name}: ${zone.clue} / アイテム ${zone.item || "なし"}`)
+    .join("\n");
+  return [
+    "探究プラットフォームで使う、現実の地図に隠された入口から入る架空ワールドのビジュアルマップを1枚生成する。",
+    `ワールド名: ${world.title}`,
+    `コンセプト: ${world.concept}`,
+    `入口: ${world.entrance || "現実のどこかに隠された入口"}`,
+    `入口の謎: ${world.map?.entranceRiddle || world.riddle || "謎を解くと入れる"}`,
+    `必要アイテム: ${(world.requiredItems || []).join("、") || "発見したアイテム"}`,
+    zoneLines ? `エリア:\n${zoneLines}` : "",
+    "俯瞰図の探索マップ。入口から奥へ進める道、複数のランドマーク、発見できる場所、少しずつ広がる世界を描く。",
+    "4歳から10歳にも怖くない、安全で明るい雰囲気。冒険感、発見感、秘密の世界への入口を感じる。",
+    "読める文字、数字、ロゴ、UI、地名ラベル、人物の顔の特定表現は入れない。",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+async function generateWorldVisualMap(world) {
+  if (!world?.concept) return null;
+  const prompt = buildWorldVisualPrompt(world);
+  setWorldStatus("AIがワールド画像を生成中...");
+  const response = await fetch(getGenerateImageApiPath(), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || !data.imageDataUrl) {
+    throw new Error(data.error || "ワールド画像を生成できませんでした");
+  }
+  const imageDataUrl = await compressGeneratedAvatarImage(data.imageDataUrl);
+  world.visualMap = {
+    imageDataUrl,
+    generatedAt: new Date().toISOString(),
+    prompt,
+  };
+  setWorldStatus("AIワールド画像生成済み");
+  return world.visualMap;
+}
+
 async function generateWorldMap() {
   const payload = getWorldPayloadFromForm();
   if (!payload.concept) {
@@ -3206,20 +3270,38 @@ function renderWorldMapPreview(world = getSelectedWorld()) {
   }
   const zones = Array.isArray(world.map?.zones) ? world.map.zones : [];
   const discoveries = Array.isArray(world.discoveries) ? world.discoveries : [];
+  const currentIndex = getWorldCurrentZoneIndex(world);
+  const currentZone = zones[currentIndex] || null;
+  const marker = getWorldZonePosition(currentIndex);
+  const visualMapUrl = world.visualMap?.imageDataUrl || world.visualMap?.downloadUrl || "";
   els.worldMapPreview.innerHTML = `<article class="world-map-card">
     <span>${escapeHtml(world.entrance || "入口未設定")}</span>
     <h3>${escapeHtml(world.title)}</h3>
     <p>${escapeHtml(world.map?.summary || world.concept || "")}</p>
     <strong>入口の謎: ${escapeHtml(world.map?.entranceRiddle || world.riddle || "未設定")}</strong>
+    <div class="world-visual-map" style="--marker-x: ${marker.x}%; --marker-y: ${marker.y}%;">
+      ${
+        visualMapUrl
+          ? `<img src="${escapeHtml(visualMapUrl)}" alt="${escapeHtml(world.title)}のAIマップ">`
+          : `<div class="world-visual-fallback"><strong>AIマップ画像</strong><span>生成すると、ここに具体的なワールドの見取り図が出ます。</span></div>`
+      }
+      ${zones.length ? `<span class="world-position-marker">${currentIndex + 1}</span>` : ""}
+    </div>
+    <div class="world-move-controls">
+      <button type="button" data-world-move="-1" ${currentIndex <= 0 ? "disabled" : ""}>←</button>
+      <strong>${escapeHtml(currentZone?.name || "入口")}</strong>
+      <button type="button" data-world-move="1" ${currentIndex >= zones.length - 1 ? "disabled" : ""}>→</button>
+      <button type="button" data-world-regenerate-map="1">画像を作り直す</button>
+    </div>
     <div class="world-zone-grid">
       ${zones
         .map(
-          (zone, index) => `<div class="world-zone">
+          (zone, index) => `<button class="world-zone${index === currentIndex ? " active" : ""}" type="button" data-world-zone-index="${index}">
         <span>${index + 1}</span>
         <strong>${escapeHtml(zone.name)}</strong>
         <p>${escapeHtml(zone.clue)}</p>
         <small>${escapeHtml(zone.item || "アイテム未設定")}</small>
-      </div>`
+      </button>`
         )
         .join("")}
     </div>
@@ -3231,10 +3313,47 @@ function renderWorldMapPreview(world = getSelectedWorld()) {
         .join("")}
     </div>
   </article>`;
+  els.worldMapPreview.querySelectorAll("[data-world-move]").forEach((button) => {
+    button.addEventListener("click", () => moveWorldZone(Number(button.dataset.worldMove || 0)));
+  });
+  els.worldMapPreview.querySelectorAll("[data-world-zone-index]").forEach((button) => {
+    button.addEventListener("click", () => moveToWorldZone(Number(button.dataset.worldZoneIndex || 0)));
+  });
+  els.worldMapPreview.querySelector("[data-world-regenerate-map]")?.addEventListener("click", async () => {
+    try {
+      await generateWorldVisualMap(world);
+      world.updatedAt = new Date().toISOString();
+      saveState();
+      renderWorlds();
+      queueFirebaseSync("ワールド画像再生成");
+    } catch (error) {
+      console.warn("World image generation failed:", error);
+      setWorldStatus("ワールド画像を生成できませんでした。OPENAI_API_KEYを確認してください", true);
+    }
+  });
 }
 
 function getSelectedWorld() {
-  return state.worlds.find((world) => world.id === state.ui?.selectedWorldId) || state.worlds[0] || null;
+  const worlds = Array.isArray(state.worlds) ? state.worlds : [];
+  return worlds.find((world) => world.id === state.ui?.selectedWorldId) || worlds[0] || null;
+}
+
+function moveToWorldZone(index) {
+  const world = getSelectedWorld();
+  if (!world) return;
+  const zones = Array.isArray(world.map?.zones) ? world.map.zones : [];
+  if (!zones.length) return;
+  const nextIndex = Math.max(0, Math.min(zones.length - 1, Number(index) || 0));
+  world.currentZoneIndex = nextIndex;
+  world.updatedAt = new Date().toISOString();
+  saveState();
+  renderWorlds();
+}
+
+function moveWorldZone(delta) {
+  const world = getSelectedWorld();
+  if (!world) return;
+  moveToWorldZone(getWorldCurrentZoneIndex(world) + delta);
 }
 
 function fillWorldForm(world) {
@@ -3248,6 +3367,7 @@ function fillWorldForm(world) {
 
 async function saveWorld(event) {
   event?.preventDefault();
+  if (!Array.isArray(state.worlds)) state.worlds = [];
   const payload = getWorldPayloadFromForm();
   if (!payload.concept) {
     setWorldStatus("コンセプトを入力してください", true);
@@ -3260,10 +3380,20 @@ async function saveWorld(event) {
     id: existing?.id || `world-${Date.now()}`,
     ...payload,
     map,
+    visualMap: existing?.visualMap || null,
+    currentZoneIndex: getWorldCurrentZoneIndex(existing),
     discoveries: existing?.discoveries || [],
     createdAt: existing?.createdAt || new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
+  if (!world.visualMap || existing?.concept !== payload.concept) {
+    try {
+      await generateWorldVisualMap(world);
+    } catch (error) {
+      console.warn("World image generation failed:", error);
+      setWorldStatus("文章マップは保存しました。画像生成はOPENAI_API_KEY確認後に再生成できます", true);
+    }
+  }
   const index = state.worlds.findIndex((item) => item.id === world.id);
   if (index >= 0) state.worlds[index] = world;
   else state.worlds.unshift(world);
@@ -3275,6 +3405,7 @@ async function saveWorld(event) {
 }
 
 async function generateAndSaveWorld() {
+  if (!Array.isArray(state.worlds)) state.worlds = [];
   const payload = getWorldPayloadFromForm();
   const map = await generateWorldMap();
   if (!map) return;
@@ -3282,10 +3413,18 @@ async function generateAndSaveWorld() {
     id: `world-${Date.now()}`,
     ...payload,
     map,
+    visualMap: null,
+    currentZoneIndex: 0,
     discoveries: [],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
+  try {
+    await generateWorldVisualMap(world);
+  } catch (error) {
+    console.warn("World image generation failed:", error);
+    setWorldStatus("文章マップは作成しました。画像生成はOPENAI_API_KEY確認後に再生成できます", true);
+  }
   state.worlds.unshift(world);
   state.ui.selectedWorldId = world.id;
   addActivity(`${world.title}をAI生成`);
