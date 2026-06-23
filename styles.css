@@ -1281,6 +1281,10 @@ body.kids-screen-active .topbar {
   text-align: left;
 }
 
+.kids-map-point.has-photo {
+  grid-template-columns: 30px 54px minmax(0, 1fr);
+}
+
 .kids-map-point span {
   display: grid;
   grid-row: span 2;
@@ -1292,6 +1296,20 @@ body.kids-screen-active .topbar {
   background: var(--green);
   font-size: 13px;
   font-weight: 900;
+}
+
+.kids-map-point.has-photo span {
+  width: 30px;
+  height: 30px;
+  font-size: 12px;
+}
+
+.kids-map-point img {
+  grid-row: span 2;
+  width: 54px;
+  height: 54px;
+  border-radius: 8px;
+  object-fit: cover;
 }
 
 .kids-map-point strong {
@@ -1320,6 +1338,10 @@ body.kids-screen-active .topbar {
 .map-canvas.kids-map-active ~ .encounter-panel,
 .map-canvas.kids-map-active ~ .field-post-panel,
 body:has(.map-canvas.kids-map-active) #theme-evaluation-panel {
+  display: none;
+}
+
+.map-canvas.kids-map-active .map-controls {
   display: none;
 }
 

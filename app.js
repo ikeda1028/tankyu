@@ -536,7 +536,7 @@ const els = {
   kidsMapTitle: document.querySelector("#kids-map-title"),
   kidsMapText: document.querySelector("#kids-map-text"),
   kidsMapBadges: document.querySelector("#kids-map-badges"),
-  kidsMapCenterButton: document.querySelector("#kids-map-center-button"),
+  kidsMapHomeButton: document.querySelector("#kids-map-home-button"),
   kidsMapCurrentButton: document.querySelector("#kids-map-current-button"),
   kidsMapPostButton: document.querySelector("#kids-map-post-button"),
   kidsMapStatus: document.querySelector("#kids-map-status"),
@@ -1702,6 +1702,8 @@ async function centerOnCurrentLocation() {
       renderKidsMode();
       renderKidsMapGuide();
       renderGoogleMapMarkers();
+      googleMap.panTo(current);
+      googleMap.setZoom(getKidsMapZoomForRadius());
       setKidsMapStatus(`いまいる場所から半径${formatKidsRadius(getKidsWorldRadius())}だけ見えます。`);
     }
     setMapsStatus(state.ui?.kidsMapActive ? `現在地から半径${formatKidsRadius(getKidsWorldRadius())}を表示中` : "現在地に移動しました");
@@ -1903,7 +1905,9 @@ function renderKidsPhotoMapMarkers(bounds) {
       if (photo.eventId) state.selected = photo.eventId;
       saveState();
       renderKidsMapGuide();
-      focusGoogleMapPoint(position, Math.max(googleMap.getZoom(), 14));
+      if (photo.type === "own" && photo.id) {
+        openKidsPhotoViewer(photo.id);
+      }
       setKidsMapStatus(`${photo.type === "own" ? "じぶん" : `${photo.friendName || "ともだち"}さん`}の写真: ${photo.text || "みつけたこと"}`);
     });
     googleMapMarkers.push(marker);
@@ -2032,7 +2036,12 @@ function renderGoogleMapMarkers() {
       grantJoy(3, `${encounter.title}の地図ピンを開いた`, `event-view:${encounter.id}`);
       saveState();
       render();
-      focusGoogleMapPoint(position, Math.max(googleMap.getZoom(), 9));
+      if (kidsMapActive) {
+        if (encounter.sourcePostId) openKidsPhotoViewer(encounter.sourcePostId);
+        centerKidsCurrentLocation();
+      } else {
+        focusGoogleMapPoint(position, Math.max(googleMap.getZoom(), 9));
+      }
     });
     googleMapMarkers.push(marker);
     bounds.extend(position);
@@ -2690,15 +2699,14 @@ function renderKidsMapGuide() {
   if (!active) return;
   const candidates = getKidsMapCandidates();
   const selected = candidates.find((encounter) => encounter.id === state.selected) || candidates[0] || null;
-  if (els.kidsMapCenterButton) els.kidsMapCenterButton.disabled = !selected || !hasValidLatLng(selected.position);
   if (els.kidsMapStatus && !els.kidsMapStatus.textContent) {
-    els.kidsMapStatus.textContent = "ばんごうをえらぶと、そのばしょがちずのまんなかにきます。";
+    els.kidsMapStatus.textContent = "いまここから見えるものをさがそう。";
   }
   if (els.kidsMapTitle) els.kidsMapTitle.textContent = toKidsText(selected?.title || "ぼうけんポイント");
   if (els.kidsMapText) {
     els.kidsMapText.textContent = selected
-      ? `${toKidsText(selected.locationName || "このばしょ")}で、${toKidsText(selected.impact || "ワクワク")}をみつけよう。`
-      : "きになるばしょをえらんで、みつけたことをのこそう。";
+      ? `${toKidsText(selected.locationName || "このばしょ")}のしゃしんや、いまここから見えるものをたしかめよう。`
+      : "いまここから、きになるものをみつけよう。";
   }
   if (els.kidsMapBadges) {
     els.kidsMapBadges.innerHTML = [
@@ -2723,15 +2731,18 @@ function renderKidsMapGuide() {
     els.kidsMapList.innerHTML = candidates
       .map((encounter, index) => {
         const activeClass = encounter.id === state.selected ? " active" : "";
-        return `<button class="kids-map-point${activeClass}" type="button" data-id="${escapeHtml(encounter.id)}">
+        const imageSrc = encounter.image?.dataUrl || encounter.image?.downloadUrl || "";
+        const sourcePost = encounter.sourcePostId ? ` data-source-post-id="${escapeHtml(encounter.sourcePostId)}"` : "";
+        return `<button class="kids-map-point${activeClass}${imageSrc ? " has-photo" : ""}" type="button" data-id="${escapeHtml(encounter.id)}"${sourcePost}>
           <span>${index + 1}</span>
+          ${imageSrc ? `<img src="${escapeHtml(imageSrc)}" alt="${escapeHtml(toKidsText(encounter.title))}" />` : ""}
           <strong>${escapeHtml(toKidsText(encounter.title))}</strong>
           <small>${escapeHtml(toKidsText(encounter.locationName || encounter.impact || "ぼうけんポイント"))}</small>
         </button>`;
       })
       .join("");
     els.kidsMapList.querySelectorAll("[data-id]").forEach((button) => {
-      button.addEventListener("click", () => openKidsMapPoint(button.dataset.id));
+      button.addEventListener("click", () => openKidsMapPoint(button.dataset.id, { openPhoto: Boolean(button.dataset.sourcePostId) }));
     });
   }
 }
@@ -2794,26 +2805,6 @@ function setKidsMapStatus(message, isError = false) {
   markLocationSettingsLink(els.kidsMapStatus, message, isError);
 }
 
-function centerKidsSelectedPoint() {
-  const candidates = getKidsMapCandidates();
-  const selected = candidates.find((encounter) => encounter.id === state.selected) || candidates[0] || null;
-  if (!selected || !hasValidLatLng(selected.position)) {
-    setKidsMapStatus("このばしょには、まだちずのいちがありません。", true);
-    return;
-  }
-  state.selected = selected.id;
-  state.ui.kidsMapActive = true;
-  saveState();
-  renderKidsMapGuide();
-  if (!googleMap) {
-    setKidsMapStatus("ちずをよみこみちゅうです。すこしまってからもういちどおしてください。", true);
-    initializeGoogleMap();
-    return;
-  }
-  focusGoogleMapPoint({ lat: Number(selected.position.lat), lng: Number(selected.position.lng) }, Math.max(googleMap.getZoom(), 12));
-  setKidsMapStatus(`${toKidsText(selected.title)}をまんなかにしました。`);
-}
-
 function centerKidsCurrentLocation() {
   state.ui.kidsMapActive = true;
   saveState();
@@ -2826,7 +2817,14 @@ function centerKidsCurrentLocation() {
   centerOnCurrentLocation();
 }
 
-function openKidsMapPoint(eventId) {
+function returnKidsHome() {
+  state.ui.kidsMapActive = false;
+  state.ui.kidsRecordOpen = false;
+  saveState();
+  showMode("kids");
+}
+
+function openKidsMapPoint(eventId, options = {}) {
   const encounter = getKidsPointById(eventId);
   if (!encounter) return;
   state.selected = encounter.id;
@@ -2834,10 +2832,15 @@ function openKidsMapPoint(eventId) {
   grantJoy(2, `${encounter.title}をぼうけんマップで見た`, `kids-map:${encounter.id}`);
   saveState();
   render();
-  if (googleMap && hasValidLatLng(encounter.position)) {
-    focusGoogleMapPoint({ lat: Number(encounter.position.lat), lng: Number(encounter.position.lng) }, Math.max(googleMap.getZoom(), 11));
+  if (googleMap) {
+    centerKidsCurrentLocation();
+  } else {
+    initializeGoogleMap();
   }
-  setKidsMapStatus(`${toKidsText(encounter.title)}をえらびました。`);
+  if (options.openPhoto && encounter.sourcePostId) {
+    openKidsPhotoViewer(encounter.sourcePostId);
+  }
+  setKidsMapStatus(`${toKidsText(encounter.title)}をえらびました。いまここからみてみよう。`);
 }
 
 function renderEventDrawer() {
@@ -6821,7 +6824,7 @@ els.currentLocationButton?.addEventListener("click", centerOnCurrentLocation);
     openLocationSettingsFromWarning();
   });
 });
-els.kidsMapCenterButton?.addEventListener("click", centerKidsSelectedPoint);
+els.kidsMapHomeButton?.addEventListener("click", returnKidsHome);
 els.kidsMapCurrentButton?.addEventListener("click", centerKidsCurrentLocation);
 els.kidsMapPostButton?.addEventListener("click", openKidsFieldPost);
 els.compactThemeButton?.addEventListener("click", toggleCompactTheme);
@@ -6912,9 +6915,11 @@ document.querySelectorAll("[data-kids-action]").forEach((button) => {
       saveState();
       showMode("quest", { kidsMap: true });
       renderKidsMapGuide();
-      if (googleMap) renderGoogleMapMarkers();
-      if (candidate && googleMap && hasValidLatLng(candidate.position)) {
-        focusGoogleMapPoint({ lat: Number(candidate.position.lat), lng: Number(candidate.position.lng) }, Math.max(googleMap.getZoom(), 10));
+      if (googleMap) {
+        renderGoogleMapMarkers();
+        centerKidsCurrentLocation();
+      } else {
+        initializeGoogleMap();
       }
       return;
     }
