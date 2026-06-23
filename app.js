@@ -450,6 +450,9 @@ const els = {
   kidsProfileSymbolInput: document.querySelector("#kids-profile-symbol-input"),
   kidsProfileColorInput: document.querySelector("#kids-profile-color-input"),
   kidsProfileAuraInput: document.querySelector("#kids-profile-aura-input"),
+  kidsAvatarPhotoInput: document.querySelector("#kids-avatar-photo-input"),
+  kidsAvatarPhotoButton: document.querySelector("#kids-avatar-photo-button"),
+  kidsAvatarPhotoPreview: document.querySelector("#kids-avatar-photo-preview"),
   kidsAvatarResetButton: document.querySelector("#kids-avatar-reset-button"),
   kidsAvatarRegenerateButton: document.querySelector("#kids-avatar-regenerate-button"),
   kidsItemGrid: document.querySelector("#kids-item-grid"),
@@ -682,6 +685,7 @@ let eventIndexEvaluateTimer = null;
 let eventIndexEvaluateToken = 0;
 let lastEventIndexEvaluationKey = "";
 let pendingAvatarReferenceImage = null;
+let pendingKidsAvatarReferenceImage = null;
 let firebaseAutoSyncTimer = null;
 let firebaseAutoSyncRunning = false;
 let firebaseAutoSyncQueued = false;
@@ -3940,6 +3944,7 @@ function renderKidsAvatarProfile() {
     els.kidsProfileText.textContent = `${unlockedCount}このあいてむをみつけたよ。つけたいものをえらんでね。`;
   }
   fillKidsProfileForm(child, avatar);
+  renderKidsAvatarPhotoPreview();
   els.kidsItemGrid.innerHTML = items
     .map((item) => {
       const active = equipped.has(item.id);
@@ -3962,6 +3967,49 @@ function fillKidsProfileForm(child = normalizeChildProfile(state.childProfile), 
   if (els.kidsProfileSymbolInput) els.kidsProfileSymbolInput.value = avatar.symbol || "ほし";
   if (els.kidsProfileColorInput) els.kidsProfileColorInput.value = child.favoriteColor || avatar.color || "#2f8f63";
   if (els.kidsProfileAuraInput) els.kidsProfileAuraInput.value = avatar.aura || "わくわく";
+}
+
+function renderKidsAvatarPhotoPreview() {
+  if (!els.kidsAvatarPhotoPreview) return;
+  if (!pendingKidsAvatarReferenceImage?.dataUrl) {
+    els.kidsAvatarPhotoPreview.classList.add("hidden");
+    els.kidsAvatarPhotoPreview.innerHTML = "";
+    return;
+  }
+  els.kidsAvatarPhotoPreview.classList.remove("hidden");
+  els.kidsAvatarPhotoPreview.innerHTML = `<img src="${escapeHtml(pendingKidsAvatarReferenceImage.dataUrl)}" alt="あばたーのもとにするしゃしん" />
+    <span>このしゃしんをもとに、あたらしいあばたーをつくります</span>`;
+}
+
+function openKidsAvatarCamera() {
+  els.kidsAvatarPhotoInput?.click();
+}
+
+async function handleKidsAvatarPhotoChange(event) {
+  const file = event.target.files?.[0];
+  if (!file) {
+    pendingKidsAvatarReferenceImage = null;
+    renderKidsAvatarPhotoPreview();
+    return;
+  }
+  if (els.kidsProfileText) {
+    els.kidsProfileText.textContent = "しゃしんをよみこんでいます。";
+  }
+  try {
+    pendingKidsAvatarReferenceImage = await compressAvatarReferencePhoto(file);
+    renderKidsAvatarPhotoPreview();
+    if (els.kidsProfileText) {
+      els.kidsProfileText.textContent = "しゃしんをもとに、あばたーをつくっています。";
+    }
+    await regenerateKidsAvatar();
+  } catch (error) {
+    pendingKidsAvatarReferenceImage = null;
+    renderKidsAvatarPhotoPreview();
+    if (els.kidsProfileText) {
+      els.kidsProfileText.textContent = "しゃしんをよみこめませんでした。もういちどためしてね。";
+    }
+    console.error(error);
+  }
 }
 
 function updateKidsProfileAvatarPreview() {
@@ -4028,15 +4076,19 @@ function buildKidsAvatarPrompt() {
     `しるし: ${avatar.symbol}`,
     `いろ: ${avatar.color}`,
     `ちから: ${avatar.aura}`,
+    pendingKidsAvatarReferenceImage ? "子どもの写真が参考画像として添付されている。顔立ち、髪型、雰囲気、表情の特徴を、写実ではなく安全で親しみやすい相棒アバターに抽象化して反映する。" : "",
     "最初から怖くない、丸みのある、シンプルで親しみやすいキャラクター。",
     "成長前の姿なので、装備は少なめ。小さな発見を応援する雰囲気。",
     "全身が見える。背景は透明または白に近いシンプルな背景。",
     "武器、攻撃、危険な表現、読める文字、ロゴは入れない。",
     "明るく安全で、幼児から小学生低学年にふさわしいデザイン。",
-  ].join("\n");
+  ].filter(Boolean).join("\n");
 }
 
 function resetKidsAvatarImage() {
+  pendingKidsAvatarReferenceImage = null;
+  if (els.kidsAvatarPhotoInput) els.kidsAvatarPhotoInput.value = "";
+  renderKidsAvatarPhotoPreview();
   const avatar = normalizeAvatar({
     ...state.member.avatar,
     symbol: els.kidsProfileSymbolInput?.value || state.member.avatar.symbol,
@@ -4066,6 +4118,7 @@ async function regenerateKidsAvatar() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         prompt: buildKidsAvatarPrompt(),
+        referenceImageDataUrl: pendingKidsAvatarReferenceImage?.dataUrl || "",
       }),
     });
     const data = await response.json().catch(() => ({}));
@@ -4086,6 +4139,9 @@ async function regenerateKidsAvatar() {
     saveState();
     renderKidsMode();
     renderKidsAvatarProfile();
+    pendingKidsAvatarReferenceImage = null;
+    if (els.kidsAvatarPhotoInput) els.kidsAvatarPhotoInput.value = "";
+    renderKidsAvatarPhotoPreview();
     addActivity("キッズアバターをつくりなおし");
     queueFirebaseSync("キッズアバター再生成");
   } catch (error) {
@@ -6827,6 +6883,8 @@ els.kidsAvatarProfile?.addEventListener("click", (event) => {
   if (event.target === els.kidsAvatarProfile) closeKidsAvatarProfile();
 });
 els.kidsProfileForm?.addEventListener("submit", saveKidsProfileEdit);
+els.kidsAvatarPhotoButton?.addEventListener("click", openKidsAvatarCamera);
+els.kidsAvatarPhotoInput?.addEventListener("change", handleKidsAvatarPhotoChange);
 els.kidsAvatarResetButton?.addEventListener("click", resetKidsAvatarImage);
 els.kidsAvatarRegenerateButton?.addEventListener("click", regenerateKidsAvatar);
 [

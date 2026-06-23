@@ -2415,6 +2415,41 @@ body:has(.map-canvas.kids-map-active) .kids-navigator-bot {
   font-weight: 900;
 }
 
+.kids-avatar-photo-tools {
+  display: grid;
+  gap: 8px;
+}
+
+.kids-avatar-photo-tools input {
+  display: none;
+}
+
+.kids-avatar-photo-preview {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid rgba(47, 143, 99, 0.18);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.kids-avatar-photo-preview img {
+  width: 84px;
+  height: 84px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.kids-avatar-photo-preview span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.5;
+}
+
 .kids-profile-form .primary-button,
 .kids-profile-form .secondary-button {
   min-height: 42px;
@@ -2425,11 +2460,11 @@ body:has(.map-canvas.kids-map-active) .kids-navigator-bot {
   font-size: 13px;
 }
 
-.kids-profile-form .secondary-button:first-of-type {
+.kids-profile-form > .secondary-button:first-of-type {
   grid-column: 1 / 2;
 }
 
-.kids-profile-form .secondary-button:last-of-type {
+.kids-profile-form > .secondary-button:last-of-type {
   grid-column: 2 / 3;
 }
 
