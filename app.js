@@ -1420,6 +1420,9 @@ async function syncFirebase(options = {}) {
     if (result.snapshot?.member?.avatar) {
       state.member.avatar = normalizeAvatar(result.snapshot.member.avatar);
     }
+    if (Array.isArray(result.snapshot?.worlds)) {
+      state.worlds = result.snapshot.worlds;
+    }
     state.firebase.lastSyncAt = new Date().toISOString();
     setFirebaseStatus(`${automatic ? "自動同期完了" : "Firestore保存完了"}: ${result.userId}`);
     saveState();

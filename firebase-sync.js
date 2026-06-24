@@ -141,13 +141,57 @@ async function uploadMemberAvatar(firebase, userId, snapshot) {
   };
 }
 
+async function uploadWorldMapImages(firebase, userId, snapshot) {
+  const worlds = Array.isArray(snapshot?.worlds) ? snapshot.worlds : [];
+  const uploadedWorlds = [];
+
+  for (const world of worlds) {
+    const visualMap = world?.visualMap;
+    if (!visualMap?.imageDataUrl) {
+      uploadedWorlds.push(world);
+      continue;
+    }
+
+    const safeWorldId = String(world.id || `world-${Date.now()}`).replace(/[^a-zA-Z0-9_-]/g, "_");
+    const storagePath = `worldMaps/${userId}/${safeWorldId}.jpg`;
+    const imageRef = firebase.storage.ref(firebase.storageBucket, storagePath);
+    const blob = dataUrlToBlob(visualMap.imageDataUrl);
+    await firebase.storage.uploadBytes(imageRef, blob, {
+      contentType: blob.type || "image/jpeg",
+      customMetadata: {
+        userId,
+        worldId: world.id || "",
+        worldTitle: world.title || "",
+      },
+    });
+    const downloadUrl = await firebase.storage.getDownloadURL(imageRef);
+    uploadedWorlds.push({
+      ...world,
+      visualMap: {
+        ...visualMap,
+        imageDataUrl: "",
+        hasImage: true,
+        storagePath,
+        downloadUrl,
+        uploadedAt: new Date().toISOString(),
+      },
+    });
+  }
+
+  return {
+    ...snapshot,
+    worlds: uploadedWorlds,
+  };
+}
+
 async function saveSnapshot(config, state, snapshot) {
   const firebase = await connectFirebase(config);
   const { firestore, db } = firebase;
   const userId = getFirebaseUserId(state);
   const ref = firestore.doc(db, FIREBASE_COLLECTION, userId);
   const avatarSnapshot = await uploadMemberAvatar(firebase, userId, snapshot);
-  const uploadedSnapshot = await uploadFieldPostImages(firebase, userId, avatarSnapshot);
+  const worldSnapshot = await uploadWorldMapImages(firebase, userId, avatarSnapshot);
+  const uploadedSnapshot = await uploadFieldPostImages(firebase, userId, worldSnapshot);
   const avatar = uploadedSnapshot.member?.avatar || {};
   const childProfile = uploadedSnapshot.childProfile || {};
   const permissions = childProfile.permissions || {};
