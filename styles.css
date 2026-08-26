@@ -1223,6 +1223,70 @@ body.kids-screen-active .topbar {
   display: block;
 }
 
+.map-canvas.google-map-enabled:not(.kids-map-active):not(.google-map-error)::before {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 12% 22%, rgba(255, 255, 255, 0.88) 0 1px, transparent 2px),
+    radial-gradient(circle at 26% 68%, rgba(255, 236, 151, 0.75) 0 1px, transparent 2px),
+    radial-gradient(circle at 42% 34%, rgba(111, 210, 186, 0.65) 0 1px, transparent 2px),
+    radial-gradient(circle at 62% 76%, rgba(255, 255, 255, 0.8) 0 1px, transparent 2px),
+    radial-gradient(circle at 78% 28%, rgba(255, 236, 151, 0.72) 0 1px, transparent 2px),
+    linear-gradient(135deg, rgba(255, 250, 207, 0.16), rgba(116, 213, 220, 0.08) 45%, rgba(47, 143, 99, 0.08));
+  background-size:
+    180px 180px,
+    220px 220px,
+    260px 260px,
+    200px 200px,
+    240px 240px,
+    100% 100%;
+  content: "";
+  mix-blend-mode: screen;
+  opacity: 0.72;
+  animation: map-sparkle-drift 18s linear infinite;
+}
+
+.map-canvas.google-map-enabled:not(.kids-map-active):not(.google-map-error)::after {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  background:
+    linear-gradient(115deg, transparent 0 36%, rgba(255, 255, 255, 0.22) 42%, transparent 49%),
+    radial-gradient(circle at 50% 50%, transparent 0 54%, rgba(23, 33, 27, 0.12) 100%);
+  content: "";
+  opacity: 0.58;
+}
+
+@keyframes map-sparkle-drift {
+  from {
+    background-position:
+      0 0,
+      20px 40px,
+      60px 10px,
+      30px 80px,
+      90px 30px,
+      0 0;
+  }
+  to {
+    background-position:
+      180px 180px,
+      240px 260px,
+      320px 270px,
+      230px 280px,
+      330px 270px,
+      0 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .map-canvas.google-map-enabled:not(.kids-map-active):not(.google-map-error)::before {
+    animation: none;
+  }
+}
+
 .map-canvas.google-map-enabled .map-grid,
 .map-canvas.google-map-enabled .route,
 .map-canvas.google-map-enabled .user-pin,

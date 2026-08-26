@@ -1630,6 +1630,25 @@ function getKidsSafeMapStyles() {
   ];
 }
 
+function getAdventureMapStyles() {
+  return [
+    { elementType: "geometry", stylers: [{ color: "#eef8ef" }, { saturation: 18 }, { lightness: 8 }] },
+    { elementType: "labels.text.fill", stylers: [{ color: "#385347" }] },
+    { elementType: "labels.text.stroke", stylers: [{ color: "#f8fff8" }, { weight: 3 }] },
+    { featureType: "administrative", elementType: "geometry.stroke", stylers: [{ color: "#9bc6aa" }, { weight: 1 }] },
+    { featureType: "landscape.natural", elementType: "geometry", stylers: [{ color: "#d9f2d6" }] },
+    { featureType: "landscape.man_made", elementType: "geometry", stylers: [{ color: "#f7f4dc" }] },
+    { featureType: "poi", elementType: "geometry", stylers: [{ color: "#e6f5d9" }] },
+    { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#bfe9bd" }] },
+    { featureType: "road", elementType: "geometry", stylers: [{ color: "#fff4bf" }] },
+    { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#dfd9a3" }] },
+    { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#ffd98a" }] },
+    { featureType: "transit", elementType: "geometry", stylers: [{ color: "#cfe6f5" }] },
+    { featureType: "water", elementType: "geometry", stylers: [{ color: "#72d6de" }] },
+    { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#237b87" }] },
+  ];
+}
+
 function isFilePage() {
   return window.location.protocol === "file:";
 }
@@ -1753,7 +1772,7 @@ async function initializeGoogleMap() {
       tiltInteractionEnabled: state.ui?.mapPerspective === "3d",
       heading: state.ui?.mapPerspective === "3d" ? 25 : 0,
       tilt: state.ui?.mapPerspective === "3d" ? 60 : 0,
-      styles: state.ui?.kidsMapActive ? getKidsSafeMapStyles() : null,
+      styles: state.ui?.kidsMapActive ? getKidsSafeMapStyles() : getAdventureMapStyles(),
     });
     googleMap.addListener("click", () => {
       if (state.ui?.kidsMapActive) return;
@@ -1920,7 +1939,7 @@ function renderKidsWorldRange() {
   if (!googleMap || !window.google?.maps) return;
   clearKidsWorldRange();
   if (!state.ui?.kidsMapActive) {
-    googleMap.setOptions({ restriction: null, minZoom: null, styles: null });
+    googleMap.setOptions({ restriction: null, minZoom: null, styles: getAdventureMapStyles() });
     return;
   }
   const radius = getKidsWorldRadius();
