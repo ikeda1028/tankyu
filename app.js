@@ -387,6 +387,8 @@ const els = {
   questViews: document.querySelectorAll(".quest-view"),
   heroGrowthView: document.querySelector(".hero-growth-view"),
   settingsView: document.querySelector(".settings-view"),
+  screenMenuButton: document.querySelector("#screen-menu-button"),
+  screenMenu: document.querySelector("#screen-menu"),
   worldsView: document.querySelector(".worlds-view"),
   kidsView: document.querySelector(".kids-view"),
   guardianView: document.querySelector(".guardian-view"),
@@ -2856,10 +2858,26 @@ function renderModeNavigation() {
   const isKidsAudience = audienceMode === "kids";
   const isKidsScreen = state.ui?.mode === "kids" || Boolean(state.ui?.kidsMapActive);
   document.body.classList.toggle("kids-screen-active", isKidsScreen);
-  document.querySelectorAll(".mode-tabs button").forEach((button) => {
+  document.querySelectorAll(".mode-tabs button, .screen-menu button[data-mode]").forEach((button) => {
     const mode = button.dataset.mode;
     button.classList.toggle("hidden", !isKidsAudience && mode === "kids");
   });
+}
+
+function setScreenMenuOpen(open) {
+  if (!els.screenMenu || !els.screenMenuButton) return;
+  els.screenMenu.classList.toggle("hidden", !open);
+  els.screenMenuButton.setAttribute("aria-expanded", String(open));
+}
+
+function closeScreenMenu() {
+  setScreenMenuOpen(false);
+}
+
+function toggleScreenMenu(event) {
+  event?.stopPropagation();
+  const isOpen = els.screenMenu ? !els.screenMenu.classList.contains("hidden") : false;
+  setScreenMenuOpen(!isOpen);
 }
 
 function closeOpeningScreen() {
@@ -6392,9 +6410,10 @@ function showMode(mode, options = {}) {
   els.worldsView?.classList.toggle("hidden", !worlds);
   els.kidsView?.classList.toggle("hidden", !kids);
   els.guardianView?.classList.toggle("hidden", !guardian);
-  document.querySelectorAll(".mode-tabs button").forEach((item) => {
+  document.querySelectorAll(".mode-tabs button, .screen-menu button[data-mode]").forEach((item) => {
     item.classList.toggle("active", item.dataset.mode === mode);
   });
+  closeScreenMenu();
   renderKidsMode();
   renderGuardianMode();
   renderWorlds();
@@ -7457,6 +7476,21 @@ document.querySelectorAll(".mode-tabs button").forEach((button) => {
       showMode(button.dataset.mode);
     });
   });
+});
+els.screenMenuButton?.addEventListener("click", toggleScreenMenu);
+els.screenMenu?.querySelectorAll("button[data-mode]").forEach((button) => {
+  button.addEventListener("click", (event) => {
+    event.stopPropagation();
+    showMode(button.dataset.mode);
+  });
+});
+document.addEventListener("click", (event) => {
+  if (!els.screenMenu || els.screenMenu.classList.contains("hidden")) return;
+  if (event.target.closest(".screen-menu-wrap")) return;
+  closeScreenMenu();
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") closeScreenMenu();
 });
 els.motivation.addEventListener("input", () => {
   els.motivationOutput.textContent = els.motivation.value;

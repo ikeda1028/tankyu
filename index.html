@@ -267,15 +267,22 @@
             <input id="map-search" type="search" placeholder="イベント・社会課題・探究テーマを検索" />
             <button id="map-search-button" type="button">探す</button>
           </div>
-          <div class="mode-tabs" role="tablist" aria-label="表示モード">
-            <button type="button" data-mode="kids" onclick="window.setQuestMode && window.setQuestMode('kids')">キッズ</button>
-            <button class="active" type="button" data-mode="quest" onclick="window.setQuestMode && window.setQuestMode('quest')">探究</button>
-            <button type="button" data-mode="worlds" onclick="window.setQuestMode && window.setQuestMode('worlds')">ワールド</button>
-            <button type="button" data-mode="event-admin" onclick="window.setQuestMode && window.setQuestMode('event-admin')">探究ポイント登録</button>
-            <button type="button" data-mode="feedback" onclick="window.setQuestMode && window.setQuestMode('feedback')">フィードバック</button>
-            <button type="button" data-mode="guardian" onclick="window.setQuestMode && window.setQuestMode('guardian')">保護者</button>
-            <button type="button" data-mode="capital" onclick="window.setQuestMode && window.setQuestMode('capital')">成長</button>
-            <button type="button" data-mode="settings" onclick="window.setQuestMode && window.setQuestMode('settings')">設定</button>
+          <div class="topbar-actions">
+            <div class="mode-tabs" role="tablist" aria-label="表示モード">
+              <button type="button" data-mode="kids" onclick="window.setQuestMode && window.setQuestMode('kids')">キッズ</button>
+              <button class="active" type="button" data-mode="quest" onclick="window.setQuestMode && window.setQuestMode('quest')">探究</button>
+              <button type="button" data-mode="feedback" onclick="window.setQuestMode && window.setQuestMode('feedback')">フィードバック</button>
+              <button type="button" data-mode="capital" onclick="window.setQuestMode && window.setQuestMode('capital')">成長</button>
+            </div>
+            <div class="screen-menu-wrap">
+              <button id="screen-menu-button" class="screen-menu-button" type="button" aria-label="画面メニューを開く" aria-expanded="false">⚙</button>
+              <div id="screen-menu" class="screen-menu hidden" role="menu" aria-label="画面メニュー">
+                <button type="button" role="menuitem" data-mode="worlds">ワールド</button>
+                <button type="button" role="menuitem" data-mode="event-admin">探究ポイント登録</button>
+                <button type="button" role="menuitem" data-mode="guardian">保護者</button>
+                <button type="button" role="menuitem" data-mode="settings">設定</button>
+              </div>
+            </div>
           </div>
         </header>
 
