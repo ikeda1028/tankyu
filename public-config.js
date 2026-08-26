@@ -1,5 +1,5 @@
 window.WAKUWAKU_CONFIG = {
-  googleMapsApiKey: "",
+  googleMapsApiKey: "AIzaSyCjB6--AwbO9pn3zyBPUBzT879_t97ftRE",
   driveApiUrl: "",
   adminEmails: ["ikeda@manabinomichi.com"],
   firebase: {
