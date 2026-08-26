@@ -1269,6 +1269,13 @@ body.kids-screen-active .topbar {
   font-weight: 900;
 }
 
+.map-controls button.active,
+.map-controls button[aria-pressed="true"] {
+  border-color: rgba(47, 111, 179, 0.35);
+  color: white;
+  background: var(--blue);
+}
+
 .kids-map-guide {
   position: absolute;
   z-index: 17;

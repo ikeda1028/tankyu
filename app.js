@@ -299,6 +299,7 @@ const defaultState = {
     eventsPanel: "collapsed",
     encounterPanel: "collapsed",
     fieldPostPanel: "open",
+    mapPerspective: "2d",
     themePanel: "collapsed",
     mapClickHintShown: false,
     memberEditing: false,
@@ -563,6 +564,7 @@ const els = {
   kidsMapPostButton: document.querySelector("#kids-map-post-button"),
   kidsMapStatus: document.querySelector("#kids-map-status"),
   kidsMapList: document.querySelector("#kids-map-list"),
+  map3dButton: document.querySelector("#map-3d-button"),
   centerSearchButton: document.querySelector("#center-search-button"),
   currentLocationButton: document.querySelector("#current-location-button"),
   themeEvaluationPanel: document.querySelector("#theme-evaluation-panel"),
@@ -1721,6 +1723,11 @@ async function initializeGoogleMap() {
       mapTypeControl: false,
       streetViewControl: false,
       gestureHandling: "greedy",
+      renderingType: google.maps.RenderingType?.VECTOR,
+      headingInteractionEnabled: state.ui?.mapPerspective === "3d",
+      tiltInteractionEnabled: state.ui?.mapPerspective === "3d",
+      heading: state.ui?.mapPerspective === "3d" ? 25 : 0,
+      tilt: state.ui?.mapPerspective === "3d" ? 60 : 0,
       styles: state.ui?.kidsMapActive ? getKidsSafeMapStyles() : null,
     });
     googleMap.addListener("click", () => {
@@ -1732,7 +1739,8 @@ async function initializeGoogleMap() {
     els.mapCanvas.classList.add("google-map-enabled");
     els.mapCanvas.classList.remove("google-map-error");
     renderGoogleMapMarkers();
-    setMapsStatus("Google Map表示中");
+    applyGoogleMapPerspective();
+    if (state.ui?.mapPerspective !== "3d") setMapsStatus("Google Map表示中");
     if (state.ui?.kidsMapActive) {
       centerKidsCurrentLocation();
     }
@@ -2076,6 +2084,54 @@ function focusGoogleMapPoint(position, zoom = 9) {
     const offset = getMapVisibleCenterOffset();
     googleMap.panBy(offset.x, offset.y);
   }, 160);
+}
+
+function applyGoogleMapPerspective() {
+  if (!googleMap) return;
+  const is3d = state.ui?.mapPerspective === "3d";
+  if (els.map3dButton) {
+    els.map3dButton.textContent = is3d ? "2D" : "3D";
+    els.map3dButton.setAttribute("aria-pressed", String(is3d));
+    els.map3dButton.classList.toggle("active", is3d);
+  }
+  if (!window.google?.maps) return;
+  try {
+    googleMap.setOptions({
+      headingInteractionEnabled: is3d,
+      tiltInteractionEnabled: is3d,
+    });
+    if (is3d) {
+      const zoom = Math.max(Number(googleMap.getZoom()) || 0, 17);
+      if (typeof googleMap.moveCamera === "function") {
+        googleMap.moveCamera({ zoom, tilt: 60, heading: 25 });
+      } else {
+        googleMap.setZoom(zoom);
+        googleMap.setTilt(45);
+        googleMap.setHeading(25);
+      }
+      setMapsStatus("3D表示中。建物の立体表示は地域とズームにより変わります");
+    } else if (typeof googleMap.moveCamera === "function") {
+      googleMap.moveCamera({ tilt: 0, heading: 0 });
+      setMapsStatus("2D表示中");
+    } else {
+      googleMap.setTilt(0);
+      googleMap.setHeading(0);
+      setMapsStatus("2D表示中");
+    }
+  } catch (error) {
+    setMapsStatus("3D表示を切り替えられません。Maps APIキーとベクター地図の設定を確認してください");
+    console.error(error);
+  }
+}
+
+function toggleGoogleMapPerspective() {
+  state.ui.mapPerspective = state.ui?.mapPerspective === "3d" ? "2d" : "3d";
+  saveState();
+  if (!googleMap) {
+    initializeGoogleMap();
+    return;
+  }
+  applyGoogleMapPerspective();
 }
 
 function pauseQuestSidePanels() {
@@ -7509,6 +7565,7 @@ els.mapSearch.addEventListener("keydown", (event) => {
   event.preventDefault();
   searchThemeOnMap(els.mapSearch.value);
 });
+els.map3dButton?.addEventListener("click", toggleGoogleMapPerspective);
 els.mapCanvas?.addEventListener("click", (event) => {
   if (state.ui?.kidsMapActive) return;
   if (event.target.closest(".spot, .map-controls, .kids-map-guide")) return;
