@@ -715,6 +715,7 @@ let mapsAutoLoadKey = "";
 let googleMapsAutoLoadScheduled = false;
 let googleMapsAutoLoadAttempts = 0;
 let googleMapsAutoLoadAttemptKey = "";
+let suppressThemeMapAutoFocus = false;
 let eventLocationMap = null;
 let eventLocationMarker = null;
 let eventIndexEvaluateTimer = null;
@@ -2242,15 +2243,17 @@ function renderGoogleMapMarkers() {
       icon: createMarkerIcon(encounter.color),
     });
     marker.addListener("click", () => {
+      suppressThemeMapAutoFocus = true;
       openEncounterFromMap(encounter.id);
       grantJoy(3, `${encounter.title}の地図ピンを開いた`, `event-view:${encounter.id}`);
       saveState();
       render();
+      suppressThemeMapAutoFocus = false;
       if (kidsMapActive) {
         if (encounter.sourcePostId) openKidsPhotoViewer(encounter.sourcePostId);
         centerKidsCurrentLocation();
       } else {
-        focusGoogleMapPoint(position, Math.max(googleMap.getZoom(), 9));
+        focusGoogleMapPoint(position, Math.max(googleMap.getZoom(), 17));
       }
     });
     googleMapMarkers.push(marker);
@@ -2292,7 +2295,7 @@ function renderGoogleMapMarkers() {
     } else if (!bounds.isEmpty()) {
       googleMap.fitBounds(bounds, 64);
     }
-  } else if (state.themeSearch?.query) {
+  } else if (state.themeSearch?.query && !suppressThemeMapAutoFocus) {
     centerGoogleMapOnSearch();
   }
 }
@@ -2852,10 +2855,12 @@ function renderSpots() {
     .join("");
   els.spotsLayer.querySelectorAll(".spot").forEach((spot) => {
     spot.addEventListener("click", () => {
+      suppressThemeMapAutoFocus = true;
       openEncounterFromMap(spot.dataset.id);
       grantJoy(3, `${getEventTitle(spot.dataset.id)}の詳細を開いた`, `event-view:${spot.dataset.id}`);
       saveState();
       render();
+      suppressThemeMapAutoFocus = false;
     });
   });
   renderGoogleMapMarkers();
@@ -2884,13 +2889,15 @@ function renderEventList() {
     .join("");
   els.eventList.querySelectorAll(".event-card").forEach((card) => {
     card.addEventListener("click", () => {
+      suppressThemeMapAutoFocus = true;
       state.selected = card.dataset.id;
       grantJoy(3, `${getEventTitle(card.dataset.id)}の詳細を開いた`, `event-view:${card.dataset.id}`);
       saveState();
       render();
+      suppressThemeMapAutoFocus = false;
       const selected = getSelectedEncounter();
       if (googleMap && hasValidLatLng(selected.position)) {
-        focusGoogleMapPoint({ lat: Number(selected.position.lat), lng: Number(selected.position.lng) }, Math.max(googleMap.getZoom(), 10));
+        focusGoogleMapPoint({ lat: Number(selected.position.lat), lng: Number(selected.position.lng) }, Math.max(googleMap.getZoom(), 17));
       }
     });
   });
