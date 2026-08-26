@@ -1781,6 +1781,7 @@ async function initializeGoogleMap() {
       if (state.ui?.kidsMapActive) return;
       closeEncounterFromMapTap();
     });
+    updateCurrentLocationOverlay(latestCurrentLocation || center, { provisional: true });
     els.mapCanvas.classList.add("google-map-enabled");
     els.mapCanvas.classList.remove("google-map-error");
     renderGoogleMapMarkers();
@@ -1873,22 +1874,24 @@ function getDefaultMapZoomForRadius(radius = 500) {
   return 15;
 }
 
-function updateCurrentLocationOverlay(position) {
+function updateCurrentLocationOverlay(position, options = {}) {
   if (!googleMap || !window.google?.maps || !hasValidLatLng(position)) return;
+  const provisional = Boolean(options.provisional);
   const current = { lat: Number(position.lat), lng: Number(position.lng) };
   if (!currentLocationMarker) {
     currentLocationMarker = new google.maps.Marker({
       map: googleMap,
-      title: "現在地のアバター",
+      title: provisional ? "アバター" : "現在地のアバター",
       icon: createAvatarMapMarkerIcon(),
       zIndex: 120,
     });
   }
   currentLocationMarker.setMap(googleMap);
   currentLocationMarker.setPosition(current);
+  currentLocationMarker.setTitle(provisional ? "アバター" : "現在地のアバター");
   currentLocationMarker.setIcon(createAvatarMapMarkerIcon());
   renderKidsWorldRange();
-  if (!state.ui?.kidsMapActive) {
+  if (!state.ui?.kidsMapActive && !provisional) {
     currentLocationCircle = new google.maps.Circle({
       map: googleMap,
       center: current,
@@ -3017,12 +3020,17 @@ function isKidsMapOnlyMode() {
 
 function applyKidsMapOnlyVisibility() {
   const active = isKidsMapOnlyMode();
-  [els.eventDrawer, els.encounterPanel, els.fieldPostPanel, els.themeEvaluationPanel].forEach((panel) => {
-    panel?.classList.toggle("hidden", active);
-  });
   if (active) {
+    [els.eventDrawer, els.encounterPanel, els.fieldPostPanel, els.themeEvaluationPanel].forEach((panel) => {
+      panel?.classList.add("hidden");
+    });
     els.mapCanvas?.classList.remove("hidden");
     els.kidsMapGuide?.classList.remove("hidden");
+  } else {
+    renderEventDrawer();
+    renderEncounterPanelState();
+    renderFieldPostPanelState();
+    renderThemePanelState();
   }
 }
 

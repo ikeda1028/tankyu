@@ -1357,6 +1357,12 @@ body.kids-screen-active .topbar {
   display: block;
 }
 
+body:has(.map-canvas.google-map-enabled) .event-drawer,
+body:has(.map-canvas.google-map-enabled) .field-post-panel,
+body:has(.map-canvas.google-map-enabled) #theme-evaluation-panel {
+  display: none !important;
+}
+
 .map-canvas.google-map-enabled:not(.kids-map-active):not(.google-map-error)::before {
   position: absolute;
   inset: 0;
