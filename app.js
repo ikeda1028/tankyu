@@ -2293,14 +2293,7 @@ function renderGoogleMapMarkers() {
       googleMap.fitBounds(bounds, 64);
     }
   } else if (state.themeSearch?.query) {
-    if (!bounds.isEmpty()) googleMap.fitBounds(bounds, 64);
     centerGoogleMapOnSearch();
-  } else {
-    if (!bounds.isEmpty()) googleMap.fitBounds(bounds, 64);
-    const selected = getSelectedEncounter();
-    if (hasValidLatLng(selected?.position)) {
-      focusGoogleMapPoint({ lat: Number(selected.position.lat), lng: Number(selected.position.lng) }, 7);
-    }
   }
 }
 
