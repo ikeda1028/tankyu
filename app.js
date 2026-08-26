@@ -1592,7 +1592,10 @@ function getMapsKeySource() {
 
 function getMapsReferrerHint() {
   if (window.location.protocol === "file:") {
-    return "http://127.0.0.1:4173/* または https://tankyu-five.vercel.app/*";
+    return "http://127.0.0.1:4173/* / http://localhost:4173/* / https://tankyu-five.vercel.app/*";
+  }
+  if (["127.0.0.1", "localhost"].includes(window.location.hostname)) {
+    return "http://127.0.0.1:4173/* と http://localhost:4173/*";
   }
   return `${window.location.origin}/*`;
 }
@@ -1673,7 +1676,7 @@ function loadGoogleMapsScript(apiKey) {
   googleMapsLoadPromise = new Promise((resolve, reject) => {
     window.gm_authFailure = () => {
       googleMapsLoadPromise = null;
-      els.mapCanvas.classList.remove("google-map-enabled");
+      els.mapCanvas.classList.add("google-map-enabled", "google-map-error");
       setMapsStatus(getMapsTroubleshootingMessage("Google Maps認証エラー"));
       saveState();
       reject(new Error("Google Maps authentication failed"));
@@ -1725,6 +1728,7 @@ async function initializeGoogleMap() {
       render();
     });
     els.mapCanvas.classList.add("google-map-enabled");
+    els.mapCanvas.classList.remove("google-map-error");
     renderGoogleMapMarkers();
     setMapsStatus("Google Map表示中");
     if (state.ui?.kidsMapActive) {
@@ -1732,7 +1736,7 @@ async function initializeGoogleMap() {
     }
     saveState();
   } catch (error) {
-    els.mapCanvas.classList.remove("google-map-enabled");
+    els.mapCanvas.classList.add("google-map-enabled", "google-map-error");
     mapsAutoLoadKey = "";
     setMapsStatus(error.message || getMapsTroubleshootingMessage("読み込みエラー"));
     saveState();
