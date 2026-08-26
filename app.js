@@ -717,6 +717,7 @@ let googleMapsAutoLoadAttempts = 0;
 let googleMapsAutoLoadAttemptKey = "";
 let suppressThemeMapAutoFocus = false;
 let themeMapAutoFocusPending = false;
+let ignoreMapTapUntil = 0;
 let eventLocationMap = null;
 let eventLocationMarker = null;
 let eventIndexEvaluateTimer = null;
@@ -2252,10 +2253,15 @@ function openEncounterFromMap(encounterId = state.selected) {
 }
 
 function closeEncounterFromMapTap() {
+  if (Date.now() < ignoreMapTapUntil) return;
   if (state.ui?.encounterPanel === "collapsed") return;
   state.ui.encounterPanel = "collapsed";
   saveState();
   renderEncounterPanelState();
+}
+
+function keepEncounterOpenAfterMarkerTap() {
+  ignoreMapTapUntil = Date.now() + 500;
 }
 
 function renderGoogleMapMarkers() {
@@ -2282,6 +2288,7 @@ function renderGoogleMapMarkers() {
       icon: createMarkerIcon(encounter.color),
     });
     marker.addListener("click", () => {
+      keepEncounterOpenAfterMarkerTap();
       suppressThemeMapAutoFocus = true;
       openEncounterFromMap(encounter.id);
       grantJoy(3, `${encounter.title}の地図ピンを開いた`, `event-view:${encounter.id}`);
