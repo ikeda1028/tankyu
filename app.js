@@ -716,6 +716,7 @@ let googleMapsAutoLoadScheduled = false;
 let googleMapsAutoLoadAttempts = 0;
 let googleMapsAutoLoadAttemptKey = "";
 let suppressThemeMapAutoFocus = false;
+let themeMapAutoFocusPending = false;
 let eventLocationMap = null;
 let eventLocationMarker = null;
 let eventIndexEvaluateTimer = null;
@@ -2295,7 +2296,8 @@ function renderGoogleMapMarkers() {
     } else if (!bounds.isEmpty()) {
       googleMap.fitBounds(bounds, 64);
     }
-  } else if (state.themeSearch?.query && !suppressThemeMapAutoFocus) {
+  } else if (state.themeSearch?.query && themeMapAutoFocusPending && !suppressThemeMapAutoFocus) {
+    themeMapAutoFocusPending = false;
     centerGoogleMapOnSearch();
   }
 }
@@ -6350,6 +6352,7 @@ async function searchThemeOnMap(query) {
   grantJoy(2, `探究テーマ「${trimmed}」を検索`, `theme-search:${trimmed}`);
   const ranked = rankedEncounters();
   if (ranked[0]) state.selected = ranked[0].id;
+  themeMapAutoFocusPending = true;
   saveState();
   render();
 
@@ -6365,6 +6368,7 @@ async function searchThemeOnMap(query) {
       nextQuestions: Array.isArray(answer.nextQuestions) ? answer.nextQuestions : [],
       selectedPlace: null,
     };
+    themeMapAutoFocusPending = true;
     saveState();
     render();
   } catch (error) {
