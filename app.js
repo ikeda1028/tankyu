@@ -299,7 +299,8 @@ const defaultState = {
     eventsPanel: "collapsed",
     encounterPanel: "collapsed",
     fieldPostPanel: "collapsed",
-    mapPerspective: "2d",
+    mapPerspective: "3d",
+    mapPerspectiveInitialized: false,
     themePanel: "collapsed",
     mapClickHintShown: false,
     memberEditing: false,
@@ -686,6 +687,10 @@ state.guardian = { ...defaultState.guardian, ...(state.guardian || {}) };
 state.member.avatar = normalizeAvatar(state.member.avatar);
 state.member.partyRoles = normalizePartyRoles(state.member.partyRoles);
 state.ui = { ...defaultState.ui, ...(state.ui || {}) };
+if (!state.ui.mapPerspectiveInitialized) {
+  state.ui.mapPerspective = "3d";
+  state.ui.mapPerspectiveInitialized = true;
+}
 state.ui.eventsPanel = "collapsed";
 state.ui.encounterPanel = "collapsed";
 state.ui.themePanel = "collapsed";
@@ -1737,7 +1742,7 @@ async function initializeGoogleMap() {
     const center = hasValidLatLng(selected.position) ? selected.position : createMapPosition(0);
     googleMap = new google.maps.Map(els.googleMapCanvas, {
       center: { lat: Number(center.lat), lng: Number(center.lng) },
-      zoom: 6,
+      zoom: state.ui?.mapPerspective === "3d" ? getDefaultMapZoomForRadius(500) : 13,
       clickableIcons: false,
       fullscreenControl: false,
       mapTypeControl: false,
@@ -1763,6 +1768,8 @@ async function initializeGoogleMap() {
     if (state.ui?.mapPerspective !== "3d") setMapsStatus("Google Map表示中");
     if (state.ui?.kidsMapActive) {
       centerKidsCurrentLocation();
+    } else {
+      centerOnCurrentLocation();
     }
     saveState();
   } catch (error) {
@@ -1795,7 +1802,7 @@ async function centerOnCurrentLocation() {
     latestCurrentLocation = current;
     updateCurrentLocationOverlay(current);
     googleMap.panTo(current);
-    googleMap.setZoom(state.ui?.kidsMapActive ? getKidsMapZoomForRadius() : 13);
+    googleMap.setZoom(state.ui?.kidsMapActive ? getKidsMapZoomForRadius() : getDefaultMapZoomForRadius(500));
     if (state.ui?.kidsMapActive) {
       renderKidsMode();
       renderKidsMapGuide();
@@ -1803,8 +1810,10 @@ async function centerOnCurrentLocation() {
       googleMap.panTo(current);
       googleMap.setZoom(getKidsMapZoomForRadius());
       setKidsMapStatus(`いまいる場所から半径${formatKidsRadius(getKidsWorldRadius())}だけ見えます。`);
+    } else if (state.ui?.mapPerspective === "3d") {
+      applyGoogleMapPerspective();
     }
-    setMapsStatus(state.ui?.kidsMapActive ? `現在地から半径${formatKidsRadius(getKidsWorldRadius())}を表示中` : "現在地に移動しました");
+    setMapsStatus(state.ui?.kidsMapActive ? `現在地から半径${formatKidsRadius(getKidsWorldRadius())}を表示中` : "現在地から半径500mを3D表示中");
   } catch (error) {
     const message = getGeolocationErrorMessage(error);
     setMapsStatus(message);
@@ -1836,6 +1845,14 @@ function getKidsMapZoomForRadius(radius = getKidsWorldRadius()) {
   return 14;
 }
 
+function getDefaultMapZoomForRadius(radius = 500) {
+  if (radius <= 100) return 19;
+  if (radius <= 300) return 18;
+  if (radius <= 500) return 17;
+  if (radius <= 1000) return 16;
+  return 15;
+}
+
 function updateCurrentLocationOverlay(position) {
   if (!googleMap || !window.google?.maps || !hasValidLatLng(position)) return;
   const current = { lat: Number(position.lat), lng: Number(position.lng) };
@@ -1855,6 +1872,19 @@ function updateCurrentLocationOverlay(position) {
   currentLocationMarker.setMap(googleMap);
   currentLocationMarker.setPosition(current);
   renderKidsWorldRange();
+  if (!state.ui?.kidsMapActive) {
+    currentLocationCircle = new google.maps.Circle({
+      map: googleMap,
+      center: current,
+      radius: 500,
+      strokeColor: "#2f6fb3",
+      strokeOpacity: 0.82,
+      strokeWeight: 2,
+      fillColor: "#2f6fb3",
+      fillOpacity: 0.08,
+      clickable: false,
+    });
+  }
 }
 
 function clearKidsWorldRange() {
@@ -2146,6 +2176,7 @@ function applyGoogleMapPerspective() {
 
 function toggleGoogleMapPerspective() {
   state.ui.mapPerspective = state.ui?.mapPerspective === "3d" ? "2d" : "3d";
+  state.ui.mapPerspectiveInitialized = true;
   saveState();
   if (!googleMap) {
     initializeGoogleMap();
