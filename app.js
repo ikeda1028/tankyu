@@ -2008,14 +2008,36 @@ function createPhotoMarkerIcon(imageSrc, color = "#2f8f63", label = "友") {
 function createAvatarMapMarkerIcon() {
   const avatar = normalizeAvatar(state.member.avatar);
   const imageSrc = avatar.imageDataUrl || avatar.downloadUrl || "";
+  const safeColor = /^#[0-9a-f]{6}$/i.test(avatar.color) ? avatar.color : "#2f8f63";
   if (imageSrc) {
+    const safeImageSrc = escapeHtml(imageSrc);
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="104" height="120" viewBox="0 0 104 120">
+      <defs>
+        <radialGradient id="rim" cx="30%" cy="18%" r="82%">
+          <stop offset="0" stop-color="#ffffff"/>
+          <stop offset="0.52" stop-color="${safeColor}"/>
+          <stop offset="1" stop-color="#17211b"/>
+        </radialGradient>
+        <clipPath id="avatarClip">
+          <circle cx="52" cy="45" r="33"/>
+        </clipPath>
+        <filter id="lift" x="-24%" y="-20%" width="148%" height="160%">
+          <feDropShadow dx="0" dy="10" stdDeviation="6" flood-color="#17211b" flood-opacity="0.3"/>
+        </filter>
+      </defs>
+      <ellipse cx="52" cy="105" rx="30" ry="8" fill="#17211b" opacity="0.22"/>
+      <path d="M52 111 C47 94 15 82 15 46 C15 20 31 8 52 8 C73 8 89 20 89 46 C89 82 57 94 52 111Z" fill="url(#rim)" stroke="#ffffff" stroke-width="6" filter="url(#lift)"/>
+      <circle cx="52" cy="45" r="37" fill="#ffffff" opacity="0.96"/>
+      <image href="${safeImageSrc}" x="19" y="12" width="66" height="66" preserveAspectRatio="xMidYMid slice" clip-path="url(#avatarClip)"/>
+      <circle cx="38" cy="25" r="9" fill="#ffffff" opacity="0.4"/>
+      <path d="M27 76 Q52 91 77 76" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round" opacity="0.74"/>
+    </svg>`;
     return {
-      url: imageSrc,
-      scaledSize: new google.maps.Size(58, 58),
-      anchor: new google.maps.Point(29, 55),
+      url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
+      scaledSize: new google.maps.Size(64, 74),
+      anchor: new google.maps.Point(32, 69),
     };
   }
-  const safeColor = /^#[0-9a-f]{6}$/i.test(avatar.color) ? avatar.color : "#2f8f63";
   const safeSymbol = escapeHtml(avatar.symbol || "★");
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="86" height="96" viewBox="0 0 86 96">
     <defs>
