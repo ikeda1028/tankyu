@@ -639,6 +639,7 @@ const els = {
   eventCharacterName: document.querySelector("#event-character-name"),
   eventCharacterRole: document.querySelector("#event-character-role"),
   eventCharacterMessage: document.querySelector("#event-character-message"),
+  eventCharacterPreview: document.querySelector("#event-character-preview"),
   suggestCharacterButton: document.querySelector("#suggest-character-button"),
   characterSuggestionStatus: document.querySelector("#character-suggestion-status"),
   eventLat: document.querySelector("#event-lat"),
@@ -1093,6 +1094,8 @@ function normalizeCharacter(character) {
     role: String(character.role || "現地案内人").trim().slice(0, 40),
     message: String(character.message || "現地で観察したことを手がかりに、次の問いを見つけよう。").trim().slice(0, 180),
     localOnly: character.localOnly !== false,
+    personality: String(character.personality || "").trim().slice(0, 120),
+    visualPrompt: String(character.visualPrompt || "").trim().slice(0, 300),
   };
 }
 
@@ -4363,6 +4366,7 @@ function render() {
   renderThemeEvaluation();
   renderAiSuggestions();
   renderRegisteredEvents();
+  renderEventCharacterPreview();
   renderDriveSync();
   renderFirebaseSettings();
   renderMapsSettings();
@@ -7016,6 +7020,54 @@ function applyCharacterSuggestion(data) {
     : data.personality
       ? `作成しました: ${data.personality}`
       : "キャラクターを作成しました";
+  renderEventCharacterPreview(data);
+}
+
+function getEventCharacterPreviewData(extra = {}) {
+  const title = els.eventTitle?.value.trim() || "探究ポイント";
+  const impact = els.eventImpact?.value.trim() || title;
+  const fallback = buildFallbackCharacter({
+    title,
+    impact,
+    description: els.eventDescription?.value.trim() || "",
+    locationName: els.eventLocation?.value.trim() || "",
+    tags: splitList(els.eventTags?.value || ""),
+  });
+  const typed = normalizeCharacter({
+    name: els.eventCharacterName?.value.trim() || extra.name || fallback.name,
+    role: els.eventCharacterRole?.value.trim() || extra.role || fallback.role,
+    message: els.eventCharacterMessage?.value.trim() || extra.message || fallback.message,
+    localOnly: els.eventCharacterEnabled?.checked !== false,
+    personality: extra.personality || fallback.personality || "",
+    visualPrompt: extra.visualPrompt || els.eventImagePrompt?.value.trim() || fallback.visualPrompt || "",
+  });
+  return {
+    ...fallback,
+    ...extra,
+    ...typed,
+    visualPrompt: extra.visualPrompt || els.eventImagePrompt?.value.trim() || fallback.visualPrompt || "",
+  };
+}
+
+function renderEventCharacterPreview(extra = {}) {
+  if (!els.eventCharacterPreview) return;
+  const character = getEventCharacterPreviewData(extra);
+  const color = /^#[0-9a-f]{6}$/i.test(els.eventColor?.value) ? els.eventColor.value : "#2f8f63";
+  const initial = escapeHtml((character.name || "探").slice(0, 1));
+  const localLabel = character.localOnly ? "現地で会える" : "いつでも会える";
+  els.eventCharacterPreview.innerHTML = `<div class="event-character-figure" style="--character-color: ${escapeHtml(color)}">
+      <span class="event-character-shadow"></span>
+      <span class="event-character-body">
+        <span class="event-character-face">${initial}</span>
+      </span>
+    </div>
+    <div class="event-character-preview-text">
+      <p class="label">${escapeHtml(localLabel)}キャラクター</p>
+      <strong>${escapeHtml(character.name || "自動生成キャラクター")}</strong>
+      <span>${escapeHtml(character.role || "現地案内人")}</span>
+      <p>${escapeHtml(character.message || "現地で見えたことを記録して、次の問いを見つけよう。")}</p>
+      ${character.visualPrompt ? `<small>${escapeHtml(character.visualPrompt)}</small>` : ""}
+    </div>`;
 }
 
 function getRequiredCharacterFromForm(payload) {
@@ -7040,6 +7092,7 @@ function getRequiredCharacterFromForm(payload) {
     if (els.characterSuggestionStatus) {
       els.characterSuggestionStatus.textContent = `キャラクターを自動設定しました: ${fallbackCharacter.name}`;
     }
+    renderEventCharacterPreview(fallbackCharacter);
   }
   return fallbackCharacter;
 }
@@ -7241,6 +7294,7 @@ function resetEventFormToCreate(status = "新規登録") {
   if (els.eventSubmitButton) els.eventSubmitButton.textContent = "探究ポイントを登録";
   els.cancelEventEditButton?.classList.add("hidden");
   els.eventAdminStatus.textContent = status;
+  renderEventCharacterPreview();
   saveState();
 }
 
@@ -7273,6 +7327,7 @@ function populateEventForm(eventData) {
   if (els.eventCharacterName) els.eventCharacterName.value = character.name || "";
   if (els.eventCharacterRole) els.eventCharacterRole.value = character.role || "";
   if (els.eventCharacterMessage) els.eventCharacterMessage.value = character.message || "";
+  if (els.eventImagePrompt && character.visualPrompt) els.eventImagePrompt.value = character.visualPrompt;
   const position = hasValidLatLng(eventData.position) ? eventData.position : null;
   els.eventLat.value = position ? Number(position.lat).toFixed(6) : "";
   els.eventLng.value = position ? Number(position.lng).toFixed(6) : "";
@@ -7280,6 +7335,7 @@ function populateEventForm(eventData) {
     input.value = Array.isArray(eventData.questionPath) ? eventData.questionPath[index] || "" : "";
   });
   if (position) renderEventLocationMarker({ lat: Number(position.lat), lng: Number(position.lng) });
+  renderEventCharacterPreview(character);
 }
 
 function editAiSuggestion(index) {
@@ -7603,6 +7659,20 @@ els.registerAllAiEventsButton?.addEventListener("click", registerAllAiSuggestion
   els.eventKeywords,
   els.eventLocation,
 ].forEach((input) => input?.addEventListener("input", scheduleEventIndexEvaluation));
+[
+  els.eventTitle,
+  els.eventImpact,
+  els.eventDescription,
+  els.eventTags,
+  els.eventColor,
+  els.eventLocation,
+  els.eventCharacterName,
+  els.eventCharacterRole,
+  els.eventCharacterMessage,
+  els.eventCharacterEnabled,
+  els.eventImagePrompt,
+].forEach((input) => input?.addEventListener("input", () => renderEventCharacterPreview()));
+els.eventCharacterEnabled?.addEventListener("change", () => renderEventCharacterPreview());
 els.useMapCenterButton.addEventListener("click", useMapCenterForEvent);
 els.openLocationMapButton.addEventListener("click", initializeEventLocationMap);
 els.eventLat.addEventListener("input", syncEventLocationMarkerFromInputs);
