@@ -686,6 +686,7 @@ state.childProfile = normalizeChildProfile(state.childProfile);
 state.guardian = { ...defaultState.guardian, ...(state.guardian || {}) };
 state.member.avatar = normalizeAvatar(state.member.avatar);
 state.member.partyRoles = normalizePartyRoles(state.member.partyRoles);
+state.customEvents = Array.isArray(state.customEvents) ? state.customEvents.map(ensureEventCharacter) : [];
 state.ui = { ...defaultState.ui, ...(state.ui || {}) };
 if (!state.ui.mapPerspectiveInitialized) {
   state.ui.mapPerspective = "3d";
@@ -939,8 +940,14 @@ function getNextEvolutionTasks() {
   return tasks.length ? tasks.slice(0, 4) : ["次の探究ポイントで実装まで進み、最終装備を強化する"];
 }
 
+function ensureEventCharacter(event) {
+  if (!event) return event;
+  const character = getEventCharacter(event);
+  return character ? { ...event, character } : { ...event, character: createFallbackCharacter(event) };
+}
+
 function getEncounters() {
-  return [...seedEncounters, ...state.customEvents];
+  return [...seedEncounters, ...state.customEvents].map(ensureEventCharacter);
 }
 
 function getKidsExplorationPoints(scope = "") {
@@ -1079,9 +1086,10 @@ function hasValidLatLng(position) {
 }
 
 function normalizeCharacter(character) {
-  if (!character || !character.name) return null;
+  const name = String(character?.name || "").trim().slice(0, 40);
+  if (!character || !name) return null;
   return {
-    name: String(character.name || "").trim().slice(0, 40),
+    name,
     role: String(character.role || "現地案内人").trim().slice(0, 40),
     message: String(character.message || "現地で観察したことを手がかりに、次の問いを見つけよう。").trim().slice(0, 180),
     localOnly: character.localOnly !== false,
@@ -1089,7 +1097,7 @@ function normalizeCharacter(character) {
 }
 
 function getEventCharacter(encounter) {
-  return normalizeCharacter(encounter?.character);
+  return normalizeCharacter(encounter?.character) || (encounter ? normalizeCharacter(createFallbackCharacter(encounter)) : null);
 }
 
 function hasVisitedCharacter(eventId) {
@@ -1226,7 +1234,7 @@ async function unlockLocalCharacter(encounter) {
 
 function dedupeCustomEvents() {
   const seen = new Set();
-  state.customEvents = state.customEvents.filter((event) => {
+  state.customEvents = state.customEvents.map(ensureEventCharacter).filter((event) => {
     const key = `${event.title}::${event.impact}`;
     if (seen.has(key)) return false;
     seen.add(key);
@@ -6713,14 +6721,12 @@ function suggestionToEventData(suggestion, index = 0) {
     eventType: suggestion.eventType === "limited" ? "limited" : "permanent",
     startDate: suggestion.eventType === "limited" ? suggestion.startDate || "" : "",
     endDate: suggestion.eventType === "limited" ? suggestion.endDate || "" : "",
-    character: hasLatLng
-      ? {
-          name: `${(tags[0] || suggestion.impact || "探究").slice(0, 8)}ナビ`,
-          role: "現地案内人",
-          message: "この場所で気づいたことを3つ集めて、なぜここで起きているのかを問いにしてみよう。",
-          localOnly: true,
-        }
-      : null,
+    character: {
+      name: `${(tags[0] || suggestion.impact || "探究").slice(0, 8)}ナビ`,
+      role: "現地案内人",
+      message: "この場所で気づいたことを3つ集めて、なぜここで起きているのかを問いにしてみよう。",
+      localOnly: true,
+    },
     questionPath,
     color: ["#2f8f63", "#2f6fb3", "#c85d72", "#d49b2a"][index % 4],
     position: hasLatLng ? createPositionFromLatLng(lat, lng, state.customEvents.length) : createMapPosition(state.customEvents.length),
@@ -6960,6 +6966,32 @@ function applyCharacterSuggestion(data) {
     : data.personality
       ? `作成しました: ${data.personality}`
       : "キャラクターを作成しました";
+}
+
+function getRequiredCharacterFromForm(payload) {
+  const localOnly = els.eventCharacterEnabled?.checked !== false;
+  const typedCharacter = normalizeCharacter({
+    name: els.eventCharacterName?.value.trim(),
+    role: els.eventCharacterRole?.value.trim() || "現地案内人",
+    message: els.eventCharacterMessage?.value.trim() || "現地で見えたことを記録して、次の問いを見つけよう。",
+    localOnly,
+  });
+  if (typedCharacter) return typedCharacter;
+
+  const fallbackCharacter = normalizeCharacter({
+    ...buildFallbackCharacter(payload),
+    localOnly,
+  });
+  if (fallbackCharacter) {
+    if (els.eventCharacterEnabled) els.eventCharacterEnabled.checked = fallbackCharacter.localOnly;
+    if (els.eventCharacterName) els.eventCharacterName.value = fallbackCharacter.name;
+    if (els.eventCharacterRole) els.eventCharacterRole.value = fallbackCharacter.role;
+    if (els.eventCharacterMessage) els.eventCharacterMessage.value = fallbackCharacter.message;
+    if (els.characterSuggestionStatus) {
+      els.characterSuggestionStatus.textContent = `キャラクターを自動設定しました: ${fallbackCharacter.name}`;
+    }
+  }
+  return fallbackCharacter;
 }
 
 async function suggestEventCharacter() {
@@ -7306,6 +7338,14 @@ function registerEvent(event) {
   const keywords = splitList(els.eventKeywords.value);
   const position = getEventPosition();
   if (!position) return;
+  const characterPayload = {
+    title,
+    impact,
+    description,
+    locationName: els.eventLocation.value.trim(),
+    tags,
+  };
+  const character = getRequiredCharacterFromForm(characterPayload);
   const questionPath = els.eventQuestions.map((input, index) => input.value.trim() || [
     "何が起きているか",
     "なぜ起きているか",
@@ -7325,15 +7365,7 @@ function registerEvent(event) {
     eventType: els.eventType.value,
     startDate: els.eventStartDate.value,
     endDate: els.eventEndDate.value,
-    character:
-      els.eventCharacterEnabled?.checked && els.eventCharacterName?.value.trim()
-        ? {
-            name: els.eventCharacterName.value.trim(),
-            role: els.eventCharacterRole.value.trim() || "現地案内人",
-            message: els.eventCharacterMessage.value.trim() || "現地で見えたことを記録して、次の問いを見つけよう。",
-            localOnly: true,
-          }
-        : null,
+    character,
     questionPath,
     color: els.eventColor.value || "#2f8f63",
     position,
@@ -7414,10 +7446,12 @@ function renderRegisteredEvents() {
   els.registeredEventCount.textContent = `${events.length}件`;
   els.registeredEventList.innerHTML = events.length
     ? events
-        .map(
-          (event) => `<button class="registered-event-card" type="button" data-id="${event.id}">
+        .map((event) => {
+          const character = getEventCharacter(event);
+          return `<button class="registered-event-card" type="button" data-id="${event.id}">
             <strong>${event.title}</strong>
             <span>${[event.impact, event.locationName, getEventPeriodLabel(event)].filter(Boolean).join(" / ")}</span>
+            <span>キャラ: ${escapeHtml(character?.name || "自動設定")}</span>
             <em>${event.index}</em>
             <span class="registered-event-actions">
               <span>${state.ui.editingEventId === event.id ? "編集中" : "詳細を見る"}</span>
@@ -7426,8 +7460,8 @@ function renderRegisteredEvents() {
                 ${admin ? `<span class="registered-delete-control" data-delete-id="${event.id}">削除</span>` : ""}
               </span>
             </span>
-          </button>`
-        )
+          </button>`;
+        })
         .join("")
     : "<p class=\"empty-note\">まだ登録済み探究ポイントはありません。</p>";
   els.registeredEventList.querySelectorAll(".registered-event-card").forEach((card) => {
