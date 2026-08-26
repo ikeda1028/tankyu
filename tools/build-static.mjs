@@ -61,10 +61,10 @@ const sourceConfig = await readSourcePublicConfig();
 const sourceFirebase = sourceConfig.firebase || {};
 const config = {
   googleMapsApiKey: fallbackEnv(
-    getEnv("GOOGLE_MAPS_API_KEY", "PUBLIC_GOOGLE_MAPS_API_KEY", "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY"),
-    sourceConfig.googleMapsApiKey
+    sourceConfig.googleMapsApiKey,
+    getEnv("GOOGLE_MAPS_API_KEY", "PUBLIC_GOOGLE_MAPS_API_KEY", "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY")
   ),
-  driveApiUrl: fallbackEnv(getEnv("GOOGLE_DRIVE_API_URL", "PUBLIC_GOOGLE_DRIVE_API_URL"), sourceConfig.driveApiUrl),
+  driveApiUrl: fallbackEnv(sourceConfig.driveApiUrl, getEnv("GOOGLE_DRIVE_API_URL", "PUBLIC_GOOGLE_DRIVE_API_URL")),
   adminEmails: (getEnv("ADMIN_EMAILS") || "ikeda@manabinomichi.com")
     .split(",")
     .map((email) => email.trim())
