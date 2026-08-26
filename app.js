@@ -707,6 +707,9 @@ let kidsWorldCircles = [];
 let latestCurrentLocation = null;
 let googleMapFocusToken = 0;
 let mapsAutoLoadKey = "";
+let googleMapsAutoLoadScheduled = false;
+let googleMapsAutoLoadAttempts = 0;
+let googleMapsAutoLoadAttemptKey = "";
 let eventLocationMap = null;
 let eventLocationMarker = null;
 let eventIndexEvaluateTimer = null;
@@ -1671,6 +1674,23 @@ function renderMapsSettings() {
   } else {
     els.mapsStatus.textContent = `公開設定未設定 / キーを入力してください / 許可URL ${getMapsReferrerHint()}`;
   }
+}
+
+function scheduleGoogleMapAutoLoad() {
+  const apiKey = getMapsKey();
+  if (isFilePage() || !apiKey || googleMap || googleMapsLoadPromise || googleMapsAutoLoadScheduled) return;
+  if (googleMapsAutoLoadAttemptKey !== apiKey) {
+    googleMapsAutoLoadAttemptKey = apiKey;
+    googleMapsAutoLoadAttempts = 0;
+  }
+  if (googleMapsAutoLoadAttempts >= 2) return;
+  googleMapsAutoLoadScheduled = true;
+  window.setTimeout(() => {
+    googleMapsAutoLoadScheduled = false;
+    if (isFilePage() || !getMapsKey() || googleMap || googleMapsLoadPromise) return;
+    googleMapsAutoLoadAttempts += 1;
+    initializeGoogleMap();
+  }, 250);
 }
 
 function loadGoogleMapsScript(apiKey) {
@@ -4183,6 +4203,7 @@ function render() {
   renderDriveSync();
   renderFirebaseSettings();
   renderMapsSettings();
+  scheduleGoogleMapAutoLoad();
   renderDatabaseStatus();
   renderModeNavigation();
   applyKidsMapOnlyVisibility();
@@ -5846,6 +5867,7 @@ async function handleLogin(event) {
   saveState();
   render();
   if (state.member.name) applyAgeBasedMode({ force: true });
+  scheduleGoogleMapAutoLoad();
 }
 
 async function handleDemoLogin() {
@@ -5863,6 +5885,7 @@ async function handleDemoLogin() {
   saveState();
   render();
   if (state.member.name) applyAgeBasedMode({ force: true });
+  scheduleGoogleMapAutoLoad();
 }
 
 async function saveMemberInfo(event) {
