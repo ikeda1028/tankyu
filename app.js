@@ -2064,6 +2064,39 @@ function createAvatarMapMarkerIcon() {
   };
 }
 
+function createCharacterMapMarkerIcon(encounter, evaluation = null) {
+  const character = getEventCharacter(encounter);
+  const safeColor = /^#[0-9a-f]{6}$/i.test(encounter?.color) ? encounter.color : "#2f8f63";
+  const score = String(evaluation ? evaluation.total : encounter?.index || 70).slice(0, 3);
+  const initial = escapeHtml((character?.name || encounter?.title || "探").trim().slice(0, 1));
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="118" viewBox="0 0 100 118">
+    <defs>
+      <radialGradient id="body" cx="32%" cy="18%" r="82%">
+        <stop offset="0" stop-color="#ffffff" stop-opacity="0.96"/>
+        <stop offset="0.4" stop-color="${safeColor}" stop-opacity="0.98"/>
+        <stop offset="1" stop-color="#17211b"/>
+      </radialGradient>
+      <filter id="shadow" x="-22%" y="-20%" width="144%" height="160%">
+        <feDropShadow dx="0" dy="10" stdDeviation="6" flood-color="#17211b" flood-opacity="0.28"/>
+      </filter>
+    </defs>
+    <ellipse cx="50" cy="104" rx="29" ry="8" fill="#17211b" opacity="0.22"/>
+    <path d="M50 110 C45 94 16 82 16 47 C16 21 31 9 50 9 C69 9 84 21 84 47 C84 82 55 94 50 110Z" fill="url(#body)" stroke="#ffffff" stroke-width="6" filter="url(#shadow)"/>
+    <circle cx="50" cy="42" r="28" fill="#fffaf0" opacity="0.96"/>
+    <circle cx="40" cy="39" r="4" fill="#17211b" opacity="0.84"/>
+    <circle cx="60" cy="39" r="4" fill="#17211b" opacity="0.84"/>
+    <path d="M39 52 Q50 60 61 52" fill="none" stroke="#17211b" stroke-width="4" stroke-linecap="round" opacity="0.78"/>
+    <text x="50" y="28" text-anchor="middle" font-family="system-ui, sans-serif" font-size="18" font-weight="900" fill="${safeColor}">${initial}</text>
+    <circle cx="76" cy="22" r="18" fill="#ffffff" stroke="${safeColor}" stroke-width="4"/>
+    <text x="76" y="28" text-anchor="middle" font-family="system-ui, sans-serif" font-size="15" font-weight="900" fill="#17211b">${score}</text>
+  </svg>`;
+  return {
+    url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
+    scaledSize: new google.maps.Size(58, 68),
+    anchor: new google.maps.Point(29, 64),
+  };
+}
+
 function getOwnKidsPhotoMarkers() {
   const radius = getKidsWorldRadius();
   const center = getKidsWorldCenter();
@@ -2312,13 +2345,8 @@ function renderGoogleMapMarkers() {
       map: googleMap,
       position,
       title: evaluation ? `${encounter.title} / 評価 ${evaluation.total}` : encounter.title,
-      label: {
-        text: String(evaluation ? evaluation.total : encounter.index),
-        color: "#ffffff",
-        fontSize: "11px",
-        fontWeight: "900",
-      },
-      icon: createMarkerIcon(encounter.color),
+      icon: createCharacterMapMarkerIcon(encounter, evaluation),
+      zIndex: 60,
     });
     marker.addListener("click", () => {
       keepEncounterOpenAfterMarkerTap();
