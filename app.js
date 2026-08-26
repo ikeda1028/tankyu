@@ -1778,9 +1778,7 @@ async function initializeGoogleMap() {
     });
     googleMap.addListener("click", () => {
       if (state.ui?.kidsMapActive) return;
-      openEncounterFromMap();
-      saveState();
-      render();
+      closeEncounterFromMapTap();
     });
     els.mapCanvas.classList.add("google-map-enabled");
     els.mapCanvas.classList.remove("google-map-error");
@@ -2218,6 +2216,13 @@ function openEncounterFromMap(encounterId = state.selected) {
   state.ui.eventsPanel = "collapsed";
   state.ui.themePanel = "collapsed";
   state.ui.mapClickHintShown = true;
+}
+
+function closeEncounterFromMapTap() {
+  if (state.ui?.encounterPanel === "collapsed") return;
+  state.ui.encounterPanel = "collapsed";
+  saveState();
+  renderEncounterPanelState();
 }
 
 function renderGoogleMapMarkers() {
@@ -7649,9 +7654,7 @@ els.map3dButton?.addEventListener("click", toggleGoogleMapPerspective);
 els.mapCanvas?.addEventListener("click", (event) => {
   if (state.ui?.kidsMapActive) return;
   if (event.target.closest(".spot, .map-controls, .kids-map-guide")) return;
-  openEncounterFromMap();
-  saveState();
-  render();
+  closeEncounterFromMapTap();
 });
 els.openingSkipButton?.addEventListener("click", closeOpeningScreen);
 els.openingVideo?.addEventListener("ended", closeOpeningScreen);
