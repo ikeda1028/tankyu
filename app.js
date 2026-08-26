@@ -298,7 +298,7 @@ const defaultState = {
     mode: "quest",
     eventsPanel: "collapsed",
     encounterPanel: "collapsed",
-    fieldPostPanel: "open",
+    fieldPostPanel: "collapsed",
     mapPerspective: "2d",
     themePanel: "collapsed",
     mapClickHintShown: false,
@@ -3007,7 +3007,7 @@ function openKidsMapPoint(eventId, options = {}) {
 }
 
 function renderEventDrawer() {
-  const mode = state.ui?.eventsPanel || "compact";
+  const mode = "collapsed";
   els.eventDrawer.classList.toggle("hidden", mode === "collapsed");
   els.eventDrawer.classList.toggle("compact", mode === "compact");
   els.eventDrawer.classList.toggle("collapsed", mode === "collapsed");
@@ -3047,7 +3047,8 @@ function renderEncounterPanelState() {
 
 function renderFieldPostPanelState() {
   if (!els.fieldPostPanel) return;
-  const mode = state.ui?.fieldPostPanel || "open";
+  const mode = "collapsed";
+  els.fieldPostPanel.classList.toggle("hidden", true);
   els.fieldPostPanel.classList.toggle("compact", mode === "compact");
   els.fieldPostPanel.classList.toggle("collapsed", mode === "collapsed");
   if (els.compactFieldPostButton) {
@@ -3068,7 +3069,7 @@ function renderFieldPostPanelState() {
 
 function renderThemePanelState() {
   if (!els.themeEvaluationPanel) return;
-  const mode = state.ui?.themePanel || "compact";
+  const mode = "collapsed";
   els.themeEvaluationPanel.classList.toggle("hidden", mode === "collapsed");
   els.themeEvaluationPanel.classList.toggle("compact", mode === "compact");
   els.themeEvaluationPanel.classList.toggle("collapsed", mode === "collapsed");
@@ -3091,6 +3092,8 @@ function renderThemePanelState() {
 function renderThemeEvaluation() {
   if (!els.themeEvaluationPanel) return;
   renderThemePanelState();
+  els.themeEvaluationPanel.classList.add("hidden");
+  return;
   if (isKidsMapOnlyMode()) {
     els.themeEvaluationPanel.classList.add("hidden");
     return;
