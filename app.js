@@ -1878,18 +1878,14 @@ function updateCurrentLocationOverlay(position) {
   if (!currentLocationMarker) {
     currentLocationMarker = new google.maps.Marker({
       map: googleMap,
-      title: "現在地",
-      label: {
-        text: "自分",
-        color: "#ffffff",
-        fontSize: "10px",
-        fontWeight: "900",
-      },
-      icon: createMarkerIcon("#17211b"),
+      title: "現在地のアバター",
+      icon: createAvatarMapMarkerIcon(),
+      zIndex: 120,
     });
   }
   currentLocationMarker.setMap(googleMap);
   currentLocationMarker.setPosition(current);
+  currentLocationMarker.setIcon(createAvatarMapMarkerIcon());
   renderKidsWorldRange();
   if (!state.ui?.kidsMapActive) {
     currentLocationCircle = new google.maps.Circle({
@@ -1994,6 +1990,43 @@ function createPhotoMarkerIcon(imageSrc, color = "#2f8f63", label = "友") {
     url,
     scaledSize: new google.maps.Size(46, 46),
     anchor: new google.maps.Point(23, 23),
+  };
+}
+
+function createAvatarMapMarkerIcon() {
+  const avatar = normalizeAvatar(state.member.avatar);
+  const imageSrc = avatar.imageDataUrl || avatar.downloadUrl || "";
+  if (imageSrc) {
+    return {
+      url: imageSrc,
+      scaledSize: new google.maps.Size(58, 58),
+      anchor: new google.maps.Point(29, 55),
+    };
+  }
+  const safeColor = /^#[0-9a-f]{6}$/i.test(avatar.color) ? avatar.color : "#2f8f63";
+  const safeSymbol = escapeHtml(avatar.symbol || "★");
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="86" height="96" viewBox="0 0 86 96">
+    <defs>
+      <radialGradient id="shine" cx="31%" cy="18%" r="72%">
+        <stop offset="0" stop-color="#ffffff" stop-opacity="0.95"/>
+        <stop offset="0.36" stop-color="${safeColor}" stop-opacity="0.98"/>
+        <stop offset="1" stop-color="#17211b" stop-opacity="1"/>
+      </radialGradient>
+      <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+        <feDropShadow dx="0" dy="9" stdDeviation="5" flood-color="#17211b" flood-opacity="0.28"/>
+      </filter>
+    </defs>
+    <ellipse cx="43" cy="87" rx="24" ry="7" fill="#17211b" opacity="0.22"/>
+    <path d="M43 91 C39 82 18 72 18 42 C18 20 29 8 43 8 C57 8 68 20 68 42 C68 72 47 82 43 91Z" fill="url(#shine)" stroke="#ffffff" stroke-width="5" filter="url(#shadow)"/>
+    <circle cx="34" cy="34" r="5" fill="#ffffff" opacity="0.9"/>
+    <circle cx="52" cy="34" r="5" fill="#ffffff" opacity="0.9"/>
+    <path d="M33 51 Q43 59 53 51" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" opacity="0.9"/>
+    <text x="43" y="27" text-anchor="middle" font-family="system-ui, sans-serif" font-size="18" font-weight="900" fill="#ffffff">${safeSymbol}</text>
+  </svg>`;
+  return {
+    url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
+    scaledSize: new google.maps.Size(58, 65),
+    anchor: new google.maps.Point(29, 61),
   };
 }
 
@@ -4307,9 +4340,16 @@ function renderAvatarElement(element, avatar) {
   if (!element) return;
   const imageSrc = avatar.imageDataUrl || avatar.downloadUrl || "";
   const equippedItems = getEquippedKidsItems(avatar);
-  element.innerHTML = imageSrc
-    ? `<img src="${escapeHtml(imageSrc)}" alt="${escapeHtml(avatar.aura)}オーラのアバター" />`
-    : `<span class="avatar-symbol">${escapeHtml(avatar.symbol)}</span>`;
+  element.classList.add("avatar-3d");
+  const face = imageSrc
+    ? `<span class="avatar-3d-face image-face"><img src="${escapeHtml(imageSrc)}" alt="${escapeHtml(avatar.aura)}オーラのアバター" /></span>`
+    : `<span class="avatar-3d-face"><span class="avatar-symbol">${escapeHtml(avatar.symbol)}</span></span>`;
+  element.innerHTML = `<span class="avatar-3d-stage" aria-hidden="true">
+      <span class="avatar-3d-shadow"></span>
+      <span class="avatar-3d-aura"></span>
+      <span class="avatar-3d-core">${face}</span>
+      <span class="avatar-3d-glint"></span>
+    </span>`;
   if (equippedItems.length) {
     element.insertAdjacentHTML(
       "beforeend",
@@ -4699,16 +4739,16 @@ function buildKidsAvatarPrompt() {
   });
   const favoriteThings = els.kidsProfileFavoritesInput?.value.trim() || child.favoriteThings || state.member.initialInterest || "みつけること";
   return [
-    "4歳から10歳向けの探究アプリで使う、子どもの相棒アバターを1体生成する。",
+    "4歳から10歳向けの探究アプリで使う、子どもの相棒アバターを1体生成する。3Dレンダーのトイフィギュア風。",
     `よびな: ${els.kidsProfileNameInput?.value.trim() || child.nickname || "ぼうけんしゃ"}`,
     `すきなこと: ${favoriteThings}`,
     `しるし: ${avatar.symbol}`,
     `いろ: ${avatar.color}`,
     `ちから: ${avatar.aura}`,
     pendingKidsAvatarReferenceImage ? "子どもの写真が参考画像として添付されている。顔立ち、髪型、雰囲気、表情の特徴を、写実ではなく安全で親しみやすい相棒アバターに抽象化して反映する。" : "",
-    "最初から怖くない、丸みのある、シンプルで親しみやすいキャラクター。",
+    "最初から怖くない、丸みのある、シンプルで親しみやすい小さな3Dキャラクター。",
     "成長前の姿なので、装備は少なめ。小さな発見を応援する雰囲気。",
-    "全身が見える。背景は透明または白に近いシンプルな背景。",
+    "全身が見える。やわらかいスタジオ照明、粘土やソフトビニールのような質感。背景は透明または白に近いシンプルな背景。",
     "武器、攻撃、危険な表現、読める文字、ロゴは入れない。",
     "明るく安全で、幼児から小学生低学年にふさわしいデザイン。",
   ].filter(Boolean).join("\n");
@@ -4727,7 +4767,7 @@ function resetKidsAvatarImage() {
     downloadUrl: "",
     storagePath: "",
     generatedAt: "",
-    generationStage: "simple",
+    generationStage: "simple-3d",
   });
   state.member.avatar = avatar;
   saveState();
@@ -4763,7 +4803,7 @@ async function regenerateKidsAvatar() {
       downloadUrl: "",
       storagePath: "",
       generatedAt: new Date().toISOString(),
-      generationStage: "simple",
+      generationStage: "simple-3d",
     });
     saveState();
     renderKidsMode();
@@ -5705,7 +5745,7 @@ function buildMemberAvatarPrompt() {
   const dimension = getHeroDimension();
   const stage = dimension <= 2 ? "まだ小さくシンプルで、成長前の相棒キャラクター" : "少し成長した探究ヒーローの相棒キャラクター";
   return [
-    "中高生向け探究育成ゲームのプレイヤーアバターを1体生成する。",
+    "中高生向け探究育成ゲームのプレイヤーアバターを1体生成する。3Dレンダーのトイフィギュア風。",
     `役割: ${heroRole}`,
     `シンボル: ${avatar.symbol}`,
     `メインカラー: ${avatar.color}`,
@@ -5714,9 +5754,9 @@ function buildMemberAvatarPrompt() {
     pendingAvatarReferenceImage ? "本人写真が参考画像として添付されている。顔立ち、髪型、雰囲気、表情の特徴を、写実ではなく安全で親しみやすいゲームアバターに抽象化して反映する。" : "",
     `興味: ${firstInterest}`,
     `成長段階: ${stage}`,
-    "最初の姿なので、形はシンプル。丸みがあり、親しみやすい小さなキャラクター。",
+    "最初の姿なので、形はシンプル。丸みがあり、親しみやすい小さな3Dキャラクター。",
     "ユーザーのテキスト指示がある場合は、その雰囲気、色、持ち物、性格を優先して反映する。",
-    "全身が見える。背景は透明または白に近いシンプルな背景。",
+    "全身が見える。やわらかいスタジオ照明、粘土やソフトビニールのような質感。背景は透明または白に近いシンプルな背景。",
     "武器や攻撃表現は入れない。学び、観察、発見、冒険の印象にする。",
     "文字、ロゴ、読める記号は入れない。",
     "安全で年齢に適した、明るいキャラクターデザイン。",
@@ -5847,7 +5887,7 @@ async function generateMemberAvatar() {
       ...getAvatarFromEditor(),
       imageDataUrl: compressedImage,
       generatedAt: new Date().toISOString(),
-      generationStage: "simple",
+      generationStage: "simple-3d",
     };
     saveState();
     renderMemberSummary();
