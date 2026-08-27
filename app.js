@@ -1209,14 +1209,28 @@ function startCurrentLocationWatch() {
 }
 
 function getGeolocationErrorMessage(error) {
-  if (!navigator.geolocation) return "このブラウザでは現在地を取得できません。";
+  const help = getMobileLocationHelpText();
+  if (!navigator.geolocation) return `このブラウザでは現在地を取得できません。${help}`;
   if (location.protocol !== "https:" && location.hostname !== "127.0.0.1" && location.hostname !== "localhost") {
-    return "現在地はHTTPSまたはlocalhostでのみ使えます。公開URLで開いてください。";
+    return `現在地はHTTPSまたはlocalhostでのみ使えます。公開URLで開いてください。${help}`;
   }
-  if (error?.code === 1) return "位置情報が許可されていません。ブラウザの位置情報を許可してください。";
-  if (error?.code === 2) return "端末が現在地を見つけられませんでした。GPSやWi-Fiをオンにしてください。";
-  if (error?.code === 3) return "現在地の取得に時間がかかっています。屋外や窓の近くで再試行してください。";
-  return error?.message || "現在地を取得できませんでした。";
+  if (error?.code === 1) return `位置情報が許可されていません。ブラウザと端末の位置情報を許可してください。${help}`;
+  if (error?.code === 2) return `端末が現在地を見つけられませんでした。GPSやWi-Fiをオンにして、屋外や窓の近くで再試行してください。${help}`;
+  if (error?.code === 3) return `現在地の取得に時間がかかっています。屋外や窓の近くで再試行してください。${help}`;
+  return `${error?.message || "現在地を取得できませんでした。"}${help}`;
+}
+
+function getMobileLocationHelpText() {
+  const ua = navigator.userAgent || "";
+  const isIos = /iPhone|iPad|iPod/i.test(ua);
+  const isAndroid = /Android/i.test(ua);
+  if (isIos) {
+    return " iPhoneは「設定 > プライバシーとセキュリティ > 位置情報サービス」をオンにし、SafariまたはChromeの位置情報を許可してください。";
+  }
+  if (isAndroid) {
+    return " Androidは端末の位置情報をオンにし、Chromeのサイト設定でこのサイトの位置情報を許可してください。";
+  }
+  return "";
 }
 
 function isLocationSettingsWarning(message = "") {
@@ -4461,7 +4475,7 @@ async function handleFieldPhotoChange(event) {
 
 function attachFieldPostLocation() {
   if (!navigator.geolocation) {
-    setFieldPostStatus("このブラウザでは現在地を取得できません", true);
+    setFieldPostStatus(getGeolocationErrorMessage(new Error("このブラウザでは現在地を取得できません")), true);
     return;
   }
   setFieldPostStatus("現在地を取得中...");
@@ -4474,7 +4488,7 @@ function attachFieldPostLocation() {
       };
       setFieldPostStatus("現在地を添付しました");
     },
-    () => setFieldPostStatus("現在地を取得できませんでした", true),
+    (error) => setFieldPostStatus(getGeolocationErrorMessage(error), true),
     { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
   );
 }
