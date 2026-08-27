@@ -4943,7 +4943,7 @@ body:has(.map-canvas.kids-map-active) .kids-navigator-bot {
   top: 222px;
   display: grid;
   grid-template-columns: 1fr;
-  grid-template-rows: 92px minmax(0, 1fr);
+  grid-template-rows: 190px minmax(0, 1fr);
   width: min(418px, calc(100% - 36px));
   max-height: none;
   overflow: hidden;
@@ -4956,7 +4956,7 @@ body:has(.map-canvas.kids-map-active) .kids-navigator-bot {
 .encounter-media {
   position: relative;
   overflow: hidden;
-  min-height: 152px;
+  min-height: 190px;
   background:
     linear-gradient(135deg, rgba(47, 143, 99, 0.15), rgba(200, 93, 114, 0.22)),
     var(--media);
@@ -4979,6 +4979,12 @@ body:has(.map-canvas.kids-map-active) .kids-navigator-bot {
   height: 150px;
   transform: translateY(4px);
   --character-color: var(--green);
+}
+
+.encounter-character-stage.has-image {
+  width: 250px;
+  height: 184px;
+  transform: translateY(10px);
 }
 
 .encounter-character-shadow {
@@ -5026,6 +5032,41 @@ body:has(.map-canvas.kids-map-active) .kids-navigator-bot {
   height: 104px;
   border-radius: 28px;
   background: rgba(255, 255, 255, 0.96);
+}
+
+.encounter-character-stage.has-image .encounter-character-body {
+  left: 10px;
+  top: -34px;
+  width: 230px;
+  height: 230px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.encounter-character-stage.has-image .encounter-character-face.image-face {
+  width: 230px;
+  height: 230px;
+  border-radius: 0;
+  background: transparent;
+  overflow: visible;
+  filter:
+    drop-shadow(0 20px 22px rgba(23, 33, 27, 0.3))
+    drop-shadow(0 0 18px color-mix(in srgb, var(--character-color), transparent 42%));
+}
+
+.encounter-character-stage.has-image .encounter-character-shadow {
+  right: 52px;
+  bottom: 0;
+  left: 52px;
+  height: 16px;
+  opacity: 0.75;
+}
+
+.encounter-character-stage.has-image .encounter-character-score {
+  right: 8px;
+  top: 24px;
 }
 
 .encounter-character-face.image-face img {
@@ -6494,16 +6535,20 @@ body:has(.map-canvas.kids-map-active) .kids-navigator-bot {
 
   .encounter-panel {
     grid-template-columns: 1fr;
-    grid-template-rows: 132px minmax(0, 1fr);
+    grid-template-rows: 170px minmax(0, 1fr);
     width: auto;
   }
 
   .encounter-media {
-    min-height: 132px;
+    min-height: 170px;
   }
 
   .encounter-character-stage {
     transform: translateY(0) scale(0.88);
+  }
+
+  .encounter-character-stage.has-image {
+    transform: translateY(4px) scale(0.78);
   }
 
   .encounter-panel.compact,

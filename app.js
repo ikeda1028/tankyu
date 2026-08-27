@@ -2394,37 +2394,47 @@ function createWorldMapMarkerIcon(world) {
   const title = String(world?.title || "ワールド").trim();
   const initial = escapeHtml(title.slice(0, 1) || "世");
   const imageMarkup = imageSrc
-    ? `<image href="${escapeHtml(imageSrc)}" x="21" y="16" width="58" height="58" preserveAspectRatio="xMidYMid slice" clip-path="url(#portalClip)"/>`
-    : `<circle cx="50" cy="45" r="23" fill="#fff7d0" opacity="0.96"/>
-      <path d="M35 48 C40 30 60 30 65 48 C60 62 40 62 35 48Z" fill="#5b42d6" opacity="0.9"/>
-      <circle cx="50" cy="48" r="8" fill="#ffffff" opacity="0.92"/>
-      <text x="50" y="31" text-anchor="middle" font-family="system-ui, sans-serif" font-size="17" font-weight="900" fill="#ffffff">${initial}</text>`;
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="104" height="124" viewBox="0 0 104 124">
+    ? `<image href="${escapeHtml(imageSrc)}" x="22" y="18" width="60" height="60" preserveAspectRatio="xMidYMid slice" clip-path="url(#portalClip)"/>`
+    : `<circle cx="52" cy="48" r="28" fill="#fff8d7" opacity="0.96"/>
+      <path d="M34 54 C38 32 66 32 70 54 C64 70 40 70 34 54Z" fill="#7048ff" opacity="0.94"/>
+      <circle cx="52" cy="55" r="9" fill="#ffffff" opacity="0.95"/>
+      <text x="52" y="36" text-anchor="middle" font-family="system-ui, sans-serif" font-size="18" font-weight="900" fill="#ffffff">${initial}</text>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="112" height="132" viewBox="0 0 112 132">
     <defs>
       <linearGradient id="portal" x1="0" x2="1" y1="0" y2="1">
-        <stop offset="0" stop-color="#ffdf6f"/>
-        <stop offset="0.5" stop-color="#7b61ff"/>
-        <stop offset="1" stop-color="#22b8cf"/>
+        <stop offset="0" stop-color="#ffe77a"/>
+        <stop offset="0.48" stop-color="#7c4dff"/>
+        <stop offset="1" stop-color="#18b7d6"/>
+      </linearGradient>
+      <linearGradient id="rim" x1="0" x2="1" y1="0" y2="1">
+        <stop offset="0" stop-color="#ffffff"/>
+        <stop offset="0.45" stop-color="#fff0a8"/>
+        <stop offset="1" stop-color="#ffffff"/>
       </linearGradient>
       <filter id="glow" x="-30%" y="-30%" width="160%" height="170%">
-        <feDropShadow dx="0" dy="0" stdDeviation="7" flood-color="#ffdf6f" flood-opacity="0.55"/>
-        <feDropShadow dx="0" dy="9" stdDeviation="6" flood-color="#17211b" flood-opacity="0.28"/>
+        <feDropShadow dx="0" dy="0" stdDeviation="8" flood-color="#ffe77a" flood-opacity="0.72"/>
+        <feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="#56d7ff" flood-opacity="0.45"/>
+        <feDropShadow dx="0" dy="10" stdDeviation="7" flood-color="#17211b" flood-opacity="0.26"/>
       </filter>
       <clipPath id="portalClip">
-        <circle cx="50" cy="45" r="29"/>
+        <path d="M52 16 C73 16 88 33 88 54 C88 79 68 92 56 114 C44 92 24 79 24 54 C24 33 39 16 52 16Z"/>
       </clipPath>
     </defs>
-    <ellipse cx="52" cy="110" rx="28" ry="8" fill="#17211b" opacity="0.22"/>
-    <path d="M52 116 C47 98 14 86 14 48 C14 21 31 8 52 8 C73 8 90 21 90 48 C90 86 57 98 52 116Z" fill="url(#portal)" stroke="#ffffff" stroke-width="6" filter="url(#glow)"/>
-    <circle cx="50" cy="45" r="31" fill="#ffffff" opacity="0.95"/>
+    <ellipse cx="58" cy="119" rx="31" ry="8" fill="#17211b" opacity="0.2"/>
+    <path d="M56 120 C50 101 14 88 14 51 C14 22 32 8 56 8 C80 8 98 22 98 51 C98 88 62 101 56 120Z" fill="url(#portal)" stroke="url(#rim)" stroke-width="6" filter="url(#glow)"/>
+    <path d="M56 20 C75 20 88 34 88 54 C88 78 69 90 56 111 C43 90 24 78 24 54 C24 34 37 20 56 20Z" fill="#ffffff" opacity="0.96"/>
     ${imageMarkup}
-    <circle cx="78" cy="25" r="15" fill="#ffffff" stroke="#ffdf6f" stroke-width="4"/>
-    <text x="78" y="31" text-anchor="middle" font-family="system-ui, sans-serif" font-size="14" font-weight="900" fill="#5b42d6">W</text>
+    <path d="M21 21 L25 29 L34 32 L25 35 L21 43 L17 35 L8 32 L17 29Z" fill="#fff5a7"/>
+    <path d="M93 72 L96 78 L103 80 L96 82 L93 89 L90 82 L83 80 L90 78Z" fill="#ffffff" opacity="0.95"/>
+    <g transform="translate(70 18)">
+      <rect x="0" y="0" width="33" height="29" rx="12" fill="#ffffff" stroke="#ffe77a" stroke-width="3"/>
+      <text x="16.5" y="20" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12" font-weight="900" fill="#5b42d6">WQ</text>
+    </g>
   </svg>`;
   return {
     url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
-    scaledSize: new google.maps.Size(62, 74),
-    anchor: new google.maps.Point(31, 70),
+    scaledSize: new google.maps.Size(66, 78),
+    anchor: new google.maps.Point(33, 74),
   };
 }
 
@@ -3865,9 +3875,14 @@ function resolveWorldEntrancePosition(worldOrPayload, existing = null) {
   return currentPosition || null;
 }
 
+function isKidsWorld(world) {
+  return (world?.ageMode || "") === "kids" || world?.sourceMode === "kids" || world?.kidsOnly === true;
+}
+
 function getMapVisibleWorlds() {
-  if (state.ui?.kidsMapActive) return [];
+  const kidsMapActive = Boolean(state.ui?.kidsMapActive);
   return (Array.isArray(state.worlds) ? state.worlds : [])
+    .filter((world) => (kidsMapActive ? isKidsWorld(world) : !isKidsWorld(world)))
     .map((world) => {
       const entrancePosition = resolveWorldEntrancePosition(world);
       return entrancePosition ? { ...world, entrancePosition } : null;
@@ -4367,7 +4382,7 @@ function renderEncounterCharacterHero(encounter) {
   const initial = escapeHtml((character?.name || encounter?.title || "探").trim().slice(0, 1));
   const score = escapeHtml(String(encounter?.index || 70).slice(0, 3));
   const imageSrc = character?.imageDataUrl || character?.downloadUrl || "";
-  els.encounterCharacterHero.innerHTML = `<div class="encounter-character-stage" style="--character-color: ${escapeHtml(color)}">
+  els.encounterCharacterHero.innerHTML = `<div class="encounter-character-stage${imageSrc ? " has-image" : ""}" style="--character-color: ${escapeHtml(color)}">
       <span class="encounter-character-shadow"></span>
       <span class="encounter-character-body">
         <span class="encounter-character-face${imageSrc ? " image-face" : ""}">${
