@@ -336,6 +336,7 @@ const els = {
   description: document.querySelector("#encounter-description"),
   tags: document.querySelector("#tag-row"),
   media: document.querySelector("#encounter-media"),
+  encounterCharacterHero: document.querySelector("#encounter-character-hero"),
   encounterPanel: document.querySelector(".encounter-panel"),
   kidsEncounterCard: document.querySelector("#kids-encounter-card"),
   kidsEncounterTitle: document.querySelector("#kids-encounter-title"),
@@ -3992,6 +3993,7 @@ function renderEncounter() {
     .join("");
   renderCharacterCard(encounter);
   renderKidsEncounterCard(encounter, questions);
+  renderEncounterCharacterHero(encounter);
   els.encounterPanel?.classList.toggle("kids-detail", Boolean(state.ui?.kidsMapActive));
   els.media.style.setProperty(
     "--media",
@@ -4017,6 +4019,25 @@ function renderKidsEncounterCard(encounter, questions = getEncounterQuestions(en
   els.kidsTaskList.innerHTML = tasks
     .map((task, index) => `<div class="kids-task"><span>${index + 1}</span><strong>${escapeHtml(task)}</strong></div>`)
     .join("");
+}
+
+function renderEncounterCharacterHero(encounter) {
+  if (!els.encounterCharacterHero) return;
+  const character = getEventCharacter(encounter);
+  const color = /^#[0-9a-f]{6}$/i.test(encounter?.color) ? encounter.color : "#2f8f63";
+  const initial = escapeHtml((character?.name || encounter?.title || "探").trim().slice(0, 1));
+  const score = escapeHtml(String(encounter?.index || 70).slice(0, 3));
+  els.encounterCharacterHero.innerHTML = `<div class="encounter-character-stage" style="--character-color: ${escapeHtml(color)}">
+      <span class="encounter-character-shadow"></span>
+      <span class="encounter-character-body">
+        <span class="encounter-character-face">${initial}</span>
+      </span>
+      <span class="encounter-character-score">${score}</span>
+    </div>
+    <div class="encounter-character-name">
+      <strong>${escapeHtml(character?.name || "探究ナビ")}</strong>
+      <span>${escapeHtml(character?.role || "現地案内人")}</span>
+    </div>`;
 }
 
 function openKidsFieldPost() {

@@ -4925,12 +4925,104 @@ body:has(.map-canvas.kids-map-active) .kids-navigator-bot {
 }
 
 .encounter-media {
+  position: relative;
+  overflow: hidden;
   min-height: 92px;
   background:
     linear-gradient(135deg, rgba(47, 143, 99, 0.15), rgba(200, 93, 114, 0.22)),
     var(--media);
   background-size: cover;
   background-position: center;
+}
+
+.encounter-character-hero {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.encounter-character-stage {
+  position: relative;
+  width: 118px;
+  height: 118px;
+  transform: translateY(12px);
+  --character-color: var(--green);
+}
+
+.encounter-character-shadow {
+  position: absolute;
+  right: 22px;
+  bottom: 18px;
+  left: 22px;
+  height: 16px;
+  border-radius: 999px;
+  background: rgba(23, 33, 27, 0.28);
+  filter: blur(4px);
+}
+
+.encounter-character-body {
+  position: absolute;
+  left: 22px;
+  top: 4px;
+  display: grid;
+  width: 74px;
+  height: 88px;
+  place-items: center;
+  border: 5px solid white;
+  border-radius: 50% 50% 45% 45% / 42% 42% 58% 58%;
+  background:
+    radial-gradient(circle at 32% 16%, rgba(255, 255, 255, 0.92), transparent 26%),
+    linear-gradient(145deg, color-mix(in srgb, var(--character-color), white 12%), #17211b);
+  box-shadow: 0 14px 24px rgba(23, 33, 27, 0.22);
+}
+
+.encounter-character-face {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--character-color);
+  background: rgba(255, 250, 240, 0.95);
+  font-size: 23px;
+  font-weight: 900;
+}
+
+.encounter-character-score {
+  position: absolute;
+  right: 4px;
+  top: 15px;
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border: 4px solid white;
+  border-radius: 50%;
+  color: white;
+  background: var(--character-color);
+  font-size: 15px;
+  font-weight: 900;
+  box-shadow: 0 8px 16px rgba(23, 33, 27, 0.18);
+}
+
+.encounter-character-name {
+  position: absolute;
+  right: 12px;
+  bottom: 10px;
+  left: 12px;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: rgba(23, 33, 27, 0.78);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.encounter-character-name span {
+  color: rgba(23, 33, 27, 0.56);
 }
 
 .encounter-body {
