@@ -3739,6 +3739,7 @@ function renderWorldMapPreview(world = getSelectedWorld()) {
 
 function getSelectedWorld() {
   const worlds = Array.isArray(state.worlds) ? state.worlds : [];
+  if (state.ui?.selectedWorldId === "__new__") return null;
   return worlds.find((world) => world.id === state.ui?.selectedWorldId) || worlds[0] || null;
 }
 
@@ -3767,6 +3768,32 @@ function fillWorldForm(world) {
   if (els.worldEntrance) els.worldEntrance.value = world.entrance || "";
   if (els.worldRiddle) els.worldRiddle.value = world.riddle || "";
   if (els.worldRequiredItems) els.worldRequiredItems.value = (world.requiredItems || []).join(", ");
+}
+
+function createWorldDraftFromPoint(eventId = state.selected) {
+  const encounter = getEncounters().find((item) => item.id === eventId) || getSelectedEncounter();
+  if (!encounter) return;
+  const questions = getEncounterQuestions(encounter);
+  const tags = getEncounterTags(encounter);
+  const character = getEventCharacter(encounter);
+  state.ui.selectedWorldId = "__new__";
+  showMode("worlds");
+  if (els.worldTitle) els.worldTitle.value = `${encounter.title}ワールド`;
+  if (els.worldConcept) {
+    els.worldConcept.value = `${encounter.title}を入口に、${encounter.impact || "地域のふしぎ"}の過去・現在・未来を探検するワールド。${encounter.description || ""}`.trim();
+  }
+  if (els.worldEntrance) els.worldEntrance.value = encounter.locationName || encounter.title;
+  if (els.worldRiddle) els.worldRiddle.value = questions[1] || questions[0] || "この場所に隠された昔と未来のつながりを見つける。";
+  if (els.worldRequiredItems) {
+    const items = [
+      `${(tags[0] || "発見").slice(0, 8)}のかけら`,
+      `${(character?.name || "案内人").slice(0, 8)}のしるし`,
+      "問いのメモ",
+    ];
+    els.worldRequiredItems.value = items.join(", ");
+  }
+  renderWorldMapPreview(null);
+  setWorldStatus(`${encounter.title}からワールド案を作りました`);
 }
 
 async function saveWorld(event) {
@@ -4018,6 +4045,10 @@ function renderCharacterCard(encounter) {
         <strong>${escapeHtml(character.name)}</strong>
         <span>${escapeHtml(character.role)}</span>
         <p>${escapeHtml(character.message)}</p>
+        <div class="character-card-actions">
+          <button type="button" data-point-world="${escapeHtml(encounter.id)}">ワールドにする</button>
+          <button type="button" data-point-character="${escapeHtml(encounter.id)}">キャラ/アバター編集</button>
+        </div>
       </div>`
     : `<div class="character-avatar">?</div>
       <div>
@@ -4025,7 +4056,19 @@ function renderCharacterCard(encounter) {
         <strong>現場に行くと会えます</strong>
         <span>${hasValidLatLng(encounter.position) ? "イベント地点から300m以内で解放" : "イベント位置を設定すると解放できます"}</span>
         <p>このキャラクターの名前とメッセージは、リアルにその場所へ行った時だけ表示されます。</p>
+        <div class="character-card-actions">
+          <button type="button" data-point-world="${escapeHtml(encounter.id)}">ワールドにする</button>
+          <button type="button" data-point-character="${escapeHtml(encounter.id)}">キャラ/アバター編集</button>
+        </div>
       </div>`;
+  els.characterCard.querySelector("[data-point-world]")?.addEventListener("click", (event) => {
+    event.stopPropagation();
+    createWorldDraftFromPoint(encounter.id);
+  });
+  els.characterCard.querySelector("[data-point-character]")?.addEventListener("click", (event) => {
+    event.stopPropagation();
+    editPointCharacter(encounter.id);
+  });
 }
 
 function setFieldPostStatus(message, isError = false) {
@@ -7461,6 +7504,33 @@ function editAiSuggestion(index) {
   saveState();
   showMode("event-admin");
   els.eventTitle.focus();
+}
+
+function editPointCharacter(eventId = state.selected) {
+  const customEvent = state.customEvents.find((event) => event.id === eventId);
+  if (customEvent) {
+    startEditingEvent(eventId);
+    els.eventCharacterName?.focus();
+    return;
+  }
+  const encounter = getEncounters().find((item) => item.id === eventId) || getSelectedEncounter();
+  if (!encounter) return;
+  const draft = ensureEventCharacter({
+    ...encounter,
+    id: "",
+    userCreated: true,
+    sourceEventId: encounter.id,
+  });
+  state.ui.editingEventId = "";
+  state.ui.aiCandidateSource = null;
+  populateEventForm(draft);
+  if (els.eventSubmitButton) els.eventSubmitButton.textContent = "コピーして登録";
+  els.cancelEventEditButton?.classList.remove("hidden");
+  els.eventAdminStatus.textContent = `${encounter.title}をコピーして編集中`;
+  els.characterSuggestionStatus.textContent = "キャラクター名・役割・メッセージを編集できます";
+  saveState();
+  showMode("event-admin");
+  els.eventCharacterName?.focus();
 }
 
 function startEditingEvent(eventId) {

@@ -5395,6 +5395,31 @@ body:has(.map-canvas.kids-map-active) .kids-navigator-bot {
   line-height: 1.55;
 }
 
+.character-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.character-card-actions button {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid rgba(47, 143, 99, 0.24);
+  border-radius: 8px;
+  color: var(--green);
+  background: #f6faf7;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.character-card-actions button:hover,
+.character-card-actions button:focus-visible {
+  border-color: rgba(47, 143, 99, 0.5);
+  background: #edf8ef;
+}
+
 #encounter-description {
   color: var(--muted);
   margin-bottom: 12px;
