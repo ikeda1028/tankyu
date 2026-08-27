@@ -35,18 +35,19 @@ function parseJsonObject(text) {
 }
 
 function normalizeWorld(data, payload) {
+  const defaultItem = payload.ageMode === "kids" ? "ひみつのかけら" : "探究の手がかり";
   const zones = Array.isArray(data?.zones)
     ? data.zones
         .map((zone) => ({
           name: normalizeText(zone?.name, "未知の場所").slice(0, 40),
           clue: normalizeText(zone?.clue, "現実の場所の観察から手がかりを見つける").slice(0, 140),
-          item: normalizeText(zone?.item, payload.requiredItems[0] || "ひみつのかけら").slice(0, 40),
+          item: normalizeText(zone?.item, payload.requiredItems[0] || defaultItem).slice(0, 40),
         }))
         .filter((zone) => zone.name)
         .slice(0, 6)
     : [];
   return {
-    summary: normalizeText(data?.summary, `${payload.concept}から生まれる探究ワールドです。`).slice(0, 260),
+    summary: normalizeText(data?.summary, `${payload.concept}から生まれる探究ワールドです。`).slice(0, 320),
     entranceRiddle: normalizeText(data?.entranceRiddle || payload.riddle, `${payload.entrance}に隠れた謎を解く。`).slice(0, 180),
     zones,
   };
@@ -85,6 +86,7 @@ export default async function handler(request, response) {
       riddle: normalizeText(body.riddle).slice(0, 180),
       requiredItems: normalizeList(body.requiredItems, 8),
       ageMode: normalizeText(body.ageMode, "standard").slice(0, 20),
+      grade: normalizeText(body.grade).slice(0, 40),
       region: normalizeText(body.region, "日本").slice(0, 80),
       interests: normalizeList(body.interests, 10),
     };
@@ -92,6 +94,11 @@ export default async function handler(request, response) {
       response.status(400).json({ error: "concept is required" });
       return;
     }
+
+    const audienceInstruction =
+      payload.ageMode === "kids"
+        ? "対象は4歳から10歳程度。ひらがな多め、短い文、怖くない表現で、安全な観察・記録だけを促してください。"
+        : "対象は中高生以上。ひらがな中心にしないでください。漢字を自然に使い、社会課題、歴史、科学、地域、未来への接続が見える知的な探究文にしてください。幼児向けの言い回し、過度な丸め表現、語尾の幼児化は避けてください。";
 
     const openAiResponse = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
@@ -101,8 +108,7 @@ export default async function handler(request, response) {
       },
       body: JSON.stringify({
         model: process.env.OPENAI_MODEL || DEFAULT_MODEL,
-        instructions:
-          "探究プラットフォーム用のワールドマップをJSONだけで生成してください。現実の地図上の具体的な入口に、謎、必要アイテム、発見をマッピングする設計です。子ども向けの場合は怖くせず、ひらがな多めで、安全な観察・記録だけを促してください。危険な侵入、夜間行動、知らない人との接触、個人情報収集は入れないでください。",
+        instructions: `探究プラットフォーム用のワールドマップをJSONだけで生成してください。現実の地図上の具体的な入口に、謎、必要アイテム、発見をマッピングする設計です。${audienceInstruction} 危険な侵入、夜間行動、知らない人との接触、個人情報収集は入れないでください。`,
         input: [
           {
             role: "user",
@@ -126,6 +132,7 @@ export default async function handler(request, response) {
 - アイテムが揃うと入口に入れる構造
 - 発見したものを後から各エリアへマッピングできる
 - ageModeがkidsなら4歳から10歳向け
+- ageModeがstandardなら中高生以上向け。特にgradeが高1・高2・高3なら高校生向けの文体
 
 入力:
 ${JSON.stringify(payload, null, 2)}`,

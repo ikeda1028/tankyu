@@ -807,7 +807,20 @@ function hasExplicitChildAgeProfile(child = normalizeChildProfile(state.childPro
   return Boolean(child.updatedAt || child.onboardingComplete || child.nickname || child.guardianId);
 }
 
+function isKidsGradeLabel(grade = "") {
+  return /^(年中|年長|小[1-4])$/.test(String(grade || "").trim());
+}
+
+function isStandardGradeLabel(grade = "") {
+  return /^(小[5-6]|中[1-3]|高[1-3]|大学|社会人|その他)$/.test(String(grade || "").trim());
+}
+
 function getModeForUserAge() {
+  const grade = String(state.member?.grade || "").trim();
+  if (isStandardGradeLabel(grade)) return "quest";
+  if (isKidsGradeLabel(grade)) return "kids";
+  const memberAge = calculateAgeFromBirthdate(state.member?.birthdate);
+  if (Number.isFinite(memberAge)) return memberAge >= 4 && memberAge <= 10 ? "kids" : "quest";
   const child = normalizeChildProfile(state.childProfile);
   if (!hasExplicitChildAgeProfile(child)) return "";
   const age = Number(child.age);
@@ -3711,8 +3724,24 @@ function splitWorldItems(value) {
     .slice(0, 8);
 }
 
-function createFallbackWorldMap(concept, entrance, requiredItems) {
+function getCurrentWorldAgeMode() {
+  return getModeForUserAge() === "kids" ? "kids" : "standard";
+}
+
+function createFallbackWorldMap(concept, entrance, requiredItems, ageMode = getCurrentWorldAgeMode()) {
   const base = concept || "まだ名前のないワールド";
+  if (ageMode !== "kids") {
+    return {
+      summary: `${base}は、現実の場所に隠れた入口から、地域・歴史・科学・社会課題を横断して問いを深める探究ワールドです。`,
+      zones: [
+        { name: "入口の観察地点", clue: `${entrance || "現実の入口"}に残る痕跡を観察し、何が起きているのかを言語化する`, item: requiredItems[0] || "観察メモ" },
+        { name: "背景を読む広場", clue: "その場所が現在の形になった歴史的・社会的背景を調べる", item: requiredItems[1] || "背景カード" },
+        { name: "構造の回廊", clue: "人、制度、経済、環境のつながりから課題の構造を整理する", item: requiredItems[2] || "構造マップ" },
+        { name: "未来実装の門", clue: "誰を助けるために、どんな小さな実験ができるかを設計する", item: requiredItems[3] || "実装プラン" },
+      ],
+      entranceRiddle: `${entrance || "入口"}で見える事実を起点に、過去・現在・未来をつなぐ根拠を3つ集める。`,
+    };
+  }
   return {
     summary: `${base}は、現実の場所に隠れた入口から入る探究ワールドです。`,
     zones: [
@@ -3724,8 +3753,8 @@ function createFallbackWorldMap(concept, entrance, requiredItems) {
   };
 }
 
-function normalizeWorldMap(data, concept, entrance, requiredItems) {
-  const fallback = createFallbackWorldMap(concept, entrance, requiredItems);
+function normalizeWorldMap(data, concept, entrance, requiredItems, ageMode = getCurrentWorldAgeMode()) {
+  const fallback = createFallbackWorldMap(concept, entrance, requiredItems, ageMode);
   const zones = Array.isArray(data?.zones)
     ? data.zones
         .map((zone) => ({
@@ -3836,6 +3865,7 @@ function buildWorldVisualPrompt(world) {
   const zoneLines = zones
     .map((zone, index) => `${index + 1}. ${zone.name}: ${zone.clue} / アイテム ${zone.item || "なし"}`)
     .join("\n");
+  const isKids = (world?.ageMode || getCurrentWorldAgeMode()) === "kids";
   return [
     "探究プラットフォームで使う、現実の地図に隠された入口から入る架空ワールドのビジュアルマップを1枚生成する。",
     `ワールド名: ${world.title}`,
@@ -3845,7 +3875,9 @@ function buildWorldVisualPrompt(world) {
     `必要アイテム: ${(world.requiredItems || []).join("、") || "発見したアイテム"}`,
     zoneLines ? `エリア:\n${zoneLines}` : "",
     "俯瞰図の探索マップ。入口から奥へ進める道、複数のランドマーク、発見できる場所、少しずつ広がる世界を描く。",
-    "4歳から10歳にも怖くない、安全で明るい雰囲気。冒険感、発見感、秘密の世界への入口を感じる。",
+    isKids
+      ? "4歳から10歳にも怖くない、安全で明るい雰囲気。冒険感、発見感、秘密の世界への入口を感じる。"
+      : "中高生以上向け。幼児向けにしすぎず、社会課題、歴史、科学、地域、未来への問いが重なる知的な雰囲気にする。",
     "読める文字、数字、ロゴ、UI、地名ラベル、人物の顔の特定表現は入れない。",
   ]
     .filter(Boolean)
@@ -3889,19 +3921,20 @@ async function generateWorldMap() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         ...payload,
-        ageMode: getModeForUserAge() === "kids" ? "kids" : "standard",
+        ageMode: getCurrentWorldAgeMode(),
         interests: state.interests,
+        grade: state.member.grade,
         region: state.member.region || normalizeChildProfile(state.childProfile).region,
       }),
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
     setWorldStatus("AIマップ生成済み");
-    return normalizeWorldMap(data.world, payload.concept, payload.entrance, payload.requiredItems);
+    return normalizeWorldMap(data.world, payload.concept, payload.entrance, payload.requiredItems, getCurrentWorldAgeMode());
   } catch (error) {
     console.warn("World generation fallback:", error);
     setWorldStatus("ローカル生成で作成", false);
-    return createFallbackWorldMap(payload.concept, payload.entrance, payload.requiredItems);
+    return createFallbackWorldMap(payload.concept, payload.entrance, payload.requiredItems, getCurrentWorldAgeMode());
   } finally {
     if (els.generateWorldButton) els.generateWorldButton.disabled = false;
   }
@@ -4047,13 +4080,16 @@ async function saveWorld(event) {
     return;
   }
   const existing = getSelectedWorld();
-  const map = existing?.map && existing.concept === payload.concept ? existing.map : await generateWorldMap();
+  const ageMode = getCurrentWorldAgeMode();
+  const canReuseMap = existing?.map && existing.concept === payload.concept && existing.ageMode === ageMode;
+  const map = canReuseMap ? existing.map : await generateWorldMap();
   if (!map) return;
   const sourceEncounter = findWorldSourceEncounter({ ...existing, ...payload });
   const entrancePosition = resolveWorldEntrancePosition(payload, existing);
   const world = {
     id: existing?.id || `world-${Date.now()}`,
     ...payload,
+    ageMode,
     sourcePointId: existing?.sourcePointId || sourceEncounter?.id || state.ui?.worldDraftSourcePointId || "",
     entrancePosition,
     map,
@@ -4063,7 +4099,7 @@ async function saveWorld(event) {
     createdAt: existing?.createdAt || new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
-  if (!world.visualMap || existing?.concept !== payload.concept) {
+  if (!world.visualMap || existing?.concept !== payload.concept || existing?.ageMode !== ageMode) {
     try {
       await generateWorldVisualMap(world);
     } catch (error) {
@@ -4088,11 +4124,13 @@ async function generateAndSaveWorld() {
   const payload = getWorldPayloadFromForm();
   const map = await generateWorldMap();
   if (!map) return;
+  const ageMode = getCurrentWorldAgeMode();
   const sourceEncounter = findWorldSourceEncounter(payload);
   const entrancePosition = resolveWorldEntrancePosition(payload);
   const world = {
     id: `world-${Date.now()}`,
     ...payload,
+    ageMode,
     sourcePointId: sourceEncounter?.id || state.ui?.worldDraftSourcePointId || "",
     entrancePosition,
     map,
