@@ -4311,6 +4311,13 @@ body:has(.map-canvas.kids-map-active) .kids-navigator-bot {
   color: var(--character-color);
   font-size: 18px;
   font-weight: 900;
+  overflow: hidden;
+}
+
+.event-character-face.image-face img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .event-character-preview-text {
@@ -4989,6 +4996,13 @@ body:has(.map-canvas.kids-map-active) .kids-navigator-bot {
   background: rgba(255, 250, 240, 0.95);
   font-size: 23px;
   font-weight: 900;
+  overflow: hidden;
+}
+
+.encounter-character-face.image-face img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .encounter-character-score {
@@ -5462,6 +5476,13 @@ body:has(.map-canvas.kids-map-active) .kids-navigator-bot {
   background: linear-gradient(135deg, var(--green), var(--blue));
   font-size: 22px;
   font-weight: 900;
+  overflow: hidden;
+}
+
+.character-avatar.image-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .character-card.locked .character-avatar {

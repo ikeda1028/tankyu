@@ -184,6 +184,49 @@ async function uploadWorldMapImages(firebase, userId, snapshot) {
   };
 }
 
+async function uploadEventCharacterImages(firebase, userId, snapshot) {
+  const events = Array.isArray(snapshot?.customEvents) ? snapshot.customEvents : [];
+  const uploadedEvents = [];
+
+  for (const event of events) {
+    const character = event?.character;
+    if (!character?.imageDataUrl) {
+      uploadedEvents.push(event);
+      continue;
+    }
+
+    const safeEventId = String(event.id || `event-${Date.now()}`).replace(/[^a-zA-Z0-9_-]/g, "_");
+    const storagePath = `eventCharacters/${userId}/${safeEventId}.jpg`;
+    const imageRef = firebase.storage.ref(firebase.storageBucket, storagePath);
+    const blob = dataUrlToBlob(character.imageDataUrl);
+    await firebase.storage.uploadBytes(imageRef, blob, {
+      contentType: blob.type || "image/jpeg",
+      customMetadata: {
+        userId,
+        eventId: event.id || "",
+        characterName: character.name || "",
+      },
+    });
+    const downloadUrl = await firebase.storage.getDownloadURL(imageRef);
+    uploadedEvents.push({
+      ...event,
+      character: {
+        ...character,
+        imageDataUrl: "",
+        hasImage: true,
+        storagePath,
+        downloadUrl,
+        uploadedAt: new Date().toISOString(),
+      },
+    });
+  }
+
+  return {
+    ...snapshot,
+    customEvents: uploadedEvents,
+  };
+}
+
 async function saveSnapshot(config, state, snapshot) {
   const firebase = await connectFirebase(config);
   const { firestore, db } = firebase;
@@ -191,7 +234,8 @@ async function saveSnapshot(config, state, snapshot) {
   const ref = firestore.doc(db, FIREBASE_COLLECTION, userId);
   const avatarSnapshot = await uploadMemberAvatar(firebase, userId, snapshot);
   const worldSnapshot = await uploadWorldMapImages(firebase, userId, avatarSnapshot);
-  const uploadedSnapshot = await uploadFieldPostImages(firebase, userId, worldSnapshot);
+  const eventCharacterSnapshot = await uploadEventCharacterImages(firebase, userId, worldSnapshot);
+  const uploadedSnapshot = await uploadFieldPostImages(firebase, userId, eventCharacterSnapshot);
   const avatar = uploadedSnapshot.member?.avatar || {};
   const childProfile = uploadedSnapshot.childProfile || {};
   const permissions = childProfile.permissions || {};

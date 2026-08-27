@@ -743,6 +743,8 @@ let kidsRecordImageAnalysisToken = 0;
 let kidsPhotoAnalysisState = { status: "idle", message: "", text: "", labels: [] };
 let kidsRecordSpeechRecognition = null;
 let kidsTtsAudio = null;
+let eventGeneratedCharacterImageDataUrl = "";
+let eventGeneratedCharacterDownloadUrl = "";
 
 function cloneDefaultState() {
   return JSON.parse(JSON.stringify(defaultState));
@@ -1099,6 +1101,10 @@ function normalizeCharacter(character) {
     localOnly: character.localOnly !== false,
     personality: String(character.personality || "").trim().slice(0, 120),
     visualPrompt: String(character.visualPrompt || "").trim().slice(0, 300),
+    imageDataUrl: String(character.imageDataUrl || "").startsWith("data:image/") ? String(character.imageDataUrl) : "",
+    downloadUrl: normalizeExternalUrl(character.downloadUrl),
+    storagePath: String(character.storagePath || "").trim(),
+    generatedAt: String(character.generatedAt || "").trim(),
   };
 }
 
@@ -2178,6 +2184,13 @@ function createCharacterMapMarkerIcon(encounter, evaluation = null) {
   const safeColor = /^#[0-9a-f]{6}$/i.test(encounter?.color) ? encounter.color : "#2f8f63";
   const score = String(evaluation ? evaluation.total : encounter?.index || 70).slice(0, 3);
   const initial = escapeHtml((character?.name || encounter?.title || "探").trim().slice(0, 1));
+  const imageSrc = character?.imageDataUrl || character?.downloadUrl || "";
+  const imageMarkup = imageSrc
+    ? `<image href="${escapeHtml(imageSrc)}" x="22" y="14" width="56" height="56" preserveAspectRatio="xMidYMid slice" clip-path="url(#faceClip)"/>`
+    : `<circle cx="40" cy="39" r="4" fill="#17211b" opacity="0.84"/>
+    <circle cx="60" cy="39" r="4" fill="#17211b" opacity="0.84"/>
+    <path d="M39 52 Q50 60 61 52" fill="none" stroke="#17211b" stroke-width="4" stroke-linecap="round" opacity="0.78"/>
+    <text x="50" y="28" text-anchor="middle" font-family="system-ui, sans-serif" font-size="18" font-weight="900" fill="${safeColor}">${initial}</text>`;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="118" viewBox="0 0 100 118">
     <defs>
       <radialGradient id="body" cx="32%" cy="18%" r="82%">
@@ -2188,14 +2201,14 @@ function createCharacterMapMarkerIcon(encounter, evaluation = null) {
       <filter id="shadow" x="-22%" y="-20%" width="144%" height="160%">
         <feDropShadow dx="0" dy="10" stdDeviation="6" flood-color="#17211b" flood-opacity="0.28"/>
       </filter>
+      <clipPath id="faceClip">
+        <circle cx="50" cy="42" r="28"/>
+      </clipPath>
     </defs>
     <ellipse cx="50" cy="104" rx="29" ry="8" fill="#17211b" opacity="0.22"/>
     <path d="M50 110 C45 94 16 82 16 47 C16 21 31 9 50 9 C69 9 84 21 84 47 C84 82 55 94 50 110Z" fill="url(#body)" stroke="#ffffff" stroke-width="6" filter="url(#shadow)"/>
     <circle cx="50" cy="42" r="28" fill="#fffaf0" opacity="0.96"/>
-    <circle cx="40" cy="39" r="4" fill="#17211b" opacity="0.84"/>
-    <circle cx="60" cy="39" r="4" fill="#17211b" opacity="0.84"/>
-    <path d="M39 52 Q50 60 61 52" fill="none" stroke="#17211b" stroke-width="4" stroke-linecap="round" opacity="0.78"/>
-    <text x="50" y="28" text-anchor="middle" font-family="system-ui, sans-serif" font-size="18" font-weight="900" fill="${safeColor}">${initial}</text>
+    ${imageMarkup}
     <circle cx="76" cy="22" r="18" fill="#ffffff" stroke="${safeColor}" stroke-width="4"/>
     <text x="76" y="28" text-anchor="middle" font-family="system-ui, sans-serif" font-size="15" font-weight="900" fill="#17211b">${score}</text>
   </svg>`;
@@ -4027,10 +4040,13 @@ function renderEncounterCharacterHero(encounter) {
   const color = /^#[0-9a-f]{6}$/i.test(encounter?.color) ? encounter.color : "#2f8f63";
   const initial = escapeHtml((character?.name || encounter?.title || "探").trim().slice(0, 1));
   const score = escapeHtml(String(encounter?.index || 70).slice(0, 3));
+  const imageSrc = character?.imageDataUrl || character?.downloadUrl || "";
   els.encounterCharacterHero.innerHTML = `<div class="encounter-character-stage" style="--character-color: ${escapeHtml(color)}">
       <span class="encounter-character-shadow"></span>
       <span class="encounter-character-body">
-        <span class="encounter-character-face">${initial}</span>
+        <span class="encounter-character-face${imageSrc ? " image-face" : ""}">${
+          imageSrc ? `<img src="${escapeHtml(imageSrc)}" alt="${escapeHtml(character?.name || "キャラクター")}" />` : initial
+        }</span>
       </span>
       <span class="encounter-character-score">${score}</span>
     </div>
@@ -4059,8 +4075,12 @@ function renderCharacterCard(encounter) {
   }
   const unlocked = !character.localOnly || hasVisitedCharacter(encounter.id);
   els.characterCard.className = `character-card${unlocked ? " unlocked" : " locked"}`;
+  const imageSrc = character.imageDataUrl || character.downloadUrl || "";
+  const avatarMarkup = imageSrc
+    ? `<div class="character-avatar image-avatar"><img src="${escapeHtml(imageSrc)}" alt="${escapeHtml(character.name)}" /></div>`
+    : `<div class="character-avatar">${escapeHtml(character.name.slice(0, 1))}</div>`;
   els.characterCard.innerHTML = unlocked
-    ? `<div class="character-avatar">${escapeHtml(character.name.slice(0, 1))}</div>
+    ? `${avatarMarkup}
       <div>
         <p class="label">現地で出会ったキャラクター</p>
         <strong>${escapeHtml(character.name)}</strong>
@@ -6399,6 +6419,8 @@ function eventToDriveRecord(event) {
     character_role: event.character?.role || "",
     character_message: event.character?.message || "",
     character_local_only: event.character?.localOnly !== false,
+    character_image_url: event.character?.downloadUrl || "",
+    character_visual_prompt: event.character?.visualPrompt || "",
     user_created: Boolean(event.userCreated),
     created_by: state.auth.email || state.member.name || "local-user",
     created_at: event.createdAt || new Date().toISOString(),
@@ -7105,15 +7127,16 @@ function buildEventImagePrompt() {
   const tags = splitList(els.eventTags?.value || "").slice(0, 4).join("、");
 
   return [
-    "中高生向け探究ポイントのキービジュアルを作る。",
+    "探究ポイントで現地に行った時だけ会える、案内役キャラクター画像を作る。",
     `探究ポイント名: ${title}`,
     `社会課題: ${impact}`,
     `場所: ${locationName}`,
     tags ? `タグ: ${tags}` : "",
     description ? `内容: ${description}` : "",
-    "写真とイラストの中間の、明るく現実感のあるビジュアル。",
-    "中高生が観察、聞き取り、フィールドワーク、アイデア出しをしている雰囲気。",
-    "文字、ロゴ、看板の読める文字は入れない。",
+    "1体のオリジナルキャラクターを中心に描く。",
+    "親しみやすく、観察、聞き取り、問いづくりを促す案内役にする。",
+    "全身または上半身がはっきり見える。背景はシンプルで、地図やフロート内でも見やすい。",
+    "文字、ロゴ、既存キャラクター、実在人物に似た表現は入れない。",
     "安全で年齢に適した表現にする。",
   ]
     .filter(Boolean)
@@ -7146,8 +7169,12 @@ async function generateEventImage() {
     if (!data.imageDataUrl) {
       throw new Error("画像データが空です");
     }
-    els.generatedImagePreview.innerHTML = `<img src="${data.imageDataUrl}" alt="AIが生成したイベント画像" />`;
-    els.generatedImageStatus.textContent = `${data.model || "gpt-image-2"}で生成しました`;
+    const compressedImage = await compressGeneratedAvatarImage(data.imageDataUrl);
+    eventGeneratedCharacterImageDataUrl = compressedImage;
+    eventGeneratedCharacterDownloadUrl = "";
+    els.generatedImagePreview.innerHTML = `<img src="${compressedImage}" alt="AIが生成したキャラクター画像" />`;
+    els.generatedImageStatus.textContent = `${data.model || "gpt-image-2"}で生成しました / キャラクター画像に設定`;
+    renderEventCharacterPreview({ imageDataUrl: compressedImage, generatedAt: new Date().toISOString() });
     addActivity("AI画像を生成");
   } catch (error) {
     const localHint =
@@ -7209,12 +7236,18 @@ function getEventCharacterPreviewData(extra = {}) {
     localOnly: els.eventCharacterEnabled?.checked !== false,
     personality: extra.personality || fallback.personality || "",
     visualPrompt: extra.visualPrompt || els.eventImagePrompt?.value.trim() || fallback.visualPrompt || "",
+    imageDataUrl: extra.imageDataUrl || eventGeneratedCharacterImageDataUrl || "",
+    downloadUrl: extra.downloadUrl || eventGeneratedCharacterDownloadUrl || "",
+    storagePath: extra.storagePath || "",
+    generatedAt: extra.generatedAt || "",
   });
   return {
     ...fallback,
     ...extra,
     ...typed,
     visualPrompt: extra.visualPrompt || els.eventImagePrompt?.value.trim() || fallback.visualPrompt || "",
+    imageDataUrl: typed?.imageDataUrl || extra.imageDataUrl || eventGeneratedCharacterImageDataUrl || "",
+    downloadUrl: typed?.downloadUrl || extra.downloadUrl || eventGeneratedCharacterDownloadUrl || "",
   };
 }
 
@@ -7223,11 +7256,14 @@ function renderEventCharacterPreview(extra = {}) {
   const character = getEventCharacterPreviewData(extra);
   const color = /^#[0-9a-f]{6}$/i.test(els.eventColor?.value) ? els.eventColor.value : "#2f8f63";
   const initial = escapeHtml((character.name || "探").slice(0, 1));
+  const imageSrc = character.imageDataUrl || character.downloadUrl || "";
   const localLabel = character.localOnly ? "現地で会える" : "いつでも会える";
   els.eventCharacterPreview.innerHTML = `<div class="event-character-figure" style="--character-color: ${escapeHtml(color)}">
       <span class="event-character-shadow"></span>
       <span class="event-character-body">
-        <span class="event-character-face">${initial}</span>
+        <span class="event-character-face${imageSrc ? " image-face" : ""}">${
+          imageSrc ? `<img src="${escapeHtml(imageSrc)}" alt="${escapeHtml(character.name || "キャラクター")}" />` : initial
+        }</span>
       </span>
     </div>
     <div class="event-character-preview-text">
@@ -7246,12 +7282,20 @@ function getRequiredCharacterFromForm(payload) {
     role: els.eventCharacterRole?.value.trim() || "現地案内人",
     message: els.eventCharacterMessage?.value.trim() || "現地で見えたことを記録して、次の問いを見つけよう。",
     localOnly,
+    imageDataUrl: eventGeneratedCharacterImageDataUrl,
+    downloadUrl: eventGeneratedCharacterDownloadUrl,
+    visualPrompt: els.eventImagePrompt?.value.trim() || "",
+    generatedAt: eventGeneratedCharacterImageDataUrl ? new Date().toISOString() : "",
   });
   if (typedCharacter) return typedCharacter;
 
   const fallbackCharacter = normalizeCharacter({
     ...buildFallbackCharacter(payload),
     localOnly,
+    imageDataUrl: eventGeneratedCharacterImageDataUrl,
+    downloadUrl: eventGeneratedCharacterDownloadUrl,
+    visualPrompt: els.eventImagePrompt?.value.trim() || buildFallbackCharacter(payload).visualPrompt,
+    generatedAt: eventGeneratedCharacterImageDataUrl ? new Date().toISOString() : "",
   });
   if (fallbackCharacter) {
     if (els.eventCharacterEnabled) els.eventCharacterEnabled.checked = fallbackCharacter.localOnly;
@@ -7451,6 +7495,8 @@ function addEventRecord(eventData) {
 function resetEventFormToCreate(status = "新規登録") {
   state.ui.editingEventId = "";
   state.ui.aiCandidateSource = null;
+  eventGeneratedCharacterImageDataUrl = "";
+  eventGeneratedCharacterDownloadUrl = "";
   els.eventForm.reset();
   els.eventIndex.value = 78;
   els.eventColor.value = "#2f8f63";
@@ -7460,6 +7506,8 @@ function resetEventFormToCreate(status = "新規登録") {
   els.eventLat.value = "";
   els.eventLng.value = "";
   if (els.eventCharacterEnabled) els.eventCharacterEnabled.checked = true;
+  if (els.generatedImagePreview) els.generatedImagePreview.innerHTML = "<span>まだ画像はありません</span>";
+  if (els.generatedImageStatus) els.generatedImageStatus.textContent = "作成した画像はキャラクターとして登録されます。";
   if (els.eventSubmitButton) els.eventSubmitButton.textContent = "探究ポイントを登録";
   els.cancelEventEditButton?.classList.add("hidden");
   els.eventAdminStatus.textContent = status;
@@ -7492,11 +7540,22 @@ function populateEventForm(eventData) {
   els.eventStartDate.value = eventData.startDate || "";
   els.eventEndDate.value = eventData.endDate || "";
   const character = eventData.character || {};
+  eventGeneratedCharacterImageDataUrl = character.imageDataUrl || "";
+  eventGeneratedCharacterDownloadUrl = character.downloadUrl || "";
   if (els.eventCharacterEnabled) els.eventCharacterEnabled.checked = Boolean(eventData.character?.localOnly ?? true);
   if (els.eventCharacterName) els.eventCharacterName.value = character.name || "";
   if (els.eventCharacterRole) els.eventCharacterRole.value = character.role || "";
   if (els.eventCharacterMessage) els.eventCharacterMessage.value = character.message || "";
   if (els.eventImagePrompt && character.visualPrompt) els.eventImagePrompt.value = character.visualPrompt;
+  const characterImageSrc = character.imageDataUrl || character.downloadUrl || "";
+  if (els.generatedImagePreview) {
+    els.generatedImagePreview.innerHTML = characterImageSrc
+      ? `<img src="${escapeHtml(characterImageSrc)}" alt="${escapeHtml(character.name || "キャラクター画像")}" />`
+      : "<span>まだ画像はありません</span>";
+  }
+  if (els.generatedImageStatus && characterImageSrc) {
+    els.generatedImageStatus.textContent = "登録済みキャラクター画像を表示中";
+  }
   const position = hasValidLatLng(eventData.position) ? eventData.position : null;
   els.eventLat.value = position ? Number(position.lat).toFixed(6) : "";
   els.eventLng.value = position ? Number(position.lng).toFixed(6) : "";
