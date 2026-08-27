@@ -2099,6 +2099,28 @@ body:has(.map-canvas.kids-map-active) #theme-evaluation-panel {
   grid-template-columns: minmax(440px, 1fr) minmax(280px, 360px);
 }
 
+.world-reader-mode .worlds-shell {
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 320px);
+}
+
+.world-reader-mode .world-form,
+.world-reader-mode .worlds-side section:last-child {
+  display: none;
+}
+
+.world-reader-mode .world-map-preview {
+  margin-top: 0;
+}
+
+.world-reader-mode .world-map-card {
+  min-height: calc(100vh - 180px);
+  align-content: start;
+}
+
+.world-editor-mode .world-map-card {
+  min-height: 0;
+}
+
 .kids-shell,
 .guardian-shell {
   display: grid;

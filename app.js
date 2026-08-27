@@ -314,6 +314,7 @@ const defaultState = {
     editingEventId: "",
     selectedWorldId: "",
     worldDraftSourcePointId: "",
+    worldViewMode: "view",
     aiCandidateSource: null,
   },
   selectedReflection: "",
@@ -2672,9 +2673,10 @@ function renderGoogleMapMarkers() {
       marker.addListener("click", () => {
         keepEncounterOpenAfterMarkerTap();
         state.ui.selectedWorldId = world.id;
+        state.ui.worldViewMode = "view";
         saveState();
         focusGoogleMapPoint(position, Math.max(googleMap.getZoom(), 17));
-        showMode("worlds");
+        showMode("worlds", { worldEditor: false });
       });
       googleMapMarkers.push(marker);
       bounds.extend(position);
@@ -4052,7 +4054,7 @@ function createWorldDraftFromPoint(eventId = state.selected) {
   const character = getEventCharacter(encounter);
   state.ui.selectedWorldId = "__new__";
   state.ui.worldDraftSourcePointId = encounter.id;
-  showMode("worlds");
+  showMode("worlds", { worldEditor: true });
   if (els.worldTitle) els.worldTitle.value = `${encounter.title}ワールド`;
   if (els.worldConcept) {
     els.worldConcept.value = `${encounter.title}を入口に、${encounter.impact || "地域のふしぎ"}の過去・現在・未来を探検するワールド。${encounter.description || ""}`.trim();
@@ -4185,9 +4187,16 @@ function mapLatestDiscoveryToWorld() {
 function renderWorlds() {
   if (!els.worldsView) return;
   const worlds = Array.isArray(state.worlds) ? state.worlds : [];
+  const editMode = state.ui?.worldViewMode === "edit";
+  els.worldsView.classList.toggle("world-editor-mode", editMode);
+  els.worldsView.classList.toggle("world-reader-mode", !editMode);
+  const worldHeading = els.worldsView.querySelector(".worlds-main .section-head h2");
+  const worldEyebrow = els.worldsView.querySelector(".worlds-main .section-head .eyebrow");
+  if (worldHeading) worldHeading.textContent = editMode ? "自分のワールドを作る" : "ワールドに入る";
+  if (worldEyebrow) worldEyebrow.textContent = editMode ? "ワールド作成" : "ワールド入口";
   if (els.worldCount) els.worldCount.textContent = `${worlds.length}件`;
   const selected = getSelectedWorld();
-  if (selected) fillWorldForm(selected);
+  if (editMode && selected) fillWorldForm(selected);
   renderWorldMapPreview(selected);
   if (!els.worldList) return;
   els.worldList.innerHTML = worlds.length
@@ -4365,7 +4374,6 @@ function renderCharacterCard(encounter) {
         <span>${escapeHtml(character.role)}</span>
         <p>${escapeHtml(character.message)}</p>
         <div class="character-card-actions">
-          <button type="button" data-point-world="${escapeHtml(encounter.id)}">ワールドにする</button>
           <button type="button" data-point-character="${escapeHtml(encounter.id)}">キャラ/アバター編集</button>
         </div>
       </div>`
@@ -4376,14 +4384,9 @@ function renderCharacterCard(encounter) {
         <span>${hasValidLatLng(encounter.position) ? "イベント地点から300m以内で解放" : "イベント位置を設定すると解放できます"}</span>
         <p>このキャラクターの名前とメッセージは、リアルにその場所へ行った時だけ表示されます。</p>
         <div class="character-card-actions">
-          <button type="button" data-point-world="${escapeHtml(encounter.id)}">ワールドにする</button>
           <button type="button" data-point-character="${escapeHtml(encounter.id)}">キャラ/アバター編集</button>
         </div>
       </div>`;
-  els.characterCard.querySelector("[data-point-world]")?.addEventListener("click", (event) => {
-    event.stopPropagation();
-    createWorldDraftFromPoint(encounter.id);
-  });
   els.characterCard.querySelector("[data-point-character]")?.addEventListener("click", (event) => {
     event.stopPropagation();
     editPointCharacter(encounter.id);
@@ -7117,6 +7120,9 @@ function showMode(mode, options = {}) {
   const worlds = mode === "worlds";
   const kids = mode === "kids";
   const guardian = mode === "guardian";
+  if (worlds) {
+    state.ui.worldViewMode = options.worldEditor ? "edit" : "view";
+  }
   state.ui.mode = mode;
   if (mode !== "quest" || !options.kidsMap) {
     state.ui.kidsMapActive = false;
@@ -8357,7 +8363,7 @@ document.querySelectorAll(".mode-tabs button").forEach((button) => {
   ["click", "pointerup", "keydown"].forEach((eventName) => {
     button.addEventListener(eventName, (event) => {
       if (eventName === "keydown" && !["Enter", " "].includes(event.key)) return;
-      showMode(button.dataset.mode);
+      showMode(button.dataset.mode, { worldEditor: button.dataset.mode === "worlds" });
     });
   });
 });
@@ -8365,7 +8371,7 @@ els.screenMenuButton?.addEventListener("click", toggleScreenMenu);
 els.screenMenu?.querySelectorAll("button[data-mode]").forEach((button) => {
   button.addEventListener("click", (event) => {
     event.stopPropagation();
-    showMode(button.dataset.mode);
+    showMode(button.dataset.mode, { worldEditor: button.dataset.mode === "worlds" });
   });
 });
 document.addEventListener("click", (event) => {
