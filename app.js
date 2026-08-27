@@ -743,6 +743,8 @@ let firebaseAutoSyncTimer = null;
 let firebaseAutoSyncRunning = false;
 let firebaseAutoSyncQueued = false;
 let firebaseAutoSyncReason = "";
+let firebaseAutoSaveReady = false;
+let suppressFirebaseAutoSave = false;
 let pendingFieldPostImage = null;
 let pendingFieldPostLocation = null;
 let pendingKidsStamp = "";
@@ -1343,7 +1345,11 @@ function loadState() {
   }
 }
 
-function saveState() {
+function shouldAutoSaveToFirebase() {
+  return Boolean(firebaseAutoSaveReady && !suppressFirebaseAutoSave && state.auth?.loggedIn && state.auth?.email && hasFirebaseConfig());
+}
+
+function saveState(options = {}) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch (error) {
@@ -1351,6 +1357,9 @@ function saveState() {
     return false;
   }
   queueDatabaseSave();
+  if (!options.localOnly && shouldAutoSaveToFirebase()) {
+    queueFirebaseSync(options.reason || "状態保存");
+  }
   return true;
 }
 
@@ -1456,7 +1465,8 @@ function saveFirebaseConfig() {
       configJson: JSON.stringify(config, null, 2),
       lastStatus: "Firebase設定を保存しました",
     };
-    saveState();
+    firebaseAutoSaveReady = Boolean(state.auth?.loggedIn && state.auth?.email);
+    saveState({ reason: "Firebase設定保存" });
     renderFirebaseSettings();
   } catch {
     setFirebaseStatus("Firebase設定JSONを確認してください", true);
@@ -1538,9 +1548,15 @@ async function syncFirebase(options = {}) {
     if (Array.isArray(result.snapshot?.worlds)) {
       state.worlds = result.snapshot.worlds;
     }
+    if (Array.isArray(result.snapshot?.customEvents)) {
+      state.customEvents = result.snapshot.customEvents.map(ensureEventCharacter);
+    }
     state.firebase.lastSyncAt = new Date().toISOString();
     setFirebaseStatus(`${automatic ? "自動同期完了" : "Firestore保存完了"}: ${result.userId}`);
-    saveState();
+    firebaseAutoSaveReady = true;
+    suppressFirebaseAutoSave = true;
+    saveState({ localOnly: true });
+    suppressFirebaseAutoSave = false;
     renderFirebaseSettings();
     return true;
   } catch (error) {
@@ -1637,8 +1653,12 @@ async function loadFirebaseSnapshot(options = {}) {
     state.member.partyRoles = normalizePartyRoles(state.member.partyRoles);
     state.ui = { ...defaultState.ui, ...(state.ui || {}) };
     state.fieldPosts = Array.isArray(state.fieldPosts) ? state.fieldPosts : [];
+    state.worlds = Array.isArray(state.worlds) ? state.worlds : [];
     dedupeCustomEvents();
-    saveState();
+    firebaseAutoSaveReady = true;
+    suppressFirebaseAutoSave = true;
+    saveState({ localOnly: true });
+    suppressFirebaseAutoSave = false;
     render();
     applyAgeBasedMode({ force: true });
     return true;
@@ -6500,15 +6520,17 @@ function addPartyRole() {
 async function handleLogin(event) {
   event.preventDefault();
   const email = els.loginEmail.value.trim();
+  firebaseAutoSaveReady = false;
   prepareLoginIdentity(email);
   addActivity(`${state.auth.email || "デモユーザー"}でログイン`);
-  saveState();
+  saveState({ localOnly: true });
   render();
   const loadedFromFirebase = await loadFirebaseSnapshot({ silent: true, authEmail: email });
   if (!loadedFromFirebase && !state.member.name) {
     if (!ensureAdminProfile(email)) showMemberForm();
   }
-  saveState();
+  firebaseAutoSaveReady = true;
+  saveState({ reason: loadedFromFirebase ? "ログイン後同期" : "ログイン初期保存" });
   render();
   if (state.member.name) applyAgeBasedMode({ force: true });
   scheduleGoogleMapAutoLoad();
@@ -6518,15 +6540,17 @@ async function handleDemoLogin() {
   els.loginEmail.value = "student@example.com";
   els.loginPassword.value = "password";
   const email = "student@example.com";
+  firebaseAutoSaveReady = false;
   prepareLoginIdentity(email);
   addActivity("デモユーザーでログイン");
-  saveState();
+  saveState({ localOnly: true });
   render();
   const loadedFromFirebase = await loadFirebaseSnapshot({ silent: true, authEmail: email });
   if (!loadedFromFirebase && !state.member.name) {
     if (!ensureAdminProfile(email)) showMemberForm();
   }
-  saveState();
+  firebaseAutoSaveReady = true;
+  saveState({ reason: loadedFromFirebase ? "ログイン後同期" : "ログイン初期保存" });
   render();
   if (state.member.name) applyAgeBasedMode({ force: true });
   scheduleGoogleMapAutoLoad();
@@ -6595,8 +6619,9 @@ async function saveMemberInfo(event) {
 }
 
 function logout() {
+  firebaseAutoSaveReady = false;
   state.auth = { loggedIn: false, email: "" };
-  saveState();
+  saveState({ localOnly: true });
   render();
 }
 
@@ -6625,8 +6650,12 @@ async function initDatabase() {
     dbReady = true;
     els.dbStatus.textContent = "接続中";
     render();
-    if (shouldAutoLoadFirebaseSnapshot()) {
-      await loadFirebaseSnapshot({ silent: true });
+    if (state.auth?.loggedIn && hasFirebaseConfig()) {
+      const loaded = await loadFirebaseSnapshot({ silent: true });
+      firebaseAutoSaveReady = loaded || Boolean(state.member?.name);
+    } else if (shouldAutoLoadFirebaseSnapshot()) {
+      const loaded = await loadFirebaseSnapshot({ silent: true });
+      firebaseAutoSaveReady = loaded;
     }
   } catch (error) {
     els.dbStatus.textContent = "DBエラー";
