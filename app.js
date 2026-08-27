@@ -303,6 +303,7 @@ const defaultState = {
     mapPerspective: "3d",
     mapPerspectiveInitialized: false,
     mapViewport: null,
+    followCurrentLocation: true,
     themePanel: "collapsed",
     mapClickHintShown: false,
     memberEditing: false,
@@ -728,6 +729,8 @@ let themeMapAutoFocusPending = false;
 let ignoreMapTapUntil = 0;
 let googleMapViewportSaveTimer = null;
 let googleMapUserMoved = false;
+let currentLocationWatchId = null;
+let lastWatchedLocation = null;
 let eventLocationMap = null;
 let eventLocationMarker = null;
 let eventIndexEvaluateTimer = null;
@@ -1159,6 +1162,50 @@ function requestCurrentPosition(options = {}) {
       maximumAge: options.maximumAge ?? 30000,
     });
   });
+}
+
+function updateLocationFromPosition(position, options = {}) {
+  if (!position?.coords) return;
+  const current = {
+    lat: position.coords.latitude,
+    lng: position.coords.longitude,
+  };
+  if (!hasValidLatLng(current)) return;
+  const distance = lastWatchedLocation ? getDistanceMeters(lastWatchedLocation, current) : Infinity;
+  const force = Boolean(options.force);
+  if (!force && distance < 2) return;
+  latestCurrentLocation = current;
+  lastWatchedLocation = current;
+  updateCurrentLocationOverlay(current);
+  if (googleMap && state.ui?.followCurrentLocation) {
+    googleMap.panTo(current);
+    if (state.ui?.kidsMapActive) {
+      googleMap.setZoom(getKidsMapZoomForRadius());
+    }
+  }
+  if (state.ui?.kidsMapActive) {
+    renderKidsMode();
+    renderKidsMapGuide();
+    renderGoogleMapMarkers();
+    setKidsMapStatus(`いまいる場所に合わせて、はんけい${formatKidsRadius(getKidsWorldRadius())}を表示しています。`);
+  }
+}
+
+function startCurrentLocationWatch() {
+  if (!navigator.geolocation || currentLocationWatchId !== null) return;
+  currentLocationWatchId = navigator.geolocation.watchPosition(
+    (position) => updateLocationFromPosition(position),
+    (error) => {
+      const message = getGeolocationErrorMessage(error);
+      setMapsStatus(message);
+      if (state.ui?.kidsMapActive) setKidsMapStatus(message, true);
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 20000,
+      maximumAge: 5000,
+    }
+  );
 }
 
 function getGeolocationErrorMessage(error) {
@@ -1949,6 +1996,7 @@ async function initializeGoogleMap() {
     });
     googleMap.addListener("dragstart", () => {
       googleMapUserMoved = true;
+      state.ui.followCurrentLocation = false;
     });
     googleMap.addListener("zoom_changed", () => {
       queueGoogleMapViewportSave();
@@ -1964,6 +2012,7 @@ async function initializeGoogleMap() {
       centerKidsCurrentLocation();
     } else if (savedViewport) {
       setMapsStatus("前回動かした場所からGoogle Mapを表示中");
+      startCurrentLocationWatch();
     } else {
       centerOnCurrentLocation();
     }
@@ -1995,11 +2044,12 @@ async function centerOnCurrentLocation() {
       lat: position.coords.latitude,
       lng: position.coords.longitude,
     };
-    latestCurrentLocation = current;
+    state.ui.followCurrentLocation = true;
     state.ui.mapViewport = null;
-    updateCurrentLocationOverlay(current);
+    updateLocationFromPosition(position, { force: true });
     googleMap.panTo(current);
     googleMap.setZoom(state.ui?.kidsMapActive ? getKidsMapZoomForRadius() : getDefaultMapZoomForRadius(500));
+    startCurrentLocationWatch();
     if (state.ui?.kidsMapActive) {
       renderKidsMode();
       renderKidsMapGuide();
