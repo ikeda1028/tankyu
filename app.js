@@ -311,6 +311,7 @@ const defaultState = {
     kidsPointScope: "own",
     editingEventId: "",
     selectedWorldId: "",
+    worldDraftSourcePointId: "",
     aiCandidateSource: null,
   },
   selectedReflection: "",
@@ -704,6 +705,7 @@ state.joyActions = Array.isArray(state.joyActions) ? state.joyActions : [];
 state.visitedCharacters = Array.isArray(state.visitedCharacters) ? state.visitedCharacters : [];
 state.fieldPosts = Array.isArray(state.fieldPosts) ? state.fieldPosts : [];
 state.aiSuggestions = Array.isArray(state.aiSuggestions) ? state.aiSuggestions : [];
+state.worlds = Array.isArray(state.worlds) ? state.worlds : [];
 state.themeSearch = { ...defaultState.themeSearch, ...(state.themeSearch || {}) };
 let appDb = null;
 let dbReady = false;
@@ -2219,6 +2221,45 @@ function createCharacterMapMarkerIcon(encounter, evaluation = null) {
   };
 }
 
+function createWorldMapMarkerIcon(world) {
+  const imageSrc = world?.visualMap?.imageDataUrl || world?.visualMap?.downloadUrl || "";
+  const title = String(world?.title || "ワールド").trim();
+  const initial = escapeHtml(title.slice(0, 1) || "世");
+  const imageMarkup = imageSrc
+    ? `<image href="${escapeHtml(imageSrc)}" x="21" y="16" width="58" height="58" preserveAspectRatio="xMidYMid slice" clip-path="url(#portalClip)"/>`
+    : `<circle cx="50" cy="45" r="23" fill="#fff7d0" opacity="0.96"/>
+      <path d="M35 48 C40 30 60 30 65 48 C60 62 40 62 35 48Z" fill="#5b42d6" opacity="0.9"/>
+      <circle cx="50" cy="48" r="8" fill="#ffffff" opacity="0.92"/>
+      <text x="50" y="31" text-anchor="middle" font-family="system-ui, sans-serif" font-size="17" font-weight="900" fill="#ffffff">${initial}</text>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="104" height="124" viewBox="0 0 104 124">
+    <defs>
+      <linearGradient id="portal" x1="0" x2="1" y1="0" y2="1">
+        <stop offset="0" stop-color="#ffdf6f"/>
+        <stop offset="0.5" stop-color="#7b61ff"/>
+        <stop offset="1" stop-color="#22b8cf"/>
+      </linearGradient>
+      <filter id="glow" x="-30%" y="-30%" width="160%" height="170%">
+        <feDropShadow dx="0" dy="0" stdDeviation="7" flood-color="#ffdf6f" flood-opacity="0.55"/>
+        <feDropShadow dx="0" dy="9" stdDeviation="6" flood-color="#17211b" flood-opacity="0.28"/>
+      </filter>
+      <clipPath id="portalClip">
+        <circle cx="50" cy="45" r="29"/>
+      </clipPath>
+    </defs>
+    <ellipse cx="52" cy="110" rx="28" ry="8" fill="#17211b" opacity="0.22"/>
+    <path d="M52 116 C47 98 14 86 14 48 C14 21 31 8 52 8 C73 8 90 21 90 48 C90 86 57 98 52 116Z" fill="url(#portal)" stroke="#ffffff" stroke-width="6" filter="url(#glow)"/>
+    <circle cx="50" cy="45" r="31" fill="#ffffff" opacity="0.95"/>
+    ${imageMarkup}
+    <circle cx="78" cy="25" r="15" fill="#ffffff" stroke="#ffdf6f" stroke-width="4"/>
+    <text x="78" y="31" text-anchor="middle" font-family="system-ui, sans-serif" font-size="14" font-weight="900" fill="#5b42d6">W</text>
+  </svg>`;
+  return {
+    url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
+    scaledSize: new google.maps.Size(62, 74),
+    anchor: new google.maps.Point(31, 70),
+  };
+}
+
 function getOwnKidsPhotoMarkers() {
   const radius = getKidsWorldRadius();
   const center = getKidsWorldCenter();
@@ -2489,6 +2530,28 @@ function renderGoogleMapMarkers() {
     bounds.extend(position);
   });
   renderKidsPhotoMapMarkers(bounds);
+  if (!kidsMapActive) {
+    getMapVisibleWorlds().forEach((world) => {
+      const position = normalizePosition(world.entrancePosition);
+      if (!position) return;
+      const marker = new google.maps.Marker({
+        map: googleMap,
+        position,
+        title: `${world.title} / ワールド入口`,
+        icon: createWorldMapMarkerIcon(world),
+        zIndex: 88,
+      });
+      marker.addListener("click", () => {
+        keepEncounterOpenAfterMarkerTap();
+        state.ui.selectedWorldId = world.id;
+        saveState();
+        focusGoogleMapPoint(position, Math.max(googleMap.getZoom(), 17));
+        showMode("worlds");
+      });
+      googleMapMarkers.push(marker);
+      bounds.extend(position);
+    });
+  }
   const aiPlaces = Array.isArray(state.themeSearch?.aiPlaces) ? state.themeSearch.aiPlaces.map(normalizeThemePlace) : [];
   let aiPlaceMarkerIndex = 0;
   if (!kidsMapActive) {
@@ -3578,6 +3641,55 @@ function getWorldPayloadFromForm() {
   };
 }
 
+function normalizePosition(position) {
+  if (!hasValidLatLng(position)) return null;
+  return {
+    lat: Number(position.lat),
+    lng: Number(position.lng),
+    x: Number.isFinite(Number(position.x)) ? Number(position.x) : 50,
+    y: Number.isFinite(Number(position.y)) ? Number(position.y) : 50,
+  };
+}
+
+function findWorldSourceEncounter(worldOrPayload) {
+  const sourcePointId = String(worldOrPayload?.sourcePointId || state.ui?.worldDraftSourcePointId || "").trim();
+  const encounters = getEncounters();
+  if (sourcePointId) {
+    const source = encounters.find((encounter) => encounter.id === sourcePointId);
+    if (source) return source;
+  }
+  const entrance = String(worldOrPayload?.entrance || "").trim();
+  const title = String(worldOrPayload?.title || "").replace(/ワールド$/, "").trim();
+  if (!entrance && !title) return null;
+  return (
+    encounters.find((encounter) => [encounter.title, encounter.locationName].some((value) => String(value || "").trim() === entrance)) ||
+    encounters.find((encounter) => title && encounter.title.includes(title)) ||
+    encounters.find((encounter) => entrance && [encounter.title, encounter.locationName].some((value) => String(value || "").includes(entrance)))
+  );
+}
+
+function resolveWorldEntrancePosition(worldOrPayload, existing = null) {
+  const existingPosition = normalizePosition(existing?.entrancePosition || worldOrPayload?.entrancePosition);
+  if (existingPosition) return existingPosition;
+  const source = findWorldSourceEncounter({ ...existing, ...worldOrPayload });
+  const sourcePosition = normalizePosition(source?.position);
+  if (sourcePosition) return sourcePosition;
+  const selectedPosition = normalizePosition(getSelectedEncounter()?.position);
+  if (selectedPosition) return selectedPosition;
+  const currentPosition = normalizePosition(latestCurrentLocation);
+  return currentPosition || null;
+}
+
+function getMapVisibleWorlds() {
+  if (state.ui?.kidsMapActive) return [];
+  return (Array.isArray(state.worlds) ? state.worlds : [])
+    .map((world) => {
+      const entrancePosition = resolveWorldEntrancePosition(world);
+      return entrancePosition ? { ...world, entrancePosition } : null;
+    })
+    .filter(Boolean);
+}
+
 function setWorldStatus(message, isError = false) {
   if (!els.worldStatus) return;
   els.worldStatus.textContent = message;
@@ -3791,6 +3903,7 @@ function createWorldDraftFromPoint(eventId = state.selected) {
   const tags = getEncounterTags(encounter);
   const character = getEventCharacter(encounter);
   state.ui.selectedWorldId = "__new__";
+  state.ui.worldDraftSourcePointId = encounter.id;
   showMode("worlds");
   if (els.worldTitle) els.worldTitle.value = `${encounter.title}ワールド`;
   if (els.worldConcept) {
@@ -3821,9 +3934,13 @@ async function saveWorld(event) {
   const existing = getSelectedWorld();
   const map = existing?.map && existing.concept === payload.concept ? existing.map : await generateWorldMap();
   if (!map) return;
+  const sourceEncounter = findWorldSourceEncounter({ ...existing, ...payload });
+  const entrancePosition = resolveWorldEntrancePosition(payload, existing);
   const world = {
     id: existing?.id || `world-${Date.now()}`,
     ...payload,
+    sourcePointId: existing?.sourcePointId || sourceEncounter?.id || state.ui?.worldDraftSourcePointId || "",
+    entrancePosition,
     map,
     visualMap: existing?.visualMap || null,
     currentZoneIndex: getWorldCurrentZoneIndex(existing),
@@ -3843,9 +3960,11 @@ async function saveWorld(event) {
   if (index >= 0) state.worlds[index] = world;
   else state.worlds.unshift(world);
   state.ui.selectedWorldId = world.id;
+  state.ui.worldDraftSourcePointId = "";
   addActivity(`${world.title}をワールド保存`);
   saveState();
   renderWorlds();
+  renderGoogleMapMarkers();
   queueFirebaseSync("ワールド保存");
 }
 
@@ -3854,9 +3973,13 @@ async function generateAndSaveWorld() {
   const payload = getWorldPayloadFromForm();
   const map = await generateWorldMap();
   if (!map) return;
+  const sourceEncounter = findWorldSourceEncounter(payload);
+  const entrancePosition = resolveWorldEntrancePosition(payload);
   const world = {
     id: `world-${Date.now()}`,
     ...payload,
+    sourcePointId: sourceEncounter?.id || state.ui?.worldDraftSourcePointId || "",
+    entrancePosition,
     map,
     visualMap: null,
     currentZoneIndex: 0,
@@ -3872,9 +3995,11 @@ async function generateAndSaveWorld() {
   }
   state.worlds.unshift(world);
   state.ui.selectedWorldId = world.id;
+  state.ui.worldDraftSourcePointId = "";
   addActivity(`${world.title}をAI生成`);
   saveState();
   renderWorlds();
+  renderGoogleMapMarkers();
   queueFirebaseSync("ワールドAI生成");
 }
 
