@@ -1,5 +1,5 @@
 const DB_NAME = "wakuwakuQuestDB";
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 const USER_ID = "demo-student";
 
 const STORE_NAMES = [
@@ -12,6 +12,7 @@ const STORE_NAMES = [
   "feedbacks",
   "fieldPosts",
   "avatars",
+  "worlds",
   "meta",
 ];
 
@@ -47,6 +48,9 @@ function openDatabase() {
       }
       if (!db.objectStoreNames.contains("avatars")) {
         db.createObjectStore("avatars", { keyPath: "id" });
+      }
+      if (!db.objectStoreNames.contains("worlds")) {
+        db.createObjectStore("worlds", { keyPath: "id" });
       }
       if (!db.objectStoreNames.contains("meta")) {
         db.createObjectStore("meta", { keyPath: "key" });
@@ -123,6 +127,7 @@ function toProfile(state) {
     interests: state.interests,
     joyActions: state.joyActions || [],
     selectedReflection: state.selectedReflection,
+    worlds: state.worlds || [],
     streak: state.streak,
     lastActiveDate: state.lastActiveDate,
     updatedAt: new Date().toISOString(),
@@ -175,7 +180,7 @@ function fromProfile(defaultState, profile) {
 async function readState(db, defaultState) {
   const profileTx = db.transaction("profiles", "readonly");
   const profile = await requestToPromise(profileTx.objectStore("profiles").get(USER_ID));
-  const [events, sparks, activities, participations, reflections, feedbacks, fieldPosts, avatars] = await Promise.all([
+  const [events, sparks, activities, participations, reflections, feedbacks, fieldPosts, avatars, worlds] = await Promise.all([
     getAll(db, "events"),
     getAll(db, "sparks"),
     getAll(db, "activities"),
@@ -184,6 +189,7 @@ async function readState(db, defaultState) {
     getAll(db, "feedbacks"),
     getAll(db, "fieldPosts"),
     getAll(db, "avatars"),
+    db.objectStoreNames.contains("worlds") ? getAll(db, "worlds") : Promise.resolve([]),
   ]);
   const profileState = fromProfile(defaultState, profile);
   const latestAvatar = avatars.sort(sortByAtDesc)[0];
@@ -214,11 +220,16 @@ async function readState(db, defaultState) {
     reflections: reflections.sort(sortByAtDesc),
     feedbacks: feedbacks.sort(sortByAtDesc),
     fieldPosts: fieldPosts.sort(sortByAtDesc),
+    worlds: worlds.length ? worlds.sort(sortByUpdatedAtDesc) : profileState.worlds || [],
   };
 }
 
 function sortByAtDesc(a, b) {
   return String(b.at || "").localeCompare(String(a.at || ""));
+}
+
+function sortByUpdatedAtDesc(a, b) {
+  return String(b.updatedAt || b.createdAt || "").localeCompare(String(a.updatedAt || a.createdAt || ""));
 }
 
 async function writeState(db, state, events) {
@@ -257,6 +268,7 @@ async function writeState(db, state, events) {
     clearAndPut(db, "feedbacks", normalizeRecords(state.feedbacks, "feedback")),
     clearAndPut(db, "fieldPosts", normalizeRecords(state.fieldPosts || [], "field-post")),
     clearAndPut(db, "avatars", [toAvatarRecord(state)]),
+    clearAndPut(db, "worlds", normalizeRecords(state.worlds || [], "world")),
   ]);
 }
 

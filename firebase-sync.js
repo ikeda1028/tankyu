@@ -39,17 +39,20 @@ async function connectFirebase(config) {
 
 function getFirebaseUserId(state) {
   const rawId = state?.auth?.email || state?.member?.name || "demo-student";
-  return String(rawId).trim().replace(/[/.#[\]\s]/g, "_") || "demo-student";
+  return String(rawId).trim().toLowerCase().replace(/[/.#[\]\s]/g, "_") || "demo-student";
 }
 
 function getFirebaseUserIdAliases(state) {
   const rawId = String(state?.auth?.email || state?.member?.name || "demo-student").trim() || "demo-student";
+  const lowerRawId = rawId.toLowerCase();
   return [
     getFirebaseUserId(state),
     rawId,
-    rawId.toLowerCase(),
+    lowerRawId,
+    rawId.replace(/[/.#[\]\s]/g, "_"),
+    lowerRawId.replace(/[/.#[\]\s]/g, "_"),
     rawId.replace(/[^a-zA-Z0-9_-]/g, "_"),
-    rawId.toLowerCase().replace(/[^a-zA-Z0-9_-]/g, "_"),
+    lowerRawId.replace(/[^a-zA-Z0-9_-]/g, "_"),
   ]
     .filter((id) => id && !id.includes("/"))
     .filter((id, index, ids) => ids.indexOf(id) === index);
@@ -227,15 +230,35 @@ async function uploadEventCharacterImages(firebase, userId, snapshot) {
   };
 }
 
+function stripDataUrlsForFirestore(value) {
+  if (Array.isArray(value)) return value.map(stripDataUrlsForFirestore);
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(
+    Object.entries(value).map(([key, item]) => {
+      if ((key === "imageDataUrl" || key === "dataUrl") && String(item || "").startsWith("data:image/")) {
+        return [key, ""];
+      }
+      return [key, stripDataUrlsForFirestore(item)];
+    })
+  );
+}
+
 async function saveSnapshot(config, state, snapshot) {
   const firebase = await connectFirebase(config);
   const { firestore, db } = firebase;
   const userId = getFirebaseUserId(state);
   const ref = firestore.doc(db, FIREBASE_COLLECTION, userId);
-  const avatarSnapshot = await uploadMemberAvatar(firebase, userId, snapshot);
-  const worldSnapshot = await uploadWorldMapImages(firebase, userId, avatarSnapshot);
-  const eventCharacterSnapshot = await uploadEventCharacterImages(firebase, userId, worldSnapshot);
-  const uploadedSnapshot = await uploadFieldPostImages(firebase, userId, eventCharacterSnapshot);
+  let uploadedSnapshot = snapshot;
+  let mediaUploadError = "";
+  try {
+    const avatarSnapshot = await uploadMemberAvatar(firebase, userId, uploadedSnapshot);
+    const worldSnapshot = await uploadWorldMapImages(firebase, userId, avatarSnapshot);
+    const eventCharacterSnapshot = await uploadEventCharacterImages(firebase, userId, worldSnapshot);
+    uploadedSnapshot = await uploadFieldPostImages(firebase, userId, eventCharacterSnapshot);
+  } catch (error) {
+    mediaUploadError = error?.message || "media upload failed";
+    uploadedSnapshot = stripDataUrlsForFirestore(uploadedSnapshot);
+  }
   const avatar = uploadedSnapshot.member?.avatar || {};
   const childProfile = uploadedSnapshot.childProfile || {};
   const permissions = childProfile.permissions || {};
@@ -252,7 +275,9 @@ async function saveSnapshot(config, state, snapshot) {
     {
       userId,
       email: state?.auth?.email || "",
+      emailLower: String(state?.auth?.email || "").trim().toLowerCase(),
       displayName: state?.member?.name || "",
+      mediaUploadError,
       childProfile: {
         id: childProfile.id || "",
         nickname: childProfile.nickname || "",
@@ -293,7 +318,7 @@ async function saveSnapshot(config, state, snapshot) {
     },
     { merge: true }
   );
-  return { userId, snapshot: uploadedSnapshot };
+  return { userId, snapshot: uploadedSnapshot, mediaUploadError };
 }
 
 async function loadSnapshot(config, state) {
@@ -303,6 +328,16 @@ async function loadSnapshot(config, state) {
     const ref = firestore.doc(db, FIREBASE_COLLECTION, userId);
     const snap = await firestore.getDoc(ref);
     if (snap.exists()) return { userId, ...snap.data() };
+  }
+  const emailLower = String(state?.auth?.email || "").trim().toLowerCase();
+  if (emailLower) {
+    const collectionRef = firestore.collection(db, FIREBASE_COLLECTION);
+    const emailQuery = firestore.query(collectionRef, firestore.where("emailLower", "==", emailLower), firestore.limit(1));
+    const querySnap = await firestore.getDocs(emailQuery);
+    if (!querySnap.empty) {
+      const docSnap = querySnap.docs[0];
+      return { userId: docSnap.id, ...docSnap.data() };
+    }
   }
   return null;
 }

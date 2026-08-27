@@ -1491,6 +1491,20 @@ function createFirebaseSnapshot() {
   return snapshot;
 }
 
+function hasPortableUserData(snapshot = state) {
+  const avatar = normalizeAvatar(snapshot.member?.avatar);
+  return Boolean(
+    snapshot.member?.name ||
+      snapshot.childProfile?.nickname ||
+      avatar.imageDataUrl ||
+      avatar.downloadUrl ||
+      (Array.isArray(snapshot.worlds) && snapshot.worlds.length) ||
+      (Array.isArray(snapshot.customEvents) && snapshot.customEvents.length) ||
+      (Array.isArray(snapshot.fieldPosts) && snapshot.fieldPosts.length) ||
+      (Array.isArray(snapshot.reflections) && snapshot.reflections.length)
+  );
+}
+
 function coerceFirebaseNumber(...values) {
   for (const value of values) {
     const numberValue = Number(value);
@@ -1552,7 +1566,8 @@ async function syncFirebase(options = {}) {
       state.customEvents = result.snapshot.customEvents.map(ensureEventCharacter);
     }
     state.firebase.lastSyncAt = new Date().toISOString();
-    setFirebaseStatus(`${automatic ? "自動同期完了" : "Firestore保存完了"}: ${result.userId}`);
+    const mediaWarning = result.mediaUploadError ? " / 画像はStorage権限を確認" : "";
+    setFirebaseStatus(`${automatic ? "自動同期完了" : "Firestore保存完了"}: ${result.userId}${mediaWarning}`, Boolean(result.mediaUploadError));
     firebaseAutoSaveReady = true;
     suppressFirebaseAutoSave = true;
     saveState({ localOnly: true });
@@ -1627,6 +1642,10 @@ async function loadFirebaseSnapshot(options = {}) {
     }
     const loadedSnapshot = result.snapshot ? { ...defaultState, ...result.snapshot } : { ...state };
     const appliedNumericFields = applyFirebaseNumericFields(loadedSnapshot, result);
+    if (result.snapshot && !hasPortableUserData(loadedSnapshot) && !appliedNumericFields.length) {
+      if (!options.silent) setFirebaseStatus("Firebaseに引き継げるデータがまだありません", true);
+      return false;
+    }
     Object.assign(state, loadedSnapshot);
     state.firebase = {
       ...defaultState.firebase,
@@ -6530,7 +6549,7 @@ async function handleLogin(event) {
     if (!ensureAdminProfile(email)) showMemberForm();
   }
   firebaseAutoSaveReady = true;
-  saveState({ reason: loadedFromFirebase ? "ログイン後同期" : "ログイン初期保存" });
+  saveState(loadedFromFirebase || hasPortableUserData() ? { reason: loadedFromFirebase ? "ログイン後同期" : "ログイン初期保存" } : { localOnly: true });
   render();
   if (state.member.name) applyAgeBasedMode({ force: true });
   scheduleGoogleMapAutoLoad();
@@ -6550,7 +6569,7 @@ async function handleDemoLogin() {
     if (!ensureAdminProfile(email)) showMemberForm();
   }
   firebaseAutoSaveReady = true;
-  saveState({ reason: loadedFromFirebase ? "ログイン後同期" : "ログイン初期保存" });
+  saveState(loadedFromFirebase || hasPortableUserData() ? { reason: loadedFromFirebase ? "ログイン後同期" : "ログイン初期保存" } : { localOnly: true });
   render();
   if (state.member.name) applyAgeBasedMode({ force: true });
   scheduleGoogleMapAutoLoad();
@@ -6634,11 +6653,26 @@ async function initDatabase() {
   try {
     appDb = await window.WakuwakuDB.openDatabase();
     await window.WakuwakuDB.seedEvents(appDb, getEncounters());
+    const stateBeforeDbLoad = JSON.parse(JSON.stringify(state));
     const dbState = await window.WakuwakuDB.readState(appDb, defaultState);
-    const hasDbProfile = dbState.quest !== defaultState.quest || dbState.activity.length || dbState.reflections.length || dbState.feedbacks.length;
+    const hasDbProfile =
+      dbState.quest !== defaultState.quest ||
+      Boolean(dbState.member?.name) ||
+      dbState.activity.length ||
+      dbState.reflections.length ||
+      dbState.feedbacks.length ||
+      (Array.isArray(dbState.customEvents) && dbState.customEvents.length) ||
+      (Array.isArray(dbState.fieldPosts) && dbState.fieldPosts.length) ||
+      (Array.isArray(dbState.worlds) && dbState.worlds.length);
 
     if (hasDbProfile) {
       Object.assign(state, dbState);
+      if (stateBeforeDbLoad.auth?.loggedIn && stateBeforeDbLoad.auth?.email) {
+        state.auth = stateBeforeDbLoad.auth;
+      }
+      if ((!Array.isArray(state.worlds) || !state.worlds.length) && Array.isArray(stateBeforeDbLoad.worlds) && stateBeforeDbLoad.worlds.length) {
+        state.worlds = stateBeforeDbLoad.worlds;
+      }
       state.childProfile = normalizeChildProfile(state.childProfile);
       state.guardian = { ...defaultState.guardian, ...(state.guardian || {}) };
       dedupeCustomEvents();
@@ -6653,6 +6687,7 @@ async function initDatabase() {
     if (state.auth?.loggedIn && hasFirebaseConfig()) {
       const loaded = await loadFirebaseSnapshot({ silent: true });
       firebaseAutoSaveReady = loaded || Boolean(state.member?.name);
+      if (!loaded && hasPortableUserData()) queueFirebaseSync("起動時クラウド初期同期");
     } else if (shouldAutoLoadFirebaseSnapshot()) {
       const loaded = await loadFirebaseSnapshot({ silent: true });
       firebaseAutoSaveReady = loaded;
