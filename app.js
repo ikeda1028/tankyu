@@ -302,6 +302,7 @@ const defaultState = {
     fieldPostPanel: "collapsed",
     mapPerspective: "3d",
     mapPerspectiveInitialized: false,
+    mapViewport: null,
     themePanel: "collapsed",
     mapClickHintShown: false,
     memberEditing: false,
@@ -725,6 +726,8 @@ let googleMapsAutoLoadAttemptKey = "";
 let suppressThemeMapAutoFocus = false;
 let themeMapAutoFocusPending = false;
 let ignoreMapTapUntil = 0;
+let googleMapViewportSaveTimer = null;
+let googleMapUserMoved = false;
 let eventLocationMap = null;
 let eventLocationMarker = null;
 let eventIndexEvaluateTimer = null;
@@ -1844,6 +1847,43 @@ function scheduleGoogleMapAutoLoad() {
   }, 250);
 }
 
+function getSavedMapViewport() {
+  const viewport = state.ui?.mapViewport || null;
+  const position = normalizePosition(viewport?.position);
+  if (!position) return null;
+  const zoom = Number(viewport?.zoom);
+  const heading = Number(viewport?.heading);
+  const tilt = Number(viewport?.tilt);
+  return {
+    position,
+    zoom: Number.isFinite(zoom) ? zoom : getDefaultMapZoomForRadius(500),
+    heading: Number.isFinite(heading) ? heading : 25,
+    tilt: Number.isFinite(tilt) ? tilt : 60,
+  };
+}
+
+function queueGoogleMapViewportSave() {
+  if (!googleMap || state.ui?.kidsMapActive) return;
+  window.clearTimeout(googleMapViewportSaveTimer);
+  googleMapViewportSaveTimer = window.setTimeout(() => {
+    if (!googleMap || state.ui?.kidsMapActive) return;
+    const center = googleMap.getCenter?.();
+    if (!center) return;
+    state.ui.mapViewport = {
+      position: { lat: center.lat(), lng: center.lng() },
+      zoom: Number(googleMap.getZoom()) || getDefaultMapZoomForRadius(500),
+      heading: Number(googleMap.getHeading?.()) || 0,
+      tilt: Number(googleMap.getTilt?.()) || 0,
+      savedAt: new Date().toISOString(),
+    };
+    saveState();
+    if (googleMapUserMoved) {
+      setMapsStatus("地図の移動位置を保存しました。現在地へ戻る時は現在地ボタンを押してください");
+      googleMapUserMoved = false;
+    }
+  }, 700);
+}
+
 function loadGoogleMapsScript(apiKey) {
   if (window.google?.maps) return Promise.resolve();
   if (googleMapsLoadPromise) return googleMapsLoadPromise;
@@ -1885,10 +1925,11 @@ async function initializeGoogleMap() {
     setMapsStatus("Google Map読み込み中...");
     await loadGoogleMapsScript(apiKey);
     const selected = getSelectedEncounter();
-    const center = hasValidLatLng(selected.position) ? selected.position : createMapPosition(0);
+    const savedViewport = state.ui?.kidsMapActive ? null : getSavedMapViewport();
+    const center = savedViewport?.position || (hasValidLatLng(selected.position) ? selected.position : createMapPosition(0));
     googleMap = new google.maps.Map(els.googleMapCanvas, {
       center: { lat: Number(center.lat), lng: Number(center.lng) },
-      zoom: state.ui?.mapPerspective === "3d" ? getDefaultMapZoomForRadius(500) : 13,
+      zoom: savedViewport?.zoom || (state.ui?.mapPerspective === "3d" ? getDefaultMapZoomForRadius(500) : 13),
       clickableIcons: false,
       fullscreenControl: false,
       mapTypeControl: false,
@@ -1897,8 +1938,8 @@ async function initializeGoogleMap() {
       renderingType: google.maps.RenderingType?.VECTOR,
       headingInteractionEnabled: state.ui?.mapPerspective === "3d",
       tiltInteractionEnabled: state.ui?.mapPerspective === "3d",
-      heading: state.ui?.mapPerspective === "3d" ? 25 : 0,
-      tilt: state.ui?.mapPerspective === "3d" ? 60 : 0,
+      heading: savedViewport?.heading ?? (state.ui?.mapPerspective === "3d" ? 25 : 0),
+      tilt: savedViewport?.tilt ?? (state.ui?.mapPerspective === "3d" ? 60 : 0),
       styles: state.ui?.kidsMapActive ? getKidsSafeMapStyles() : getThemedMapStyles(),
     });
     applyMapTheme();
@@ -1906,6 +1947,13 @@ async function initializeGoogleMap() {
       if (state.ui?.kidsMapActive) return;
       closeEncounterFromMapTap();
     });
+    googleMap.addListener("dragstart", () => {
+      googleMapUserMoved = true;
+    });
+    googleMap.addListener("zoom_changed", () => {
+      queueGoogleMapViewportSave();
+    });
+    googleMap.addListener("idle", queueGoogleMapViewportSave);
     updateCurrentLocationOverlay(latestCurrentLocation || center, { provisional: true });
     els.mapCanvas.classList.add("google-map-enabled");
     els.mapCanvas.classList.remove("google-map-error");
@@ -1914,6 +1962,8 @@ async function initializeGoogleMap() {
     if (state.ui?.mapPerspective !== "3d") setMapsStatus("Google Map表示中");
     if (state.ui?.kidsMapActive) {
       centerKidsCurrentLocation();
+    } else if (savedViewport) {
+      setMapsStatus("前回動かした場所からGoogle Mapを表示中");
     } else {
       centerOnCurrentLocation();
     }
@@ -1946,6 +1996,7 @@ async function centerOnCurrentLocation() {
       lng: position.coords.longitude,
     };
     latestCurrentLocation = current;
+    state.ui.mapViewport = null;
     updateCurrentLocationOverlay(current);
     googleMap.panTo(current);
     googleMap.setZoom(state.ui?.kidsMapActive ? getKidsMapZoomForRadius() : getDefaultMapZoomForRadius(500));
