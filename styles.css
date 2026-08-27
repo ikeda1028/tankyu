@@ -2104,6 +2104,7 @@ body:has(.map-canvas.kids-map-active) #theme-evaluation-panel {
 }
 
 .world-reader-mode .world-form,
+.world-reader-mode .world-model3d-panel,
 .world-reader-mode .worlds-side section:last-child {
   display: none;
 }
@@ -2154,14 +2155,16 @@ body:has(.map-canvas.kids-map-active) #theme-evaluation-panel {
   gap: 10px;
 }
 
-.world-form label {
+.world-form label,
+.world-model3d-panel label {
   color: var(--muted);
   font-size: 12px;
   font-weight: 900;
 }
 
 .world-form input,
-.world-form textarea {
+.world-form textarea,
+.world-model3d-panel textarea {
   width: 100%;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -2180,6 +2183,77 @@ body:has(.map-canvas.kids-map-active) #theme-evaluation-panel {
 
 .world-map-preview {
   margin-top: 14px;
+}
+
+.world-model3d-panel {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid rgba(223, 230, 222, 0.92);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(124, 77, 255, 0.08), rgba(24, 183, 214, 0.08)),
+    #fff;
+}
+
+.compact-head {
+  margin-bottom: 0;
+}
+
+.model3d-preview {
+  min-height: 92px;
+  display: grid;
+  align-items: center;
+  padding: 12px;
+  border: 1px dashed rgba(47, 143, 99, 0.32);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--muted);
+  font-weight: 800;
+  line-height: 1.6;
+}
+
+.model3d-result {
+  display: grid;
+  grid-template-columns: 112px 1fr;
+  gap: 12px;
+  align-items: center;
+}
+
+.model3d-result img,
+.model3d-placeholder {
+  width: 112px;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  object-fit: cover;
+  background:
+    radial-gradient(circle at 30% 22%, rgba(255, 231, 122, 0.9), transparent 28%),
+    linear-gradient(135deg, #7c4dff, #18b7d6);
+  box-shadow: 0 12px 22px rgba(23, 33, 27, 0.16);
+}
+
+.model3d-placeholder {
+  display: grid;
+  place-items: center;
+  color: white;
+  font-size: 30px;
+  font-weight: 900;
+}
+
+.model3d-result div {
+  display: grid;
+  gap: 5px;
+}
+
+.model3d-result strong {
+  color: var(--ink);
+}
+
+.model3d-result span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .world-map-card {

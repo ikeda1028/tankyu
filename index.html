@@ -1108,6 +1108,23 @@
                   <button id="save-world-button" class="secondary-button" type="submit">保存</button>
                 </div>
               </form>
+              <section class="world-model3d-panel" aria-label="3Dモデル試作">
+                <div class="section-head compact-head">
+                  <div>
+                    <p class="eyebrow">3D API</p>
+                    <h3>3Dモデルを試作</h3>
+                  </div>
+                  <span id="model3d-status" class="small-badge">未生成</span>
+                </div>
+                <label for="model3d-prompt">3Dにしたいもの</label>
+                <textarea id="model3d-prompt" rows="3" placeholder="例：光る古城の入口。子どもが近づくと開く、丸みのある小さな門。"></textarea>
+                <div class="world-actions">
+                  <button id="generate-3d-model-button" class="secondary-button" type="button">Tripoで3D生成</button>
+                </div>
+                <div id="model3d-preview" class="model3d-preview">
+                  <p>TRIPO_API_KEYをVercelに設定すると、テキストからGLBモデルを生成できます。</p>
+                </div>
+              </section>
               <div id="world-map-preview" class="world-map-preview"></div>
             </section>
             <aside class="worlds-side">

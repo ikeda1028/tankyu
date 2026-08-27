@@ -543,6 +543,10 @@ const els = {
   worldRequiredItems: document.querySelector("#world-required-items"),
   generateWorldButton: document.querySelector("#generate-world-button"),
   worldStatus: document.querySelector("#world-status"),
+  model3dPrompt: document.querySelector("#model3d-prompt"),
+  generate3dModelButton: document.querySelector("#generate-3d-model-button"),
+  model3dStatus: document.querySelector("#model3d-status"),
+  model3dPreview: document.querySelector("#model3d-preview"),
   worldMapPreview: document.querySelector("#world-map-preview"),
   worldCount: document.querySelector("#world-count"),
   worldList: document.querySelector("#world-list"),
@@ -3894,6 +3898,103 @@ function setWorldStatus(message, isError = false) {
   if (!els.worldStatus) return;
   els.worldStatus.textContent = message;
   els.worldStatus.classList.toggle("error", Boolean(isError));
+}
+
+function setModel3dStatus(message, isError = false) {
+  if (!els.model3dStatus) return;
+  els.model3dStatus.textContent = message;
+  els.model3dStatus.classList.toggle("error", Boolean(isError));
+}
+
+function getModel3dPrompt() {
+  const manualPrompt = String(els.model3dPrompt?.value || "").trim();
+  if (manualPrompt) return manualPrompt;
+  const payload = getWorldPayloadFromForm();
+  return [
+    payload.title ? `${payload.title}の3Dモデル` : "探究ワールドの入口",
+    payload.concept,
+    payload.entrance ? `入口: ${payload.entrance}` : "",
+    "Web地図上に置ける、低ポリゴン寄りで見やすいGLBモデル。",
+    "子どもにも怖くない、丸みがあり、遠目でも形がわかるデザイン。",
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+function renderModel3dResult(task) {
+  if (!els.model3dPreview) return;
+  const output = task?.output || {};
+  const modelUrl = output.model_url || output.modelUrl || "";
+  const previewUrl = output.rendered_image_url || output.renderedImageUrl || "";
+  els.model3dPreview.innerHTML = `<div class="model3d-result">
+    ${previewUrl ? `<img src="${escapeHtml(previewUrl)}" alt="生成された3Dモデルのプレビュー" />` : `<div class="model3d-placeholder">3D</div>`}
+    <div>
+      <strong>${escapeHtml(task?.status || "success")}</strong>
+      <span>task: ${escapeHtml(task?.taskId || "")}</span>
+      ${modelUrl ? `<a href="${escapeHtml(modelUrl)}" target="_blank" rel="noopener">GLBモデルを開く</a>` : "<p>モデルURLの生成待ちです。</p>"}
+    </div>
+  </div>`;
+}
+
+async function fetchModel3dStatus(taskId) {
+  const response = await fetch(`/api/model3d-status?taskId=${encodeURIComponent(taskId)}`);
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || "3Dモデルの進捗確認に失敗しました");
+  return data;
+}
+
+async function pollModel3dTask(taskId) {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const task = await fetchModel3dStatus(taskId);
+    const progress = Number.isFinite(Number(task.progress)) ? Number(task.progress) : 0;
+    setModel3dStatus(`${task.status || "処理中"} ${progress}%`);
+    renderModel3dResult(task);
+    if (task.status === "success") return task;
+    if (["failed", "cancelled"].includes(task.status)) {
+      throw new Error(task.raw?.error_message || "3Dモデル生成が完了しませんでした");
+    }
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+  }
+  return fetchModel3dStatus(taskId);
+}
+
+async function generate3dModel() {
+  if (!els.generate3dModelButton) return;
+  const prompt = getModel3dPrompt();
+  if (!prompt) {
+    setModel3dStatus("入力してください", true);
+    return;
+  }
+  els.generate3dModelButton.disabled = true;
+  setModel3dStatus("Tripoへ送信中...");
+  if (els.model3dPreview) {
+    els.model3dPreview.innerHTML = "<p>3Dモデルを生成しています。完了まで1から2分ほどかかることがあります。</p>";
+  }
+  try {
+    const response = await fetch("/api/generate-3d-model", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || "3Dモデル生成を開始できませんでした");
+    setModel3dStatus("生成中 0%");
+    if (els.model3dPreview) {
+      els.model3dPreview.innerHTML = `<p>タスクを開始しました。task: ${escapeHtml(data.taskId || "")}</p>`;
+    }
+    const task = await pollModel3dTask(data.taskId);
+    setModel3dStatus(task.status === "success" ? "生成完了" : `${task.status || "確認中"} ${task.progress || 0}%`);
+    renderModel3dResult(task);
+  } catch (error) {
+    const message =
+      error.message === "TRIPO_API_KEY is not configured"
+        ? "VercelにTRIPO_API_KEYを設定してください"
+        : error.message || "3Dモデルを生成できませんでした";
+    setModel3dStatus("失敗", true);
+    if (els.model3dPreview) els.model3dPreview.innerHTML = `<p class="error-text">${escapeHtml(message)}</p>`;
+  } finally {
+    els.generate3dModelButton.disabled = false;
+  }
 }
 
 const WORLD_ZONE_POSITIONS = [
@@ -8405,6 +8506,7 @@ document.querySelector("#reset-button").addEventListener("click", resetState);
 els.exportDbButton.addEventListener("click", exportDatabase);
 els.worldForm?.addEventListener("submit", saveWorld);
 els.generateWorldButton?.addEventListener("click", generateAndSaveWorld);
+els.generate3dModelButton?.addEventListener("click", generate3dModel);
 els.mapLatestDiscoveryButton?.addEventListener("click", mapLatestDiscoveryToWorld);
 document.querySelectorAll("[data-kids-action]").forEach((button) => {
   button.addEventListener("click", () => {
