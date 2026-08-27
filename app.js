@@ -292,6 +292,7 @@ const defaultState = {
   },
   maps: {
     apiKey: "",
+    mapTheme: "adventure",
     lastStatus: "未設定",
   },
   ui: {
@@ -551,6 +552,7 @@ const els = {
   loadFirebaseButton: document.querySelector("#load-firebase-button"),
   firebaseStatus: document.querySelector("#firebase-status"),
   mapsApiKey: document.querySelector("#maps-api-key"),
+  mapsTheme: document.querySelector("#maps-theme"),
   saveMapsKeyButton: document.querySelector("#save-maps-key-button"),
   loadMapsButton: document.querySelector("#load-maps-button"),
   mapsStatus: document.querySelector("#maps-status"),
@@ -1644,6 +1646,11 @@ function getKidsSafeMapStyles() {
   ];
 }
 
+function getMapTheme(theme = state.maps?.mapTheme) {
+  const normalized = String(theme || "adventure").trim();
+  return ["adventure", "forest", "ocean", "sunset", "night"].includes(normalized) ? normalized : "adventure";
+}
+
 function getAdventureMapStyles() {
   return [
     { elementType: "geometry", stylers: [{ color: "#eef8ef" }, { saturation: 18 }, { lightness: 8 }] },
@@ -1661,6 +1668,81 @@ function getAdventureMapStyles() {
     { featureType: "water", elementType: "geometry", stylers: [{ color: "#72d6de" }] },
     { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#237b87" }] },
   ];
+}
+
+function getForestMapStyles() {
+  return [
+    { elementType: "geometry", stylers: [{ color: "#e4f3df" }, { saturation: 24 }, { lightness: 4 }] },
+    { elementType: "labels.text.fill", stylers: [{ color: "#2e4d39" }] },
+    { elementType: "labels.text.stroke", stylers: [{ color: "#f6fff3" }, { weight: 3 }] },
+    { featureType: "administrative", elementType: "geometry.stroke", stylers: [{ color: "#8ebc8e" }] },
+    { featureType: "landscape.natural", elementType: "geometry", stylers: [{ color: "#ccebc4" }] },
+    { featureType: "landscape.man_made", elementType: "geometry", stylers: [{ color: "#edf5e8" }] },
+    { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#a9dda4" }] },
+    { featureType: "road", elementType: "geometry", stylers: [{ color: "#fff7cf" }] },
+    { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#d6ddb4" }] },
+    { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#e7d984" }] },
+    { featureType: "water", elementType: "geometry", stylers: [{ color: "#8cced2" }] },
+  ];
+}
+
+function getOceanMapStyles() {
+  return [
+    { elementType: "geometry", stylers: [{ color: "#edf8fb" }, { saturation: 18 }, { lightness: 8 }] },
+    { elementType: "labels.text.fill", stylers: [{ color: "#2a5263" }] },
+    { elementType: "labels.text.stroke", stylers: [{ color: "#f8feff" }, { weight: 3 }] },
+    { featureType: "landscape.natural", elementType: "geometry", stylers: [{ color: "#dcefe6" }] },
+    { featureType: "landscape.man_made", elementType: "geometry", stylers: [{ color: "#eef5f2" }] },
+    { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#bde4cf" }] },
+    { featureType: "road", elementType: "geometry", stylers: [{ color: "#ffffff" }] },
+    { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#c8dae2" }] },
+    { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#cdeef4" }] },
+    { featureType: "transit", elementType: "geometry", stylers: [{ color: "#b6d9ef" }] },
+    { featureType: "water", elementType: "geometry", stylers: [{ color: "#54c6dc" }] },
+    { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#126579" }] },
+  ];
+}
+
+function getSunsetMapStyles() {
+  return [
+    { elementType: "geometry", stylers: [{ color: "#fbf0df" }, { saturation: 20 }, { lightness: 2 }] },
+    { elementType: "labels.text.fill", stylers: [{ color: "#654137" }] },
+    { elementType: "labels.text.stroke", stylers: [{ color: "#fff8ee" }, { weight: 3 }] },
+    { featureType: "landscape.natural", elementType: "geometry", stylers: [{ color: "#eadcb9" }] },
+    { featureType: "landscape.man_made", elementType: "geometry", stylers: [{ color: "#f9e9d8" }] },
+    { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#cbd9a5" }] },
+    { featureType: "road", elementType: "geometry", stylers: [{ color: "#ffd8a4" }] },
+    { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#deb28d" }] },
+    { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#f4a56f" }] },
+    { featureType: "water", elementType: "geometry", stylers: [{ color: "#86c9d6" }] },
+  ];
+}
+
+function getNightMapStyles() {
+  return [
+    { elementType: "geometry", stylers: [{ color: "#182033" }, { saturation: -8 }, { lightness: -6 }] },
+    { elementType: "labels.text.fill", stylers: [{ color: "#d9e7ff" }] },
+    { elementType: "labels.text.stroke", stylers: [{ color: "#101624" }, { weight: 3 }] },
+    { featureType: "administrative", elementType: "geometry.stroke", stylers: [{ color: "#4d5f82" }] },
+    { featureType: "landscape.natural", elementType: "geometry", stylers: [{ color: "#1d2a35" }] },
+    { featureType: "landscape.man_made", elementType: "geometry", stylers: [{ color: "#202842" }] },
+    { featureType: "poi", elementType: "geometry", stylers: [{ color: "#253452" }] },
+    { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#203d37" }] },
+    { featureType: "road", elementType: "geometry", stylers: [{ color: "#32415f" }] },
+    { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#151d2e" }] },
+    { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#52658c" }] },
+    { featureType: "transit", elementType: "geometry", stylers: [{ color: "#263b5d" }] },
+    { featureType: "water", elementType: "geometry", stylers: [{ color: "#102b43" }] },
+  ];
+}
+
+function getThemedMapStyles() {
+  const theme = getMapTheme();
+  if (theme === "forest") return getForestMapStyles();
+  if (theme === "ocean") return getOceanMapStyles();
+  if (theme === "sunset") return getSunsetMapStyles();
+  if (theme === "night") return getNightMapStyles();
+  return getAdventureMapStyles();
 }
 
 function isFilePage() {
@@ -1690,6 +1772,26 @@ function saveMapsKey() {
   renderMapsSettings();
 }
 
+function applyMapTheme() {
+  const theme = getMapTheme();
+  state.maps.mapTheme = theme;
+  if (els.mapCanvas) {
+    ["adventure", "forest", "ocean", "sunset", "night"].forEach((item) => {
+      els.mapCanvas.classList.toggle(`map-theme-${item}`, item === theme);
+    });
+  }
+  if (googleMap && !state.ui?.kidsMapActive) {
+    googleMap.setOptions({ styles: getThemedMapStyles() });
+  }
+}
+
+function saveMapTheme() {
+  state.maps.mapTheme = getMapTheme(els.mapsTheme?.value);
+  saveState();
+  applyMapTheme();
+  renderMapsSettings();
+}
+
 function renderMapsSettings() {
   if (!els.mapsApiKey || !els.mapsStatus) return;
   const source = getMapsKeySource();
@@ -1699,6 +1801,8 @@ function renderMapsSettings() {
   els.mapsApiKey.placeholder = publicKeyEnabled ? "公開設定から読み込み中" : "ブラウザ内だけに保存";
   els.mapsApiKey.disabled = publicKeyEnabled;
   els.saveMapsKeyButton.disabled = publicKeyEnabled;
+  if (els.mapsTheme) els.mapsTheme.value = getMapTheme();
+  applyMapTheme();
   if (isFilePage()) {
     els.mapsStatus.textContent = "file://ではGoogle Map不可 / HTTPで開くを押してください";
   } else if (apiKey) {
@@ -1786,8 +1890,9 @@ async function initializeGoogleMap() {
       tiltInteractionEnabled: state.ui?.mapPerspective === "3d",
       heading: state.ui?.mapPerspective === "3d" ? 25 : 0,
       tilt: state.ui?.mapPerspective === "3d" ? 60 : 0,
-      styles: state.ui?.kidsMapActive ? getKidsSafeMapStyles() : getAdventureMapStyles(),
+      styles: state.ui?.kidsMapActive ? getKidsSafeMapStyles() : getThemedMapStyles(),
     });
+    applyMapTheme();
     googleMap.addListener("click", () => {
       if (state.ui?.kidsMapActive) return;
       closeEncounterFromMapTap();
@@ -1950,7 +2055,7 @@ function renderKidsWorldRange() {
   if (!googleMap || !window.google?.maps) return;
   clearKidsWorldRange();
   if (!state.ui?.kidsMapActive) {
-    googleMap.setOptions({ restriction: null, minZoom: null, styles: getAdventureMapStyles() });
+    googleMap.setOptions({ restriction: null, minZoom: null, styles: getThemedMapStyles() });
     return;
   }
   const radius = getKidsWorldRadius();
@@ -7683,6 +7788,7 @@ els.saveFirebaseConfigButton?.addEventListener("click", saveFirebaseConfig);
 els.syncFirebaseButton?.addEventListener("click", syncFirebase);
 els.loadFirebaseButton?.addEventListener("click", loadFirebaseSnapshot);
 els.saveMapsKeyButton.addEventListener("click", saveMapsKey);
+els.mapsTheme?.addEventListener("change", saveMapTheme);
 els.loadMapsButton.addEventListener("click", initializeGoogleMap);
 els.centerSearchButton?.addEventListener("click", centerGoogleMapOnSearch);
 els.currentLocationButton?.addEventListener("click", centerOnCurrentLocation);

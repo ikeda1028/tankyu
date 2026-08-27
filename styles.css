@@ -1427,6 +1427,46 @@ body:has(.map-canvas.google-map-enabled) #theme-evaluation-panel {
   }
 }
 
+.map-canvas.map-theme-forest.google-map-enabled:not(.kids-map-active):not(.google-map-error)::before {
+  background:
+    radial-gradient(circle at 12% 22%, rgba(255, 255, 255, 0.8) 0 1px, transparent 2px),
+    radial-gradient(circle at 30% 70%, rgba(180, 231, 154, 0.65) 0 1px, transparent 2px),
+    radial-gradient(circle at 66% 32%, rgba(94, 184, 122, 0.42) 0 1px, transparent 2px),
+    linear-gradient(135deg, rgba(214, 246, 196, 0.16), rgba(47, 143, 99, 0.1));
+}
+
+.map-canvas.map-theme-ocean.google-map-enabled:not(.kids-map-active):not(.google-map-error)::before {
+  background:
+    radial-gradient(circle at 18% 28%, rgba(255, 255, 255, 0.86) 0 1px, transparent 2px),
+    radial-gradient(circle at 42% 68%, rgba(143, 224, 245, 0.72) 0 1px, transparent 2px),
+    radial-gradient(circle at 74% 36%, rgba(255, 247, 196, 0.58) 0 1px, transparent 2px),
+    linear-gradient(135deg, rgba(165, 230, 247, 0.16), rgba(84, 198, 220, 0.12));
+}
+
+.map-canvas.map-theme-sunset.google-map-enabled:not(.kids-map-active):not(.google-map-error)::before {
+  background:
+    radial-gradient(circle at 18% 28%, rgba(255, 255, 255, 0.78) 0 1px, transparent 2px),
+    radial-gradient(circle at 46% 70%, rgba(255, 210, 143, 0.68) 0 1px, transparent 2px),
+    radial-gradient(circle at 76% 34%, rgba(230, 124, 94, 0.42) 0 1px, transparent 2px),
+    linear-gradient(135deg, rgba(255, 219, 160, 0.16), rgba(216, 109, 84, 0.1));
+}
+
+.map-canvas.map-theme-night.google-map-enabled:not(.kids-map-active):not(.google-map-error)::before {
+  background:
+    radial-gradient(circle at 12% 22%, rgba(255, 255, 255, 0.9) 0 1px, transparent 2px),
+    radial-gradient(circle at 36% 72%, rgba(145, 190, 255, 0.76) 0 1px, transparent 2px),
+    radial-gradient(circle at 78% 30%, rgba(255, 237, 166, 0.72) 0 1px, transparent 2px),
+    linear-gradient(135deg, rgba(89, 117, 190, 0.16), rgba(16, 24, 38, 0.18));
+  mix-blend-mode: lighten;
+  opacity: 0.88;
+}
+
+.map-canvas.map-theme-night.google-map-enabled:not(.kids-map-active):not(.google-map-error)::after {
+  background:
+    linear-gradient(115deg, transparent 0 36%, rgba(255, 255, 255, 0.16) 42%, transparent 49%),
+    radial-gradient(circle at 50% 50%, transparent 0 50%, rgba(3, 7, 18, 0.28) 100%);
+}
+
 .map-canvas.google-map-enabled .map-grid,
 .map-canvas.google-map-enabled .route,
 .map-canvas.google-map-enabled .user-pin,
