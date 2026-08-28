@@ -30,7 +30,7 @@ export default async function handler(request, response) {
 
   try {
     const taskId = normalizeTaskId(request.query?.taskId || request.body?.taskId);
-    if (!/^task_[A-Za-z0-9_-]+$/.test(taskId)) {
+    if (!taskId || !/^[A-Za-z0-9:_-]+$/.test(taskId)) {
       response.status(400).json({ error: "valid taskId is required" });
       return;
     }

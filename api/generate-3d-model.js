@@ -11,6 +11,17 @@ function normalizePrompt(value) {
   return String(value || "").replace(/\s+/g, " ").trim().slice(0, 1024);
 }
 
+function findTaskId(value) {
+  if (!value || typeof value !== "object") return "";
+  const direct = value.task_id || value.taskId || value.id;
+  if (direct) return String(direct).trim();
+  for (const child of Object.values(value)) {
+    const taskId = findTaskId(child);
+    if (taskId) return taskId;
+  }
+  return "";
+}
+
 export default async function handler(request, response) {
   setCors(response);
   if (request.method === "OPTIONS") {
@@ -62,10 +73,19 @@ export default async function handler(request, response) {
       return;
     }
 
+    const taskId = findTaskId(data.data || data);
+    if (!taskId) {
+      response.status(502).json({
+        error: "Tripo task_id was not returned",
+        detail: data,
+      });
+      return;
+    }
+
     response.status(200).json({
       provider: "tripo",
       model: process.env.TRIPO_MODEL || DEFAULT_TRIPO_MODEL,
-      taskId: data.data?.task_id,
+      taskId,
       raw: data.data || data,
     });
   } catch (error) {

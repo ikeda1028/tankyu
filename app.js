@@ -3937,6 +3937,7 @@ function renderModel3dResult(task) {
 }
 
 async function fetchModel3dStatus(taskId) {
+  if (!taskId) throw new Error("TripoからタスクIDが返っていません");
   const response = await fetch(`/api/model3d-status?taskId=${encodeURIComponent(taskId)}`);
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.error || "3Dモデルの進捗確認に失敗しました");
@@ -3978,6 +3979,7 @@ async function generate3dModel() {
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data.error || "3Dモデル生成を開始できませんでした");
+    if (!data.taskId) throw new Error("TripoからタスクIDが返っていません");
     setModel3dStatus("生成中 0%");
     if (els.model3dPreview) {
       els.model3dPreview.innerHTML = `<p>タスクを開始しました。task: ${escapeHtml(data.taskId || "")}</p>`;
