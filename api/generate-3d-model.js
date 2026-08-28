@@ -1,5 +1,6 @@
 const DEFAULT_TRIPO_MODEL = "v3.1-20260211";
 const TRIPO_BASE_URL = "https://openapi.tripo3d.ai/v3";
+const DEFAULT_FACE_LIMIT = 5000;
 
 function setCors(response) {
   response.setHeader("Access-Control-Allow-Origin", "*");
@@ -56,11 +57,13 @@ export default async function handler(request, response) {
       body: JSON.stringify({
         prompt,
         model: process.env.TRIPO_MODEL || DEFAULT_TRIPO_MODEL,
-        texture: true,
+        texture: false,
         pbr: false,
         auto_size: true,
         geometry_quality: "standard",
-        face_limit: 30000,
+        face_limit: Number(process.env.TRIPO_FACE_LIMIT || DEFAULT_FACE_LIMIT),
+        smart_low_poly: true,
+        export_uv: false,
       }),
     });
 

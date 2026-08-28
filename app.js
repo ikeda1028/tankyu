@@ -3925,11 +3925,42 @@ function getModel3dModelUrl(output = {}) {
   if (output.model_url || output.modelUrl) return output.model_url || output.modelUrl;
   if (Array.isArray(output.model_urls) && output.model_urls.length) return output.model_urls[0];
   if (Array.isArray(output.modelUrls) && output.modelUrls.length) return output.modelUrls[0];
-  return "";
+  return findModel3dUrl(output, [".glb", ".obj", ".fbx", "model"]);
 }
 
 function getModel3dPreviewUrl(output = {}) {
-  return output.rendered_image_url || output.renderedImageUrl || output.image_url || output.imageUrl || "";
+  return (
+    output.rendered_image_url ||
+    output.renderedImageUrl ||
+    output.image_url ||
+    output.imageUrl ||
+    findModel3dUrl(output, [".png", ".jpg", ".jpeg", ".webp", "image"])
+  );
+}
+
+function findModel3dUrl(value, hints = []) {
+  if (!value) return "";
+  if (typeof value === "string") {
+    const lower = value.toLowerCase();
+    if (/^https?:\/\//.test(value) && hints.some((hint) => lower.includes(hint))) return value;
+    return "";
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const url = findModel3dUrl(item, hints);
+      if (url) return url;
+    }
+    return "";
+  }
+  if (typeof value === "object") {
+    for (const [key, child] of Object.entries(value)) {
+      const keyHint = hints.some((hint) => key.toLowerCase().includes(hint.replace(".", "")));
+      if (keyHint && typeof child === "string" && /^https?:\/\//.test(child)) return child;
+      const url = findModel3dUrl(child, hints);
+      if (url) return url;
+    }
+  }
+  return "";
 }
 
 function renderModel3dResult(task) {
@@ -3966,7 +3997,7 @@ async function pollModel3dTask(taskId) {
     setModel3dStatus(`${task.status || "処理中"} ${progress}%`);
     renderModel3dResult(task);
     if (task.status === "success") return task;
-    if (["failed", "cancelled"].includes(task.status)) {
+    if (["failed", "cancelled", "banned", "expired", "unknown"].includes(task.status)) {
       throw new Error(task.raw?.error_message || "3Dモデル生成が完了しませんでした");
     }
     await new Promise((resolve) => setTimeout(resolve, 5000));
