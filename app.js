@@ -3921,19 +3921,34 @@ function getModel3dPrompt() {
     .join(" ");
 }
 
+function getModel3dModelUrl(output = {}) {
+  if (output.model_url || output.modelUrl) return output.model_url || output.modelUrl;
+  if (Array.isArray(output.model_urls) && output.model_urls.length) return output.model_urls[0];
+  if (Array.isArray(output.modelUrls) && output.modelUrls.length) return output.modelUrls[0];
+  return "";
+}
+
+function getModel3dPreviewUrl(output = {}) {
+  return output.rendered_image_url || output.renderedImageUrl || output.image_url || output.imageUrl || "";
+}
+
 function renderModel3dResult(task) {
   if (!els.model3dPreview) return;
   const output = task?.output || {};
-  const modelUrl = output.model_url || output.modelUrl || "";
-  const previewUrl = output.rendered_image_url || output.renderedImageUrl || "";
+  const modelUrl = getModel3dModelUrl(output);
+  const previewUrl = getModel3dPreviewUrl(output);
+  const taskId = task?.taskId || task?.raw?.task_id || "";
+  const canContinue = taskId && !modelUrl && !["success", "failed", "cancelled"].includes(task?.status);
   els.model3dPreview.innerHTML = `<div class="model3d-result">
     ${previewUrl ? `<img src="${escapeHtml(previewUrl)}" alt="生成された3Dモデルのプレビュー" />` : `<div class="model3d-placeholder">3D</div>`}
     <div>
       <strong>${escapeHtml(task?.status || "success")}</strong>
-      <span>task: ${escapeHtml(task?.taskId || "")}</span>
+      <span>task: ${escapeHtml(taskId)}</span>
       ${modelUrl ? `<a href="${escapeHtml(modelUrl)}" target="_blank" rel="noopener">GLBモデルを開く</a>` : "<p>モデルURLの生成待ちです。</p>"}
+      ${canContinue ? `<button class="secondary-button mini-action" type="button" data-model3d-task="${escapeHtml(taskId)}">確認を続ける</button>` : ""}
     </div>
   </div>`;
+  els.model3dPreview.querySelector("[data-model3d-task]")?.addEventListener("click", () => continueModel3dPolling(taskId));
 }
 
 async function fetchModel3dStatus(taskId) {
@@ -3945,7 +3960,7 @@ async function fetchModel3dStatus(taskId) {
 }
 
 async function pollModel3dTask(taskId) {
-  for (let attempt = 0; attempt < 20; attempt += 1) {
+  for (let attempt = 0; attempt < 80; attempt += 1) {
     const task = await fetchModel3dStatus(taskId);
     const progress = Number.isFinite(Number(task.progress)) ? Number(task.progress) : 0;
     setModel3dStatus(`${task.status || "処理中"} ${progress}%`);
@@ -3954,9 +3969,27 @@ async function pollModel3dTask(taskId) {
     if (["failed", "cancelled"].includes(task.status)) {
       throw new Error(task.raw?.error_message || "3Dモデル生成が完了しませんでした");
     }
-    await new Promise((resolve) => setTimeout(resolve, 3000));
+    await new Promise((resolve) => setTimeout(resolve, 5000));
   }
   return fetchModel3dStatus(taskId);
+}
+
+async function continueModel3dPolling(taskId) {
+  if (!taskId || !els.generate3dModelButton) return;
+  els.generate3dModelButton.disabled = true;
+  setModel3dStatus("確認を続けています...");
+  try {
+    const task = await pollModel3dTask(taskId);
+    setModel3dStatus(task.status === "success" ? "生成完了" : `${task.status || "確認中"} ${task.progress || 0}%`);
+    renderModel3dResult(task);
+  } catch (error) {
+    setModel3dStatus("失敗", true);
+    if (els.model3dPreview) {
+      els.model3dPreview.innerHTML = `<p class="error-text">${escapeHtml(error.message || "3Dモデルの確認に失敗しました")}</p>`;
+    }
+  } finally {
+    els.generate3dModelButton.disabled = false;
+  }
 }
 
 async function generate3dModel() {
