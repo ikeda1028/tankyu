@@ -1,4 +1,5 @@
 const DEFAULT_TRIPO_MODEL = "v3.1-20260211";
+const TRIPO_BASE_URL = "https://openapi.tripo3d.ai/v3";
 
 function setCors(response) {
   response.setHeader("Access-Control-Allow-Origin", "*");
@@ -35,7 +36,7 @@ export default async function handler(request, response) {
       return;
     }
 
-    const tripoResponse = await fetch("https://openapi.tripo3d.com/v3/generation/text-to-model", {
+    const tripoResponse = await fetch(`${TRIPO_BASE_URL}/generation/text-to-model`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -44,7 +45,7 @@ export default async function handler(request, response) {
       body: JSON.stringify({
         prompt,
         model: process.env.TRIPO_MODEL || DEFAULT_TRIPO_MODEL,
-        texture: false,
+        texture: true,
         pbr: false,
         auto_size: true,
         geometry_quality: "standard",

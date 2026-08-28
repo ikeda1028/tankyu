@@ -1,3 +1,5 @@
+const TRIPO_BASE_URL = "https://openapi.tripo3d.ai/v3";
+
 function setCors(response) {
   response.setHeader("Access-Control-Allow-Origin", "*");
   response.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
@@ -33,7 +35,7 @@ export default async function handler(request, response) {
       return;
     }
 
-    const tripoResponse = await fetch(`https://openapi.tripo3d.com/v3/tasks/${encodeURIComponent(taskId)}`, {
+    const tripoResponse = await fetch(`${TRIPO_BASE_URL}/tasks/${encodeURIComponent(taskId)}`, {
       method: "GET",
       headers: {
         Authorization: `Bearer ${apiKey}`,
