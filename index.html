@@ -1118,8 +1118,12 @@
                 </div>
                 <label for="model3d-prompt">3Dにしたいもの</label>
                 <textarea id="model3d-prompt" rows="3" placeholder="例：光る古城の入口。子どもが近づくと開く、丸みのある小さな門。"></textarea>
+                <label for="model3d-task-id">タスクID</label>
+                <input id="model3d-task-id" type="text" placeholder="途中で止まった時は task ID を入れて再確認できます" />
                 <div class="world-actions">
                   <button id="generate-3d-model-button" class="secondary-button" type="button">Tripoで3D生成</button>
+                  <button id="check-3d-model-button" class="secondary-button" type="button">タスクを確認</button>
+                  <button id="save-3d-model-button" class="secondary-button" type="button">このワールドに保存</button>
                 </div>
                 <div id="model3d-preview" class="model3d-preview">
                   <p>TRIPO_API_KEYをVercelに設定すると、テキストからGLBモデルを生成できます。</p>

@@ -2164,6 +2164,7 @@ body:has(.map-canvas.kids-map-active) #theme-evaluation-panel {
 
 .world-form input,
 .world-form textarea,
+.world-model3d-panel input,
 .world-model3d-panel textarea {
   width: 100%;
   border: 1px solid var(--line);
@@ -2251,6 +2252,22 @@ body:has(.map-canvas.kids-map-active) #theme-evaluation-panel {
 }
 
 .model3d-result span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.world-model3d-saved {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid rgba(47, 143, 99, 0.24);
+  border-radius: 8px;
+  background: rgba(232, 246, 236, 0.72);
+}
+
+.world-model3d-saved span,
+.world-model3d-saved small {
   color: var(--muted);
   font-size: 12px;
   font-weight: 800;

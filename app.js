@@ -315,6 +315,8 @@ const defaultState = {
     selectedWorldId: "",
     worldDraftSourcePointId: "",
     worldViewMode: "view",
+    model3dTaskId: "",
+    model3dLastResult: null,
     aiCandidateSource: null,
   },
   selectedReflection: "",
@@ -544,7 +546,10 @@ const els = {
   generateWorldButton: document.querySelector("#generate-world-button"),
   worldStatus: document.querySelector("#world-status"),
   model3dPrompt: document.querySelector("#model3d-prompt"),
+  model3dTaskId: document.querySelector("#model3d-task-id"),
   generate3dModelButton: document.querySelector("#generate-3d-model-button"),
+  check3dModelButton: document.querySelector("#check-3d-model-button"),
+  save3dModelButton: document.querySelector("#save-3d-model-button"),
   model3dStatus: document.querySelector("#model3d-status"),
   model3dPreview: document.querySelector("#model3d-preview"),
   worldMapPreview: document.querySelector("#world-map-preview"),
@@ -3969,6 +3974,19 @@ function renderModel3dResult(task) {
   const modelUrl = getModel3dModelUrl(output);
   const previewUrl = getModel3dPreviewUrl(output);
   const taskId = task?.taskId || task?.raw?.task_id || "";
+  if (taskId && els.model3dTaskId) els.model3dTaskId.value = taskId;
+  if (taskId) {
+    state.ui.model3dTaskId = taskId;
+    state.ui.model3dLastResult = {
+      taskId,
+      status: task?.status || "",
+      progress: Number.isFinite(Number(task?.progress)) ? Number(task.progress) : 0,
+      modelUrl,
+      previewUrl,
+      output,
+      checkedAt: new Date().toISOString(),
+    };
+  }
   const canContinue = taskId && !modelUrl && !["success", "failed", "cancelled"].includes(task?.status);
   els.model3dPreview.innerHTML = `<div class="model3d-result">
     ${previewUrl ? `<img src="${escapeHtml(previewUrl)}" alt="生成された3Dモデルのプレビュー" />` : `<div class="model3d-placeholder">3D</div>`}
@@ -3977,9 +3995,11 @@ function renderModel3dResult(task) {
       <span>task: ${escapeHtml(taskId)}</span>
       ${modelUrl ? `<a href="${escapeHtml(modelUrl)}" target="_blank" rel="noopener">GLBモデルを開く</a>` : "<p>モデルURLの生成待ちです。</p>"}
       ${canContinue ? `<button class="secondary-button mini-action" type="button" data-model3d-task="${escapeHtml(taskId)}">確認を続ける</button>` : ""}
+      ${modelUrl ? `<button class="secondary-button mini-action" type="button" data-save-model3d="1">このワールドに保存</button>` : ""}
     </div>
   </div>`;
   els.model3dPreview.querySelector("[data-model3d-task]")?.addEventListener("click", () => continueModel3dPolling(taskId));
+  els.model3dPreview.querySelector("[data-save-model3d]")?.addEventListener("click", saveCurrentModel3dToWorld);
 }
 
 async function fetchModel3dStatus(taskId) {
@@ -4023,6 +4043,48 @@ async function continueModel3dPolling(taskId) {
   }
 }
 
+async function checkModel3dTask() {
+  const taskId = String(els.model3dTaskId?.value || state.ui?.model3dTaskId || "").trim();
+  if (!taskId) {
+    setModel3dStatus("タスクIDを入力", true);
+    return;
+  }
+  await continueModel3dPolling(taskId);
+}
+
+function saveCurrentModel3dToWorld() {
+  const selectedWorld = getSelectedWorld();
+  const result = state.ui?.model3dLastResult || null;
+  if (!selectedWorld || state.ui?.selectedWorldId === "__new__") {
+    setModel3dStatus("先にワールドを保存", true);
+    if (els.model3dPreview) {
+      els.model3dPreview.insertAdjacentHTML("beforeend", `<p class="error-text">3Dモデルを保存するには、先に上の「保存」でワールドを作ってください。</p>`);
+    }
+    return;
+  }
+  if (!result?.taskId) {
+    setModel3dStatus("生成結果なし", true);
+    return;
+  }
+  selectedWorld.model3d = {
+    provider: "tripo",
+    taskId: result.taskId,
+    status: result.status,
+    progress: result.progress,
+    modelUrl: result.modelUrl || "",
+    previewUrl: result.previewUrl || "",
+    prompt: getModel3dPrompt(),
+    output: result.output || {},
+    savedAt: new Date().toISOString(),
+  };
+  selectedWorld.updatedAt = new Date().toISOString();
+  addActivity(`${selectedWorld.title}に3Dモデルを保存`);
+  saveState();
+  renderWorlds();
+  queueFirebaseSync("ワールド3Dモデル保存");
+  setModel3dStatus("保存しました");
+}
+
 async function generate3dModel() {
   if (!els.generate3dModelButton) return;
   const prompt = getModel3dPrompt();
@@ -4044,6 +4106,9 @@ async function generate3dModel() {
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data.error || "3Dモデル生成を開始できませんでした");
     if (!data.taskId) throw new Error("TripoからタスクIDが返っていません");
+    if (els.model3dTaskId) els.model3dTaskId.value = data.taskId;
+    state.ui.model3dTaskId = data.taskId;
+    saveState();
     setModel3dStatus("生成中 0%");
     if (els.model3dPreview) {
       els.model3dPreview.innerHTML = `<p>タスクを開始しました。task: ${escapeHtml(data.taskId || "")}</p>`;
@@ -4175,6 +4240,7 @@ function renderWorldMapPreview(world = getSelectedWorld()) {
   const currentZone = zones[currentIndex] || null;
   const marker = getWorldZonePosition(currentIndex);
   const visualMapUrl = world.visualMap?.imageDataUrl || world.visualMap?.downloadUrl || "";
+  const model3d = world.model3d || null;
   els.worldMapPreview.innerHTML = `<article class="world-map-card">
     <span>${escapeHtml(world.entrance || "入口未設定")}</span>
     <h3>${escapeHtml(world.title)}</h3>
@@ -4188,6 +4254,15 @@ function renderWorldMapPreview(world = getSelectedWorld()) {
       }
       ${zones.length ? `<span class="world-position-marker">${currentIndex + 1}</span>` : ""}
     </div>
+    ${
+      model3d?.taskId
+        ? `<div class="world-model3d-saved">
+          <strong>3Dモデル保存済み</strong>
+          <span>${escapeHtml(model3d.status || "saved")} / task: ${escapeHtml(model3d.taskId)}</span>
+          ${model3d.modelUrl ? `<a href="${escapeHtml(model3d.modelUrl)}" target="_blank" rel="noopener">保存したGLBを開く</a>` : "<small>モデルURLは未取得です。タスクIDで再確認できます。</small>"}
+        </div>`
+        : ""
+    }
     <div class="world-move-controls">
       <button type="button" data-world-move="-1" ${currentIndex <= 0 ? "disabled" : ""}>←</button>
       <strong>${escapeHtml(currentZone?.name || "入口")}</strong>
@@ -4317,6 +4392,7 @@ async function saveWorld(event) {
     entrancePosition,
     map,
     visualMap: existing?.visualMap || null,
+    model3d: existing?.model3d || null,
     currentZoneIndex: getWorldCurrentZoneIndex(existing),
     discoveries: existing?.discoveries || [],
     createdAt: existing?.createdAt || new Date().toISOString(),
@@ -4358,6 +4434,7 @@ async function generateAndSaveWorld() {
     entrancePosition,
     map,
     visualMap: null,
+    model3d: null,
     currentZoneIndex: 0,
     discoveries: [],
     createdAt: new Date().toISOString(),
@@ -8573,6 +8650,8 @@ els.exportDbButton.addEventListener("click", exportDatabase);
 els.worldForm?.addEventListener("submit", saveWorld);
 els.generateWorldButton?.addEventListener("click", generateAndSaveWorld);
 els.generate3dModelButton?.addEventListener("click", generate3dModel);
+els.check3dModelButton?.addEventListener("click", checkModel3dTask);
+els.save3dModelButton?.addEventListener("click", saveCurrentModel3dToWorld);
 els.mapLatestDiscoveryButton?.addEventListener("click", mapLatestDiscoveryToWorld);
 document.querySelectorAll("[data-kids-action]").forEach((button) => {
   button.addEventListener("click", () => {
