@@ -57,7 +57,7 @@ export default async function handler(request, response) {
       body: JSON.stringify({
         prompt,
         model: process.env.TRIPO_MODEL || DEFAULT_TRIPO_MODEL,
-        texture: false,
+        texture: true,
         pbr: false,
         auto_size: true,
         geometry_quality: "standard",
