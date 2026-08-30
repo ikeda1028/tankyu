@@ -3498,6 +3498,7 @@ function toggleScreenMenu(event) {
 function closeOpeningScreen() {
   els.openingVideo?.pause();
   els.openingScreen?.classList.add("hidden");
+  openMapAfterOpening();
 }
 
 function playOpeningVideo() {
@@ -3517,6 +3518,49 @@ function toggleOpeningSound() {
   }
   els.openingVideo.muted = !els.openingVideo.muted;
   if (els.openingSoundButton) els.openingSoundButton.textContent = els.openingVideo.muted ? "♪" : "♪×";
+}
+
+function openMapAfterOpening() {
+  if (!state.auth?.loggedIn || !state.member?.name || state.ui?.memberEditing) {
+    render();
+    return false;
+  }
+  const ageMode = getModeForUserAge();
+  const isKidsMap = ageMode === "kids";
+  if (isKidsMap) {
+    state.ui.kidsPointScope = state.ui.kidsPointScope || "own";
+    state.ui.kidsMapActive = true;
+    state.ui.kidsRecordOpen = false;
+    const candidate = getKidsMapCandidates()[0];
+    if (candidate) state.selected = candidate.id;
+    saveState();
+    showMode("quest", { kidsMap: true, skipAgeRedirect: true });
+    renderKidsMapGuide();
+    setKidsMapStatus("いまいるばしょから、ぼうけんポイントをひらきます。");
+  } else {
+    state.ui.kidsMapActive = false;
+    saveState();
+    showMode("quest", { skipAgeRedirect: true });
+  }
+
+  if (googleMap) {
+    renderGoogleMapMarkers();
+    if (isKidsMap) {
+      centerKidsCurrentLocation();
+    } else {
+      centerOnCurrentLocation();
+    }
+  } else if (getMapsKey() && !isFilePage()) {
+    initializeGoogleMap();
+  } else {
+    scheduleGoogleMapAutoLoad();
+  }
+  return true;
+}
+
+function openMapAfterOpeningIfReady() {
+  if (!els.openingScreen?.classList.contains("hidden")) return false;
+  return openMapAfterOpening();
 }
 
 function setKidsMapStatus(message, isError = false) {
@@ -6849,7 +6893,7 @@ async function handleLogin(event) {
   firebaseAutoSaveReady = true;
   saveState(loadedFromFirebase || hasPortableUserData() ? { reason: loadedFromFirebase ? "ログイン後同期" : "ログイン初期保存" } : { localOnly: true });
   render();
-  if (state.member.name) applyAgeBasedMode({ force: true });
+  if (state.member.name && !openMapAfterOpeningIfReady()) applyAgeBasedMode({ force: true });
   scheduleGoogleMapAutoLoad();
 }
 
@@ -6869,7 +6913,7 @@ async function handleDemoLogin() {
   firebaseAutoSaveReady = true;
   saveState(loadedFromFirebase || hasPortableUserData() ? { reason: loadedFromFirebase ? "ログイン後同期" : "ログイン初期保存" } : { localOnly: true });
   render();
-  if (state.member.name) applyAgeBasedMode({ force: true });
+  if (state.member.name && !openMapAfterOpeningIfReady()) applyAgeBasedMode({ force: true });
   scheduleGoogleMapAutoLoad();
 }
 
