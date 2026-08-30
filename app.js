@@ -343,6 +343,9 @@ const els = {
   tags: document.querySelector("#tag-row"),
   media: document.querySelector("#encounter-media"),
   encounterCharacterHero: document.querySelector("#encounter-character-hero"),
+  encounterImageViewer: document.querySelector("#encounter-image-viewer"),
+  encounterImageViewerClose: document.querySelector("#encounter-image-viewer-close"),
+  encounterImageViewerBody: document.querySelector("#encounter-image-viewer-body"),
   encounterPanel: document.querySelector(".encounter-panel"),
   kidsEncounterCard: document.querySelector("#kids-encounter-card"),
   kidsEncounterTitle: document.querySelector("#kids-encounter-title"),
@@ -4626,7 +4629,10 @@ function renderEncounterCharacterHero(encounter) {
   const initial = escapeHtml((character?.name || encounter?.title || "探").trim().slice(0, 1));
   const score = escapeHtml(String(encounter?.index || 70).slice(0, 3));
   const imageSrc = character?.imageDataUrl || character?.downloadUrl || "";
-  els.encounterCharacterHero.innerHTML = `<div class="encounter-character-stage${imageSrc ? " has-image" : ""}" style="--character-color: ${escapeHtml(color)}">
+  const stageTag = imageSrc ? "button" : "div";
+  const stageAttrs = imageSrc ? ` type="button" aria-label="${escapeHtml(character?.name || "キャラクター")}を大きく表示"` : "";
+  els.encounterCharacterHero.classList.toggle("clickable", Boolean(imageSrc));
+  els.encounterCharacterHero.innerHTML = `<${stageTag} class="encounter-character-stage${imageSrc ? " has-image" : ""}" style="--character-color: ${escapeHtml(color)}"${stageAttrs}>
       <span class="encounter-character-shadow"></span>
       <span class="encounter-character-body">
         <span class="encounter-character-face${imageSrc ? " image-face" : ""}">${
@@ -4634,11 +4640,44 @@ function renderEncounterCharacterHero(encounter) {
         }</span>
       </span>
       <span class="encounter-character-score">${score}</span>
-    </div>
+    </${stageTag}>
     <div class="encounter-character-name">
       <strong>${escapeHtml(character?.name || "探究ナビ")}</strong>
       <span>${escapeHtml(character?.role || "現地案内人")}</span>
     </div>`;
+  if (imageSrc) {
+    els.encounterCharacterHero.querySelector(".encounter-character-stage")?.addEventListener("click", () => {
+      openEncounterImageViewer({
+        src: imageSrc,
+        title: encounter?.title || "",
+        name: character?.name || "探究ナビ",
+        role: character?.role || "現地案内人",
+        message: character?.message || encounter?.description || "",
+      });
+    });
+  }
+}
+
+function openEncounterImageViewer({ src, title, name, role, message }) {
+  if (!src || !els.encounterImageViewer || !els.encounterImageViewerBody) return;
+  els.encounterImageViewerBody.innerHTML = `<article class="encounter-image-viewer-card">
+    <div class="encounter-image-viewer-image">
+      <img src="${escapeHtml(src)}" alt="${escapeHtml(name || title || "キャラクター画像")}" />
+    </div>
+    <div class="encounter-image-viewer-text">
+      <span>${escapeHtml(role || "現地案内人")}</span>
+      <h3>${escapeHtml(name || title || "キャラクター")}</h3>
+      ${title ? `<strong>${escapeHtml(title)}</strong>` : ""}
+      ${message ? `<p>${escapeHtml(message)}</p>` : ""}
+    </div>
+  </article>`;
+  els.encounterImageViewer.classList.remove("hidden");
+  els.encounterImageViewerClose?.focus();
+}
+
+function closeEncounterImageViewer() {
+  els.encounterImageViewer?.classList.add("hidden");
+  if (els.encounterImageViewerBody) els.encounterImageViewerBody.innerHTML = "";
 }
 
 function openKidsFieldPost() {
@@ -8622,6 +8661,15 @@ els.kidsNavigatorBot?.addEventListener("click", askKidsNavigator);
 els.kidsPhotoViewerClose?.addEventListener("click", closeKidsPhotoViewer);
 els.kidsPhotoViewer?.addEventListener("click", (event) => {
   if (event.target === els.kidsPhotoViewer) closeKidsPhotoViewer();
+});
+els.encounterImageViewerClose?.addEventListener("click", closeEncounterImageViewer);
+els.encounterImageViewer?.addEventListener("click", (event) => {
+  if (event.target === els.encounterImageViewer) closeEncounterImageViewer();
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !els.encounterImageViewer?.classList.contains("hidden")) {
+    closeEncounterImageViewer();
+  }
 });
 els.kidsAvatarProfileClose?.addEventListener("click", closeKidsAvatarProfile);
 els.kidsAvatarProfile?.addEventListener("click", (event) => {

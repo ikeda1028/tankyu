@@ -3023,6 +3023,104 @@ body:has(.map-canvas.kids-map-active) .kids-navigator-bot {
   font-weight: 900;
 }
 
+.encounter-image-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 96;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background:
+    radial-gradient(circle at 50% 16%, rgba(255, 231, 122, 0.22), transparent 30%),
+    rgba(16, 25, 20, 0.78);
+}
+
+.encounter-image-viewer.hidden {
+  display: none;
+}
+
+.encounter-image-viewer-close {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 98;
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  color: #14351f;
+  background: #fff;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24);
+  font-size: 28px;
+  font-weight: 900;
+}
+
+.encounter-image-viewer-body {
+  width: min(920px, 100%);
+}
+
+.encounter-image-viewer-card {
+  display: grid;
+  grid-template-rows: minmax(320px, 68vh) auto;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 24px 90px rgba(0, 0, 0, 0.32);
+}
+
+.encounter-image-viewer-image {
+  display: grid;
+  min-height: 320px;
+  place-items: center;
+  background:
+    linear-gradient(135deg, rgba(47, 143, 99, 0.16), rgba(255, 236, 238, 0.62)),
+    #edf7f0;
+}
+
+.encounter-image-viewer-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.encounter-image-viewer-text {
+  display: grid;
+  gap: 7px;
+  padding: 18px;
+}
+
+.encounter-image-viewer-text span {
+  justify-self: start;
+  padding: 5px 10px;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--green);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.encounter-image-viewer-text h3,
+.encounter-image-viewer-text p {
+  margin: 0;
+}
+
+.encounter-image-viewer-text h3 {
+  color: var(--ink);
+  font-size: 28px;
+}
+
+.encounter-image-viewer-text strong {
+  color: var(--muted);
+}
+
+.encounter-image-viewer-text p {
+  color: var(--ink);
+  font-weight: 850;
+  line-height: 1.6;
+}
+
 .kids-avatar-profile {
   position: fixed;
   inset: 0;
@@ -5064,10 +5162,18 @@ body:has(.map-canvas.kids-map-active) .kids-navigator-bot {
   pointer-events: none;
 }
 
+.encounter-character-hero.clickable {
+  pointer-events: auto;
+}
+
 .encounter-character-stage {
   position: relative;
   width: 178px;
   height: 150px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: default;
   transform: translateY(4px);
   --character-color: var(--green);
 }
@@ -5075,7 +5181,16 @@ body:has(.map-canvas.kids-map-active) .kids-navigator-bot {
 .encounter-character-stage.has-image {
   width: 250px;
   height: 184px;
+  cursor: zoom-in;
   transform: translateY(10px);
+}
+
+.encounter-character-stage.has-image:hover .encounter-character-face.image-face,
+.encounter-character-stage.has-image:focus-visible .encounter-character-face.image-face {
+  filter:
+    drop-shadow(0 22px 26px rgba(23, 33, 27, 0.34))
+    drop-shadow(0 0 24px color-mix(in srgb, var(--character-color), transparent 30%));
+  transform: translateY(-2px) scale(1.03);
 }
 
 .encounter-character-shadow {
@@ -5142,9 +5257,17 @@ body:has(.map-canvas.kids-map-active) .kids-navigator-bot {
   border-radius: 0;
   background: transparent;
   overflow: visible;
+  transition:
+    filter 160ms ease,
+    transform 160ms ease;
   filter:
     drop-shadow(0 20px 22px rgba(23, 33, 27, 0.3))
     drop-shadow(0 0 18px color-mix(in srgb, var(--character-color), transparent 42%));
+}
+
+.encounter-character-stage.has-image:focus-visible {
+  outline: 3px solid rgba(255, 231, 122, 0.95);
+  outline-offset: 6px;
 }
 
 .encounter-character-stage.has-image .encounter-character-shadow {
@@ -6112,27 +6235,32 @@ body:has(.map-canvas.kids-map-active) .kids-navigator-bot {
   }
 
   body:has(.kids-view:not(.hidden)) .kids-photo-viewer,
-  body:has(.map-canvas.kids-map-active) .kids-photo-viewer {
+  body:has(.map-canvas.kids-map-active) .kids-photo-viewer,
+  .encounter-image-viewer {
     padding: 10px;
   }
 
   body:has(.kids-view:not(.hidden)) .kids-photo-viewer-card,
-  body:has(.map-canvas.kids-map-active) .kids-photo-viewer-card {
+  body:has(.map-canvas.kids-map-active) .kids-photo-viewer-card,
+  .encounter-image-viewer-card {
     grid-template-rows: minmax(220px, 52dvh) auto;
   }
 
   body:has(.kids-view:not(.hidden)) .kids-photo-viewer-text,
-  body:has(.map-canvas.kids-map-active) .kids-photo-viewer-text {
+  body:has(.map-canvas.kids-map-active) .kids-photo-viewer-text,
+  .encounter-image-viewer-text {
     padding: 14px;
   }
 
   body:has(.kids-view:not(.hidden)) .kids-photo-viewer-text h3,
-  body:has(.map-canvas.kids-map-active) .kids-photo-viewer-text h3 {
+  body:has(.map-canvas.kids-map-active) .kids-photo-viewer-text h3,
+  .encounter-image-viewer-text h3 {
     font-size: 20px;
   }
 
   body:has(.kids-view:not(.hidden)) .kids-photo-viewer-text p,
-  body:has(.map-canvas.kids-map-active) .kids-photo-viewer-text p {
+  body:has(.map-canvas.kids-map-active) .kids-photo-viewer-text p,
+  .encounter-image-viewer-text p {
     font-size: 16px;
   }
 
