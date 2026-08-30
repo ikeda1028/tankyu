@@ -1714,9 +1714,20 @@ function getAdminEmails() {
   return [...DEFAULT_ADMIN_EMAILS, ...list].map((email) => String(email || "").trim().toLowerCase()).filter(Boolean);
 }
 
+function getPosterEmails() {
+  const configured = getPublicConfig().posterEmails;
+  const list = Array.isArray(configured) ? configured : [];
+  return list.map((email) => String(email || "").trim().toLowerCase()).filter(Boolean);
+}
+
 function isAdminUser() {
   const email = String(state.auth?.email || "").trim().toLowerCase();
   return Boolean(email && getAdminEmails().includes(email));
+}
+
+function canEditPointCharacter() {
+  const email = String(state.auth?.email || "").trim().toLowerCase();
+  return Boolean(email && (isAdminUser() || getPosterEmails().includes(email)));
 }
 
 function isAdminEmail(email) {
@@ -4736,9 +4747,19 @@ function openKidsFieldPost() {
 function renderCharacterCard(encounter) {
   if (!els.characterCard) return;
   const character = getEventCharacter(encounter);
+  const canEditCharacter = canEditPointCharacter();
+  const editActionMarkup = canEditCharacter
+    ? `<div class="character-card-actions">
+          <button type="button" data-point-character="${escapeHtml(encounter.id)}">キャラ/アバター編集</button>
+        </div>`
+    : "";
   if (!character) {
     els.characterCard.className = "character-card empty";
-    els.characterCard.innerHTML = "<p>このイベントにはまだキャラクターが設定されていません。</p>";
+    els.characterCard.innerHTML = `<p>このイベントにはまだキャラクターが設定されていません。</p>${editActionMarkup}`;
+    els.characterCard.querySelector("[data-point-character]")?.addEventListener("click", (event) => {
+      event.stopPropagation();
+      editPointCharacter(encounter.id);
+    });
     return;
   }
   const unlocked = !character.localOnly || hasVisitedCharacter(encounter.id);
@@ -4754,9 +4775,7 @@ function renderCharacterCard(encounter) {
         <strong>${escapeHtml(character.name)}</strong>
         <span>${escapeHtml(character.role)}</span>
         <p>${escapeHtml(character.message)}</p>
-        <div class="character-card-actions">
-          <button type="button" data-point-character="${escapeHtml(encounter.id)}">キャラ/アバター編集</button>
-        </div>
+        ${editActionMarkup}
       </div>`
     : `<div class="character-avatar">?</div>
       <div>
@@ -4764,9 +4783,7 @@ function renderCharacterCard(encounter) {
         <strong>現場に行くと会えます</strong>
         <span>${hasValidLatLng(encounter.position) ? "イベント地点から300m以内で解放" : "イベント位置を設定すると解放できます"}</span>
         <p>このキャラクターの名前とメッセージは、リアルにその場所へ行った時だけ表示されます。</p>
-        <div class="character-card-actions">
-          <button type="button" data-point-character="${escapeHtml(encounter.id)}">キャラ/アバター編集</button>
-        </div>
+        ${editActionMarkup}
       </div>`;
   els.characterCard.querySelector("[data-point-character]")?.addEventListener("click", (event) => {
     event.stopPropagation();
