@@ -4744,6 +4744,20 @@ function openKidsFieldPost() {
   els.fieldPostText?.focus();
 }
 
+function isFudozakaDragonEncounter(encounter) {
+  if (!encounter) return false;
+  const label = `${encounter.title || ""} ${encounter.locationName || ""}`;
+  if (/不動(?:坂|尊)/.test(label)) return true;
+  const lat = Number(encounter.position?.lat);
+  const lng = Number(encounter.position?.lng);
+  return (
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    Math.abs(lat - 35.638817) < 0.0015 &&
+    Math.abs(lng - 139.592476) < 0.0015
+  );
+}
+
 function renderCharacterCard(encounter) {
   if (!els.characterCard) return;
   const character = getEventCharacter(encounter);
@@ -4763,6 +4777,9 @@ function renderCharacterCard(encounter) {
     return;
   }
   const unlocked = !character.localOnly || hasVisitedCharacter(encounter.id);
+  const arActionMarkup = unlocked && isFudozakaDragonEncounter(encounter)
+    ? `<a class="character-ar-button" href="/ar-dragon.html">龍をARで呼び出す</a>`
+    : "";
   els.characterCard.className = `character-card${unlocked ? " unlocked" : " locked"}`;
   const imageSrc = character.imageDataUrl || character.downloadUrl || "";
   const avatarMarkup = imageSrc
@@ -4775,6 +4792,7 @@ function renderCharacterCard(encounter) {
         <strong>${escapeHtml(character.name)}</strong>
         <span>${escapeHtml(character.role)}</span>
         <p>${escapeHtml(character.message)}</p>
+        ${arActionMarkup}
         ${editActionMarkup}
       </div>`
     : `<div class="character-avatar">?</div>

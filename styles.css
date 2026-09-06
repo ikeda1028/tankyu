@@ -5817,6 +5817,28 @@ body:has(.map-canvas.kids-map-active) .kids-navigator-bot {
   background: #edf8ef;
 }
 
+.character-ar-button {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 10px;
+  padding: 0 16px;
+  border-radius: 999px;
+  color: #fff;
+  background: linear-gradient(135deg, #075f4d, #c98516);
+  box-shadow: 0 8px 18px rgba(7, 95, 77, 0.24);
+  font-size: 13px;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.character-ar-button:hover,
+.character-ar-button:focus-visible {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
 #encounter-description {
   color: var(--muted);
   margin-bottom: 12px;
