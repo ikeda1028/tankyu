@@ -1250,6 +1250,7 @@ function updateLocationFromPosition(position, options = {}) {
     if (state.ui?.kidsMapActive) {
       googleMap.setZoom(getKidsMapZoomForRadius());
     }
+    setMapsStatus(state.ui?.kidsMapActive ? `現在地に追随中 / 半径${formatKidsRadius(getKidsWorldRadius())}` : "現在地に追随中 / 半径500mを表示");
   }
   if (state.ui?.kidsMapActive) {
     renderKidsMode();
@@ -2127,6 +2128,8 @@ async function initializeGoogleMap() {
     googleMap.addListener("dragstart", () => {
       googleMapUserMoved = true;
       state.ui.followCurrentLocation = false;
+      saveState();
+      setMapsStatus("地図を手動で動かしました。現在地ボタンで追随を再開できます");
     });
     googleMap.addListener("zoom_changed", () => {
       queueGoogleMapViewportSave();
@@ -2169,13 +2172,14 @@ async function centerOnCurrentLocation() {
   setMapsStatus("現在地を取得中...");
   if (state.ui?.kidsMapActive) setKidsMapStatus("現在地を確認しています。位置情報を許可してください...");
   try {
+    state.ui.followCurrentLocation = true;
+    state.ui.mapViewport = null;
+    saveState();
     const position = await requestCurrentPositionWithFallback();
     const current = {
       lat: position.coords.latitude,
       lng: position.coords.longitude,
     };
-    state.ui.followCurrentLocation = true;
-    state.ui.mapViewport = null;
     updateLocationFromPosition(position, { force: true });
     googleMap.panTo(current);
     googleMap.setZoom(state.ui?.kidsMapActive ? getKidsMapZoomForRadius() : getDefaultMapZoomForRadius(500));
@@ -2248,17 +2252,26 @@ function updateCurrentLocationOverlay(position, options = {}) {
   currentLocationMarker.setIcon(createAvatarMapMarkerIcon());
   renderKidsWorldRange();
   if (!state.ui?.kidsMapActive && !provisional) {
-    currentLocationCircle = new google.maps.Circle({
-      map: googleMap,
-      center: current,
-      radius: 500,
-      strokeColor: "#2f6fb3",
-      strokeOpacity: 0.82,
-      strokeWeight: 2,
-      fillColor: "#2f6fb3",
-      fillOpacity: 0.08,
-      clickable: false,
-    });
+    if (!currentLocationCircle) {
+      currentLocationCircle = new google.maps.Circle({
+        map: googleMap,
+        center: current,
+        radius: 500,
+        strokeColor: "#2f6fb3",
+        strokeOpacity: 0.82,
+        strokeWeight: 2,
+        fillColor: "#2f6fb3",
+        fillOpacity: 0.08,
+        clickable: false,
+      });
+    } else {
+      currentLocationCircle.setMap(googleMap);
+      currentLocationCircle.setCenter(current);
+      currentLocationCircle.setRadius(500);
+    }
+  } else if (currentLocationCircle) {
+    currentLocationCircle.setMap(null);
+    currentLocationCircle = null;
   }
 }
 
