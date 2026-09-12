@@ -2407,6 +2407,42 @@ function createAvatarMapMarkerIcon() {
 }
 
 function createCharacterMapMarkerIcon(encounter, evaluation = null) {
+  const model3d = normalizeEventModel3d(encounter?.model3d);
+  if (model3d) {
+    const safeColor = /^#[0-9a-f]{6}$/i.test(encounter?.color) ? encounter.color : "#2f8f63";
+    const score = String(evaluation ? evaluation.total : encounter?.index || 70).slice(0, 3);
+    const title = escapeHtml(model3d.title || encounter?.title || "3D");
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="124" height="132" viewBox="0 0 124 132">
+      <defs>
+        <linearGradient id="gate" x1="16" y1="8" x2="106" y2="118" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stop-color="#ffffff"/>
+          <stop offset="0.42" stop-color="${safeColor}"/>
+          <stop offset="1" stop-color="#17352d"/>
+        </linearGradient>
+        <linearGradient id="cube" x1="28" y1="22" x2="84" y2="74" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stop-color="#efffff"/>
+          <stop offset="1" stop-color="#81d8ff"/>
+        </linearGradient>
+        <filter id="shadow" x="-25%" y="-20%" width="150%" height="160%">
+          <feDropShadow dx="0" dy="11" stdDeviation="7" flood-color="#10231f" flood-opacity="0.34"/>
+        </filter>
+      </defs>
+      <ellipse cx="62" cy="118" rx="38" ry="10" fill="#10231f" opacity="0.24"/>
+      <path d="M62 120 C55 100 18 86 18 50 C18 24 36 10 62 10 C88 10 106 24 106 50 C106 86 69 100 62 120Z" fill="url(#gate)" stroke="#ffffff" stroke-width="7" filter="url(#shadow)"/>
+      <path d="M40 42 L62 29 L84 42 L84 68 L62 82 L40 68Z" fill="url(#cube)" stroke="#ffffff" stroke-width="4"/>
+      <path d="M40 42 L62 55 L84 42 M62 55 L62 82" fill="none" stroke="#276a8f" stroke-width="3" opacity="0.72"/>
+      <circle cx="93" cy="25" r="19" fill="#ffffff" stroke="${safeColor}" stroke-width="4"/>
+      <text x="93" y="31" text-anchor="middle" font-family="system-ui, sans-serif" font-size="15" font-weight="900" fill="#17211b">${score}</text>
+      <rect x="35" y="82" width="54" height="22" rx="11" fill="#ffffff" opacity="0.95"/>
+      <text x="62" y="98" text-anchor="middle" font-family="system-ui, sans-serif" font-size="14" font-weight="900" fill="#17352d">3D</text>
+      <title>${title}</title>
+    </svg>`;
+    return {
+      url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
+      scaledSize: new google.maps.Size(70, 74),
+      anchor: new google.maps.Point(35, 69),
+    };
+  }
   const character = getEventCharacter(encounter);
   const safeColor = /^#[0-9a-f]{6}$/i.test(encounter?.color) ? encounter.color : "#2f8f63";
   const score = String(evaluation ? evaluation.total : encounter?.index || 70).slice(0, 3);
@@ -2739,12 +2775,13 @@ function renderGoogleMapMarkers() {
     if (!hasValidLatLng(encounter.position)) return;
     const position = { lat: Number(encounter.position.lat), lng: Number(encounter.position.lng) };
     const evaluation = themeActive ? encounter.themeEvaluation || getThemeEvaluation(encounter.id) : null;
+    const hasModel3d = Boolean(normalizeEventModel3d(encounter.model3d));
     const marker = new google.maps.Marker({
       map: googleMap,
       position,
-      title: evaluation ? `${encounter.title} / 評価 ${evaluation.total}` : encounter.title,
+      title: `${evaluation ? `${encounter.title} / 評価 ${evaluation.total}` : encounter.title}${hasModel3d ? " / 3Dモデルあり" : ""}`,
       icon: createCharacterMapMarkerIcon(encounter, evaluation),
-      zIndex: 60,
+      zIndex: hasModel3d ? 95 : 60,
     });
     marker.addListener("click", () => {
       keepEncounterOpenAfterMarkerTap();
