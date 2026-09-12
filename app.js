@@ -1013,6 +1013,12 @@ function getEventModel3dFromForm(title = "現地3Dモデル") {
   });
 }
 
+function getModelWorldUrl(model3d, title = "3Dワールド") {
+  const model = normalizeEventModel3d(model3d);
+  if (!model) return "";
+  return `/model-world.html?src=${encodeURIComponent(model.modelUrl)}&title=${encodeURIComponent(model.title || title)}`;
+}
+
 function useManabiModelForEvent() {
   if (els.eventModelUrl) els.eventModelUrl.value = "assets/MANABI_Shibuya_3F.glb";
   if (els.eventModelTitle) els.eventModelTitle.value = "MANABI渋谷3F";
@@ -2785,6 +2791,11 @@ function renderGoogleMapMarkers() {
     });
     marker.addListener("click", () => {
       keepEncounterOpenAfterMarkerTap();
+      const model3d = normalizeEventModel3d(encounter.model3d);
+      if (model3d) {
+        window.location.href = getModelWorldUrl(model3d, encounter.title);
+        return;
+      }
       suppressThemeMapAutoFocus = true;
       openEncounterFromMap(encounter.id);
       grantJoy(3, `${encounter.title}の地図ピンを開いた`, `event-view:${encounter.id}`);
@@ -4841,7 +4852,7 @@ function renderCharacterCard(encounter) {
     : "";
   const model3dMarkup = model3d
     ? `<div class="character-card-actions">
-          <a class="secondary-button mini-action" href="${escapeHtml(model3d.modelUrl)}" target="_blank" rel="noopener">${escapeHtml(model3d.title || "3Dモデル")}を開く</a>
+          <a class="secondary-button mini-action" href="${escapeHtml(getModelWorldUrl(model3d, encounter?.title))}">${escapeHtml(model3d.title || "3Dモデル")}に入る</a>
         </div>`
     : "";
   if (!character) {
