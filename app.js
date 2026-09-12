@@ -661,6 +661,9 @@ const els = {
   eventCharacterPreview: document.querySelector("#event-character-preview"),
   suggestCharacterButton: document.querySelector("#suggest-character-button"),
   characterSuggestionStatus: document.querySelector("#character-suggestion-status"),
+  eventModelUrl: document.querySelector("#event-model-url"),
+  eventModelTitle: document.querySelector("#event-model-title"),
+  useManabiModelButton: document.querySelector("#use-manabi-model-button"),
   eventLat: document.querySelector("#event-lat"),
   eventLng: document.querySelector("#event-lng"),
   useMapCenterButton: document.querySelector("#use-map-center-button"),
@@ -988,8 +991,39 @@ function ensureEventCharacter(event) {
   return character ? { ...event, character } : { ...event, character: createFallbackCharacter(event) };
 }
 
+function normalizeEventModel3d(model3d) {
+  const modelUrl = String(model3d?.modelUrl || model3d?.url || "").trim();
+  if (!modelUrl) return null;
+  return {
+    title: String(model3d?.title || "現地3Dモデル").trim() || "現地3Dモデル",
+    modelUrl,
+    provider: String(model3d?.provider || "local").trim() || "local",
+    status: String(model3d?.status || "saved").trim() || "saved",
+    addedAt: model3d?.addedAt || new Date().toISOString(),
+  };
+}
+
+function getEventModel3dFromForm(title = "現地3Dモデル") {
+  const modelUrl = String(els.eventModelUrl?.value || "").trim();
+  if (!modelUrl) return null;
+  return normalizeEventModel3d({
+    title: String(els.eventModelTitle?.value || title || "現地3Dモデル").trim(),
+    modelUrl,
+    provider: modelUrl.startsWith("assets/") ? "local-asset" : "external",
+  });
+}
+
+function useManabiModelForEvent() {
+  if (els.eventModelUrl) els.eventModelUrl.value = "assets/MANABI_Shibuya_3F.glb";
+  if (els.eventModelTitle) els.eventModelTitle.value = "MANABI渋谷3F";
+  if (els.eventAdminStatus) els.eventAdminStatus.textContent = "3Dモデルをセット";
+}
+
 function getEncounters() {
-  return [...seedEncounters, ...state.customEvents].map(ensureEventCharacter);
+  return [...seedEncounters, ...state.customEvents].map((event) => {
+    const withCharacter = ensureEventCharacter(event);
+    return { ...withCharacter, model3d: normalizeEventModel3d(withCharacter?.model3d) };
+  });
 }
 
 function getKidsExplorationPoints(scope = "") {
@@ -4761,15 +4795,21 @@ function isFudozakaDragonEncounter(encounter) {
 function renderCharacterCard(encounter) {
   if (!els.characterCard) return;
   const character = getEventCharacter(encounter);
+  const model3d = normalizeEventModel3d(encounter?.model3d);
   const canEditCharacter = canEditPointCharacter();
   const editActionMarkup = canEditCharacter
     ? `<div class="character-card-actions">
           <button type="button" data-point-character="${escapeHtml(encounter.id)}">キャラ/アバター編集</button>
         </div>`
     : "";
+  const model3dMarkup = model3d
+    ? `<div class="character-card-actions">
+          <a class="secondary-button mini-action" href="${escapeHtml(model3d.modelUrl)}" target="_blank" rel="noopener">${escapeHtml(model3d.title || "3Dモデル")}を開く</a>
+        </div>`
+    : "";
   if (!character) {
     els.characterCard.className = "character-card empty";
-    els.characterCard.innerHTML = `<p>このイベントにはまだキャラクターが設定されていません。</p>${editActionMarkup}`;
+    els.characterCard.innerHTML = `<p>このイベントにはまだキャラクターが設定されていません。</p>${model3dMarkup}${editActionMarkup}`;
     els.characterCard.querySelector("[data-point-character]")?.addEventListener("click", (event) => {
       event.stopPropagation();
       editPointCharacter(encounter.id);
@@ -4793,6 +4833,7 @@ function renderCharacterCard(encounter) {
         <span>${escapeHtml(character.role)}</span>
         <p>${escapeHtml(character.message)}</p>
         ${arActionMarkup}
+        ${model3dMarkup}
         ${editActionMarkup}
       </div>`
     : `<div class="character-avatar">?</div>
@@ -4801,6 +4842,7 @@ function renderCharacterCard(encounter) {
         <strong>現場に行くと会えます</strong>
         <span>${hasValidLatLng(encounter.position) ? "イベント地点から300m以内で解放" : "イベント位置を設定すると解放できます"}</span>
         <p>このキャラクターの名前とメッセージは、リアルにその場所へ行った時だけ表示されます。</p>
+        ${model3dMarkup}
         ${editActionMarkup}
       </div>`;
   els.characterCard.querySelector("[data-point-character]")?.addEventListener("click", (event) => {
@@ -7143,6 +7185,9 @@ function eventToDriveRecord(event) {
     character_local_only: event.character?.localOnly !== false,
     character_image_url: event.character?.downloadUrl || "",
     character_visual_prompt: event.character?.visualPrompt || "",
+    model3d_title: event.model3d?.title || "",
+    model3d_url: event.model3d?.modelUrl || "",
+    model3d_provider: event.model3d?.provider || "",
     user_created: Boolean(event.userCreated),
     created_by: state.auth.email || state.member.name || "local-user",
     created_at: event.createdAt || new Date().toISOString(),
@@ -8231,6 +8276,8 @@ function resetEventFormToCreate(status = "新規登録") {
   els.eventLat.value = "";
   els.eventLng.value = "";
   if (els.eventCharacterEnabled) els.eventCharacterEnabled.checked = true;
+  if (els.eventModelUrl) els.eventModelUrl.value = "";
+  if (els.eventModelTitle) els.eventModelTitle.value = "";
   if (els.generatedImagePreview) els.generatedImagePreview.innerHTML = "<span>まだ画像はありません</span>";
   if (els.generatedImageStatus) els.generatedImageStatus.textContent = "作成した画像はキャラクターとして登録されます。";
   if (els.eventSubmitButton) els.eventSubmitButton.textContent = "探究ポイントを登録";
@@ -8272,6 +8319,9 @@ function populateEventForm(eventData) {
   if (els.eventCharacterRole) els.eventCharacterRole.value = character.role || "";
   if (els.eventCharacterMessage) els.eventCharacterMessage.value = character.message || "";
   if (els.eventImagePrompt && character.visualPrompt) els.eventImagePrompt.value = character.visualPrompt;
+  const model3d = normalizeEventModel3d(eventData.model3d);
+  if (els.eventModelUrl) els.eventModelUrl.value = model3d?.modelUrl || "";
+  if (els.eventModelTitle) els.eventModelTitle.value = model3d?.title || "";
   const characterImageSrc = character.imageDataUrl || character.downloadUrl || "";
   if (els.generatedImagePreview) {
     els.generatedImagePreview.innerHTML = characterImageSrc
@@ -8452,6 +8502,7 @@ function registerEvent(event) {
     startDate: els.eventStartDate.value,
     endDate: els.eventEndDate.value,
     character,
+    model3d: getEventModel3dFromForm(title),
     questionPath,
     color: els.eventColor.value || "#2f8f63",
     position,
@@ -8653,6 +8704,7 @@ els.registerAllAiEventsButton?.addEventListener("click", registerAllAiSuggestion
   els.eventImagePrompt,
 ].forEach((input) => input?.addEventListener("input", () => renderEventCharacterPreview()));
 els.eventCharacterEnabled?.addEventListener("change", () => renderEventCharacterPreview());
+els.useManabiModelButton?.addEventListener("click", useManabiModelForEvent);
 els.useMapCenterButton.addEventListener("click", useMapCenterForEvent);
 els.openLocationMapButton.addEventListener("click", initializeEventLocationMap);
 els.eventLat.addEventListener("input", syncEventLocationMarkerFromInputs);

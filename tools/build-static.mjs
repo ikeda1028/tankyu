@@ -6,7 +6,7 @@ const root = new URL("..", import.meta.url).pathname;
 const dist = join(root, "dist");
 
 const publicFiles = ["index.html", "styles.css", "app.js", "database.js", "firebase-sync.js", "ar-dragon.html"];
-const assetFiles = ["opening-kids.mp4", "fudozaka-dragon.glb", "fudozaka-dragon-poster.png"];
+const assetFiles = ["opening-kids.mp4", "fudozaka-dragon.glb", "fudozaka-dragon-poster.png", "MANABI_Shibuya_3F.glb"];
 
 await mkdir(dist, { recursive: true });
 await mkdir(join(dist, "assets"), { recursive: true });
@@ -51,7 +51,14 @@ const sourceFirebase = sourceConfig.firebase || {};
 const config = {
   googleMapsApiKey: fallbackEnv(sourceConfig.googleMapsApiKey, getEnv("GOOGLE_MAPS_API_KEY", "PUBLIC_GOOGLE_MAPS_API_KEY", "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY")),
   driveApiUrl: fallbackEnv(sourceConfig.driveApiUrl, getEnv("GOOGLE_DRIVE_API_URL", "PUBLIC_GOOGLE_DRIVE_API_URL")),
-  adminEmails: (getEnv("ADMIN_EMAILS") || "ikeda@manabinomichi.com").split(",").map((email) => email.trim()).filter(Boolean),
+  adminEmails: (getEnv("ADMIN_EMAILS") || "ikeda@manabinomichi.com")
+    .split(",")
+    .map((email) => email.trim())
+    .filter(Boolean),
+  posterEmails: (getEnv("POSTER_EMAILS") || (Array.isArray(sourceConfig.posterEmails) ? sourceConfig.posterEmails.join(",") : ""))
+    .split(",")
+    .map((email) => email.trim())
+    .filter(Boolean),
   firebase: {
     apiKey: fallbackEnv(firebaseJson.apiKey || getEnv("FIREBASE_API_KEY", "PUBLIC_FIREBASE_API_KEY"), sourceFirebase.apiKey),
     authDomain: fallbackEnv(firebaseJson.authDomain || getEnv("FIREBASE_AUTH_DOMAIN", "PUBLIC_FIREBASE_AUTH_DOMAIN"), sourceFirebase.authDomain),

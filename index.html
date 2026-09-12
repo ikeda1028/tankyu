@@ -552,6 +552,17 @@
                   <textarea id="event-character-message" rows="3" placeholder="例：ここで見えるものを3つ記録して、なぜこの場所に集まるのか考えてみよう。"></textarea>
                   <div id="event-character-preview" class="event-character-preview" aria-live="polite"></div>
                 </fieldset>
+                <fieldset class="character-fieldset">
+                  <div class="fieldset-head">
+                    <legend>現地3Dモデル</legend>
+                    <button id="use-manabi-model-button" class="secondary-button mini-action" type="button">MANABI渋谷3Fをセット</button>
+                  </div>
+                  <p class="character-suggestion-status">GLBモデルを探究ポイントに紐づけます。現地限定のアイテムやワールド入口として使えます。</p>
+                  <label for="event-model-url">GLBモデルURL</label>
+                  <input id="event-model-url" type="url" placeholder="例：assets/MANABI_Shibuya_3F.glb" />
+                  <label for="event-model-title">3Dモデル名</label>
+                  <input id="event-model-title" type="text" placeholder="例：MANABI渋谷3Fワールド" />
+                </fieldset>
                 <div class="form-grid location-grid">
                   <div>
                     <label for="event-lat">緯度</label>
