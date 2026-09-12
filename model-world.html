@@ -21,8 +21,17 @@
       .ar-button { position: fixed; z-index: 3; left: 50%; bottom: max(18px, env(safe-area-inset-bottom)); min-height: 52px; padding: 0 24px; border: 1px solid rgba(255,231,160,.7); border-radius: 999px; color: #fff; background: linear-gradient(135deg, #138463, #2c7bd0); box-shadow: 0 12px 32px rgba(0,0,0,.42); font: inherit; font-weight: 900; transform: translateX(-50%); white-space: nowrap; }
       .progress { position: absolute; left: 10%; right: 10%; bottom: 8px; height: 3px; overflow: hidden; border-radius: 99px; background: rgba(255,255,255,.15); }
       .progress span { display: block; width: 0; height: 100%; background: #79e6cf; transition: width .2s; }
+      .world-item-hotspot { display: grid; min-width: 58px; min-height: 58px; place-items: center; border: 2px solid rgba(255,255,255,.92); border-radius: 50%; color: #17352d; background: radial-gradient(circle at 32% 26%, #fff 0 16%, #ffe27a 17% 48%, #22c08f 49% 100%); box-shadow: 0 10px 28px rgba(0,0,0,.34), 0 0 0 10px rgba(255,226,122,.18); font: inherit; font-size: 12px; font-weight: 1000; cursor: pointer; transform: translate(-50%, -50%); animation: pulse 1.8s ease-in-out infinite; }
+      .world-item-hotspot span { display: block; padding-top: 2px; text-shadow: 0 1px 0 rgba(255,255,255,.5); }
+      .item-panel { position: fixed; z-index: 4; left: 16px; right: 16px; bottom: calc(20px + env(safe-area-inset-bottom)); display: none; margin: auto; max-width: 560px; padding: 16px; border: 1px solid rgba(255,255,255,.18); border-radius: 18px; color: #f7fff9; background: rgba(4,24,21,.86); box-shadow: 0 18px 46px rgba(0,0,0,.42); backdrop-filter: blur(14px); }
+      .item-panel.visible { display: block; }
+      .item-panel small { display: block; color: #9ee5cb; font-weight: 900; letter-spacing: .12em; }
+      .item-panel strong { display: block; margin-top: 4px; font-size: 22px; }
+      .item-panel p { margin: 8px 0 0; color: #d8eee5; line-height: 1.7; }
+      .item-panel button { margin-top: 12px; min-height: 40px; padding: 0 16px; border: 1px solid rgba(255,255,255,.18); border-radius: 999px; color: #17352d; background: #dffbe9; font: inherit; font-weight: 900; }
       .error { display: grid; min-height: 100svh; place-items: center; padding: 24px; text-align: center; }
       .error div { max-width: 520px; padding: 22px; border: 1px solid rgba(255,255,255,.16); border-radius: 18px; background: rgba(2,15,16,.7); }
+      @keyframes pulse { 0%, 100% { transform: translate(-50%, -50%) scale(1); } 50% { transform: translate(-50%, -50%) scale(1.08); } }
     </style>
   </head>
   <body>
@@ -45,6 +54,12 @@
       <div class="progress" slot="progress-bar"><span></span></div>
     </model-viewer>
     <p class="hint">ドラッグで回転、ピンチで拡大できます。ARを使う時は安全な場所で立ち止まってください。</p>
+    <section id="item-panel" class="item-panel" aria-live="polite">
+      <small>ITEM FOUND</small>
+      <strong id="item-title">2階のひみつアイテム</strong>
+      <p id="item-text">2階に隠された探究アイテムを見つけました。現地で気づいたことを記録すると、この場所の謎がひとつ開きます。</p>
+      <button id="item-close" type="button">地図にもどる前に観察する</button>
+    </section>
     <script>
       const params = new URLSearchParams(location.search);
       const rawSrc = (params.get("src") || "").trim();
@@ -52,6 +67,10 @@
       const viewer = document.querySelector("#world-model");
       const titleEl = document.querySelector("#world-title");
       const bar = document.querySelector(".progress span");
+      const itemPanel = document.querySelector("#item-panel");
+      const itemTitle = document.querySelector("#item-title");
+      const itemText = document.querySelector("#item-text");
+      const itemClose = document.querySelector("#item-close");
 
       function resolveModelSrc(src) {
         if (!src) return "";
@@ -69,8 +88,38 @@
       } else {
         document.body.innerHTML = '<main class="error"><div><h1>3Dモデルが見つかりません</h1><p>探究ポイントの3DモデルURLを確認してください。</p><p><a class="back" href="/">×</a></p></div></main>';
       }
+      function shouldShowDefaultItem() {
+        return params.get("item") !== "none" && (/MANABI_Shibuya_3F/i.test(rawSrc) || /MANABI/i.test(title));
+      }
+
+      function addWorldItemHotspot() {
+        if (!viewer || !modelSrc || !shouldShowDefaultItem()) return;
+        const itemName = (params.get("itemName") || "2階のひみつアイテム").trim();
+        const itemMessage = (params.get("itemText") || "2階に隠された探究アイテムを見つけました。現地で気づいたことを記録すると、この場所の謎がひとつ開きます。").trim();
+        const position = (params.get("itemPosition") || "0m 5.8m -7m").trim();
+        const hotspot = document.createElement("button");
+        hotspot.className = "world-item-hotspot";
+        hotspot.type = "button";
+        hotspot.slot = "hotspot-second-floor-item";
+        hotspot.dataset.position = position;
+        hotspot.dataset.normal = "0m 1m 0m";
+        hotspot.dataset.visibilityAttribute = "visible";
+        hotspot.innerHTML = "<span>ITEM</span>";
+        hotspot.setAttribute("aria-label", itemName);
+        hotspot.addEventListener("click", () => {
+          itemTitle.textContent = itemName;
+          itemText.textContent = itemMessage;
+          itemPanel.classList.add("visible");
+          try {
+            localStorage.setItem(`wakuwaku-world-item:${modelSrc}:${itemName}`, new Date().toISOString());
+          } catch {}
+        });
+        viewer.appendChild(hotspot);
+      }
+
       viewer?.addEventListener("progress", (event) => { bar.style.width = `${event.detail.totalProgress * 100}%`; });
-      viewer?.addEventListener("load", () => { bar.parentElement.hidden = true; });
+      viewer?.addEventListener("load", () => { bar.parentElement.hidden = true; addWorldItemHotspot(); });
+      itemClose?.addEventListener("click", () => itemPanel.classList.remove("visible"));
     </script>
   </body>
 </html>
