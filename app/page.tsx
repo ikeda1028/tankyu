@@ -51,11 +51,36 @@ function Network() {
 function BrandLogo({ footer = false }: { footer?: boolean }) {
   return (
     <span className={`brand-logo${footer ? " footer-logo" : ""}`} aria-label="TLA">
-      <span className="logo-t" />
-      <span className="logo-l" />
-      <span className="logo-a"><span /></span>
-      <span className="logo-underscore" />
+      <img src="/tla-logo-canonical.png" alt="" />
     </span>
+  );
+}
+
+function FieldVisual({ number }: { number: string }) {
+  if (number === "01") {
+    return (
+      <div className="field-node visual-business" aria-hidden="true">
+        <i className="visual-label">QUESTION</i><i className="visual-label end-label">VENTURE</i>
+        <span className="v-path p1" /><span className="v-path p2" /><span className="v-path p3" />
+        <b className="v-node origin" /><b className="v-node idea n1" /><b className="v-node idea n2" /><b className="v-node idea n3" /><b className="v-node outcome" />
+      </div>
+    );
+  }
+  if (number === "02") {
+    return (
+      <div className="field-node visual-society" aria-hidden="true">
+        <i className="visual-label">CO-CREATION NETWORK</i>
+        <span className="v-path mesh m1" /><span className="v-path mesh m2" /><span className="v-path mesh m3" /><span className="v-path mesh m4" /><span className="v-path mesh m5" />
+        <b className="v-node s1" /><b className="v-node s2" /><b className="v-node s3" /><b className="v-node s4" /><b className="v-node s5" /><b className="v-node hub" />
+      </div>
+    );
+  }
+  return (
+    <div className="field-node visual-learning" aria-hidden="true">
+      <i className="visual-label">CURIOSITY</i><i className="visual-label end-label">ACTION</i>
+      <span className="v-path learning-path lp1" /><span className="v-path learning-path lp2" /><span className="v-path learning-path lp3" />
+      <b className="v-node step l1" /><b className="v-node step l2" /><b className="v-node step l3" /><b className="v-node step l4" />
+    </div>
   );
 }
 
@@ -120,7 +145,7 @@ export default function Home() {
           {fields.map((field) => (
             <article className="field-card" key={field.number}>
               <div className="field-top mono"><span>NODE / {field.number}</span><span>{field.label}</span></div>
-              <div className="field-node" aria-hidden="true"><span /></div>
+              <FieldVisual number={field.number} />
               <h3>{field.title}</h3>
               <p>{field.copy}</p>
               <div className="tags mono">{field.tags.map((tag) => <span key={tag}>{tag}</span>)}</div>
