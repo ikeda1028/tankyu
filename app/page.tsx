@@ -248,9 +248,17 @@ export default function Home() {
       <section className="contact" id="contact">
         <div className="section-id mono">006 / START A DIALOGUE</div>
         <p className="kicker">WHAT DO YOU WANT TO CHANGE?</p>
-        <h2>変えたいことから、<br />話を始めましょう。</h2>
-        <p>構想がまだ曖昧でも構いません。企業、自治体、教育機関の課題や、新しいプロジェクトの可能性についてお聞かせください。</p>
-        <a className="contact-link" href="mailto:ikeda@tankyu.academy">ikeda@tankyu.academy <span>↗</span></a>
+        <h2>まず、AIとの対話から<br />始めましょう。</h2>
+        <p>構想がまだ曖昧でも構いません。AIが問いを重ねながら、企業・自治体・教育機関の課題と、プロジェクトの可能性を一緒に整理します。</p>
+        <a
+          className="contact-link"
+          href="https://chatgpt.com/?q=TLA%EF%BC%88%E6%8E%A2%E7%A9%B6%E3%83%AA%E3%83%BC%E3%83%80%E3%83%BC%E3%82%B7%E3%83%83%E3%83%97%E3%82%A2%E3%82%AB%E3%83%87%E3%83%9F%E3%83%BC%EF%BC%89%E3%81%B8%E3%81%AE%E7%9B%B8%E8%AB%87%E3%81%A7%E3%81%99%E3%80%82%E7%A7%81%E3%81%8C%E5%A4%89%E3%81%88%E3%81%9F%E3%81%84%E3%81%93%E3%81%A8%E3%82%92%E6%98%8E%E7%A2%BA%E3%81%AB%E3%81%99%E3%82%8B%E3%81%9F%E3%82%81%E3%80%81%E4%B8%80%E5%BA%A6%E3%81%AB%E4%B8%80%E3%81%A4%E3%81%9A%E3%81%A4%E8%B3%AA%E5%95%8F%E3%81%97%E3%81%A6%E3%81%8F%E3%81%A0%E3%81%95%E3%81%84%E3%80%82%E5%AF%BE%E8%A9%B1%E3%81%AE%E6%9C%80%E5%BE%8C%E3%81%AB%E3%80%81%E8%AA%B2%E9%A1%8C%E3%83%BB%E5%8F%AF%E8%83%BD%E6%80%A7%E3%83%BB%E6%9C%80%E5%88%9D%E3%81%AE%E4%B8%80%E6%AD%A9%E3%82%92%E6%95%B4%E7%90%86%E3%81%97%E3%81%A6%E3%81%8F%E3%81%A0%E3%81%95%E3%81%84%E3%80%82"
+          target="_blank"
+          rel="noreferrer"
+        >
+          AIとの対話を始める <span>↗</span>
+        </a>
+        <p className="contact-note mono">QUESTION → DIALOGUE → POSSIBILITY</p>
       </section>
 
       <footer className="site-footer">
