@@ -48,11 +48,22 @@ function Network() {
   );
 }
 
+function BrandLogo({ footer = false }: { footer?: boolean }) {
+  return (
+    <span className={`brand-logo${footer ? " footer-logo" : ""}`} aria-label="TLA">
+      <span className="logo-t" />
+      <span className="logo-l" />
+      <span className="logo-a"><span /></span>
+      <span className="logo-underscore" />
+    </span>
+  );
+}
+
 export default function Home() {
   return (
     <main>
       <header className="site-header">
-        <a className="logo" href="#top" aria-label="TLA ホーム">TLA<span>_</span></a>
+        <a className="logo-link" href="#top" aria-label="TLA ホーム"><BrandLogo /></a>
         <nav aria-label="メインナビゲーション">
           <a href="#about">ABOUT</a>
           <a href="#solutions">SOLUTIONS</a>
@@ -159,7 +170,7 @@ export default function Home() {
       </section>
 
       <footer className="site-footer">
-        <div className="logo footer-logo">TLA<span>_</span></div>
+        <BrandLogo footer />
         <p>一般社団法人探究リーダーシップアカデミー</p>
         <div className="footer-meta mono"><span>© 2026 TLA</span><span>QUESTION → IMPACT</span></div>
       </footer>
