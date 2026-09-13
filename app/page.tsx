@@ -29,6 +29,37 @@ const process = [
   ["04", "IMPACT", "現場で動かし、変化を生み出す"],
 ];
 
+const members = [
+  {
+    node: "01",
+    name: "炭谷 俊樹",
+    roman: "TOSHIKI SUMITANI",
+    role: "代表理事",
+    fields: ["探究", "教育", "グローバル"],
+  },
+  {
+    node: "02",
+    name: "牧山 昭郎",
+    roman: "AKIO MAKIYAMA",
+    role: "理事",
+    fields: ["PPM", "都市開発"],
+  },
+  {
+    node: "03",
+    name: "岡田 大士郎",
+    roman: "DAISHIRO OKADA",
+    role: "理事",
+    fields: ["金融", "イノベーション", "グローバル"],
+  },
+  {
+    node: "04",
+    name: "池田 哲哉",
+    roman: "TETSUYA IKEDA",
+    role: "理事",
+    fields: ["学び", "PPM", "組織"],
+  },
+];
+
 function Network() {
   return (
     <div className="network" aria-hidden="true">
@@ -187,6 +218,30 @@ export default function Home() {
         <div className="founder-copy">
           <p>個人の探究心を、組織や地域を動かす力へ。TLAは、AIと人間の知性を組み合わせ、次の時代をつくるリーダーとプロジェクトを育てます。</p>
           <a href="#contact">TLAについて話を聞く ↗</a>
+        </div>
+        <div className="people-heading">
+          <p className="kicker">THE COLLECTIVE</p>
+          <h2>TLAを動かす4人</h2>
+          <p>領域を越える知と経験を持ち寄り、問いを実行可能なプロジェクトへ変えていきます。</p>
+        </div>
+        <div className="people-grid">
+          {members.map((member) => (
+            <article className="person-card" key={member.node}>
+              <div className="person-node mono">
+                <span>NODE / {member.node}</span>
+                <i aria-hidden="true" />
+              </div>
+              <div className="person-index" aria-hidden="true">{member.node}</div>
+              <div className="person-info">
+                <p className="person-role mono">{member.role}</p>
+                <h3>{member.name}</h3>
+                <p className="person-roman mono">{member.roman}</p>
+                <div className="person-fields mono">
+                  {member.fields.map((field) => <span key={field}>{field}</span>)}
+                </div>
+              </div>
+            </article>
+          ))}
         </div>
       </section>
 
