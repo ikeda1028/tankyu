@@ -21,6 +21,9 @@ test("renders the TLA public landing page", async () => {
   assert.match(html, /組織・事業を変える/);
   assert.match(html, /地域・社会を変える/);
   assert.match(html, /学びを変える/);
-  assert.match(html, /ikeda@tankyu\.academy/);
+  assert.match(html, /AIとの対話を始める/);
+  for (const person of ["炭谷 俊樹", "牧山 昭郎", "岡田 大士郎", "池田 哲哉"]) {
+    assert.ok(html.includes(person), `Member missing: ${person}`);
+  }
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/);
 });
