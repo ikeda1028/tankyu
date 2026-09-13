@@ -177,7 +177,11 @@ export default function Home() {
         <div className="section-id mono">005 / PEOPLE</div>
         <div className="founder-mark" aria-hidden="true">人<span>_</span></div>
         <blockquote>
-          <p>「社会を変えるのは、制度だけではない。<br />問いを持ち、動き出す人です。」</p>
+          <p>
+            <span>「社会を変えるのは、</span>
+            <span>制度だけではない。</span>
+            <span>問いを持ち、動き出す人です。」</span>
+          </p>
           <footer><strong>炭谷 俊樹</strong><span>代表理事 / TOSHIKI SUMITANI</span></footer>
         </blockquote>
         <div className="founder-copy">
