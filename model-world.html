@@ -17,8 +17,11 @@
       .title small { color: #bdebd9; font-size: 12px; font-weight: 900; letter-spacing: .12em; }
       .title strong { margin-top: 3px; font-size: clamp(22px, 7vw, 36px); line-height: 1.1; }
       .back { pointer-events: auto; display: grid; width: 42px; height: 42px; place-items: center; border: 1px solid rgba(255,255,255,.24); border-radius: 50%; color: #fff; background: rgba(2,15,16,.68); text-decoration: none; backdrop-filter: blur(10px); font-weight: 900; }
-      .hint { position: fixed; z-index: 2; left: 16px; right: 16px; bottom: calc(82px + env(safe-area-inset-bottom)); margin: auto; max-width: 560px; padding: 10px 14px; border: 1px solid rgba(255,255,255,.14); border-radius: 14px; color: #d7eee7; background: rgba(2,15,16,.66); font-size: 12px; line-height: 1.6; text-align: center; backdrop-filter: blur(12px); pointer-events: none; }
+      .hint { position: fixed; z-index: 2; left: 16px; right: 16px; bottom: calc(126px + env(safe-area-inset-bottom)); margin: auto; max-width: 560px; padding: 10px 14px; border: 1px solid rgba(255,255,255,.14); border-radius: 14px; color: #d7eee7; background: rgba(2,15,16,.66); font-size: 12px; line-height: 1.6; text-align: center; backdrop-filter: blur(12px); pointer-events: none; }
       .ar-button { position: fixed; z-index: 3; left: 50%; bottom: max(18px, env(safe-area-inset-bottom)); min-height: 52px; padding: 0 24px; border: 1px solid rgba(255,231,160,.7); border-radius: 999px; color: #fff; background: linear-gradient(135deg, #138463, #2c7bd0); box-shadow: 0 12px 32px rgba(0,0,0,.42); font: inherit; font-weight: 900; transform: translateX(-50%); white-space: nowrap; }
+      .walk-controls { position: fixed; z-index: 3; left: 12px; right: 12px; bottom: calc(68px + env(safe-area-inset-bottom)); display: flex; gap: 8px; justify-content: center; overflow-x: auto; padding: 4px 2px; }
+      .walk-controls button { flex: 0 0 auto; min-height: 42px; padding: 0 14px; border: 1px solid rgba(255,255,255,.18); border-radius: 999px; color: #effff8; background: rgba(2,15,16,.72); box-shadow: 0 8px 22px rgba(0,0,0,.26); font: inherit; font-size: 13px; font-weight: 900; backdrop-filter: blur(12px); }
+      .walk-controls button.active { color: #17352d; background: #dffbe9; }
       .progress { position: absolute; left: 10%; right: 10%; bottom: 8px; height: 3px; overflow: hidden; border-radius: 99px; background: rgba(255,255,255,.15); }
       .progress span { display: block; width: 0; height: 100%; background: #79e6cf; transition: width .2s; }
       .world-item-hotspot { display: grid; min-width: 58px; min-height: 58px; place-items: center; border: 2px solid rgba(255,255,255,.92); border-radius: 50%; color: #17352d; background: radial-gradient(circle at 32% 26%, #fff 0 16%, #ffe27a 17% 48%, #22c08f 49% 100%); box-shadow: 0 10px 28px rgba(0,0,0,.34), 0 0 0 10px rgba(255,226,122,.18); font: inherit; font-size: 12px; font-weight: 1000; cursor: pointer; transform: translate(-50%, -50%); animation: pulse 1.8s ease-in-out infinite; }
@@ -53,7 +56,14 @@
       <button class="ar-button" slot="ar-button">現地に出現させる</button>
       <div class="progress" slot="progress-bar"><span></span></div>
     </model-viewer>
-    <p class="hint">ドラッグで回転、ピンチで拡大できます。ARを使う時は安全な場所で立ち止まってください。</p>
+    <nav class="walk-controls" aria-label="3Dワールド内を移動">
+      <button type="button" data-walk-point="gate">入口</button>
+      <button type="button" data-walk-point="front">正面</button>
+      <button type="button" data-walk-point="floor1">1階</button>
+      <button type="button" data-walk-point="floor2">2階</button>
+      <button type="button" data-walk-point="item">アイテム</button>
+    </nav>
+    <p class="hint">下のボタンで歩く位置を変えられます。ドラッグで回転、ピンチで少し拡大できます。</p>
     <section id="item-panel" class="item-panel" aria-live="polite">
       <small>ITEM FOUND</small>
       <strong id="item-title">2階のひみつアイテム</strong>
@@ -71,6 +81,7 @@
       const itemTitle = document.querySelector("#item-title");
       const itemText = document.querySelector("#item-text");
       const itemClose = document.querySelector("#item-close");
+      const walkButtons = [...document.querySelectorAll("[data-walk-point]")];
 
       function resolveModelSrc(src) {
         if (!src) return "";
@@ -88,6 +99,45 @@
       } else {
         document.body.innerHTML = '<main class="error"><div><h1>3Dモデルが見つかりません</h1><p>探究ポイントの3DモデルURLを確認してください。</p><p><a class="back" href="/">×</a></p></div></main>';
       }
+
+      function isFudoWorld() {
+        return /fudo/i.test(rawSrc) || /不動|Fudo/i.test(title);
+      }
+
+      function getWalkPoints() {
+        if (isFudoWorld()) {
+          return {
+            gate: { label: "入口", target: "0m 2m 0m", orbit: "0deg 68deg 34m", fov: "30deg" },
+            front: { label: "正面", target: "0m 6m -7m", orbit: "0deg 72deg 17m", fov: "26deg" },
+            floor1: { label: "1階", target: "0m 3.2m -4m", orbit: "-16deg 72deg 18m", fov: "28deg" },
+            floor2: { label: "2階", target: "0m 9.2m -4m", orbit: "-18deg 70deg 18m", fov: "28deg" },
+            item: { label: "アイテム", target: "0m 9.6m -8m", orbit: "22deg 68deg 13m", fov: "24deg" },
+          };
+        }
+        return {
+          gate: { label: "入口", target: "0m 1.6m 0m", orbit: "0deg 70deg 18m", fov: "30deg" },
+          front: { label: "正面", target: "0m 2.4m -2m", orbit: "0deg 70deg 10m", fov: "28deg" },
+          floor1: { label: "1階", target: "0m 2m -1m", orbit: "-18deg 72deg 12m", fov: "30deg" },
+          floor2: { label: "2階", target: "0m 5.8m -3m", orbit: "-18deg 70deg 12m", fov: "30deg" },
+          item: { label: "アイテム", target: "0m 5.8m -7m", orbit: "18deg 68deg 9m", fov: "26deg" },
+        };
+      }
+
+      const walkPoints = getWalkPoints();
+
+      function moveToWalkPoint(key, instant = false) {
+        const point = walkPoints[key] || walkPoints.gate;
+        if (!viewer || !point) return;
+        viewer.cameraTarget = point.target;
+        viewer.cameraOrbit = point.orbit;
+        viewer.fieldOfView = point.fov;
+        viewer.interpolationDecay = instant ? 200 : 80;
+        walkButtons.forEach((button) => button.classList.toggle("active", button.dataset.walkPoint === key));
+      }
+
+      walkButtons.forEach((button) => {
+        button.addEventListener("click", () => moveToWalkPoint(button.dataset.walkPoint));
+      });
       function shouldShowDefaultItem() {
         return params.get("item") !== "none" && (/MANABI_Shibuya_3F/i.test(rawSrc) || /MANABI/i.test(title));
       }
@@ -96,7 +146,7 @@
         if (!viewer || !modelSrc || !shouldShowDefaultItem()) return;
         const itemName = (params.get("itemName") || "2階のひみつアイテム").trim();
         const itemMessage = (params.get("itemText") || "2階に隠された探究アイテムを見つけました。現地で気づいたことを記録すると、この場所の謎がひとつ開きます。").trim();
-        const position = (params.get("itemPosition") || "0m 5.8m -7m").trim();
+        const position = (params.get("itemPosition") || (isFudoWorld() ? "0m 9.6m -8m" : "0m 5.8m -7m")).trim();
         const hotspot = document.createElement("button");
         hotspot.className = "world-item-hotspot";
         hotspot.type = "button";
@@ -118,7 +168,7 @@
       }
 
       viewer?.addEventListener("progress", (event) => { bar.style.width = `${event.detail.totalProgress * 100}%`; });
-      viewer?.addEventListener("load", () => { bar.parentElement.hidden = true; addWorldItemHotspot(); });
+      viewer?.addEventListener("load", () => { bar.parentElement.hidden = true; moveToWalkPoint("gate", true); addWorldItemHotspot(); });
       itemClose?.addEventListener("click", () => itemPanel.classList.remove("visible"));
     </script>
   </body>
