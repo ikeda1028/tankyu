@@ -35,6 +35,7 @@ const members = [
     name: "炭谷 俊樹",
     roman: "TOSHIKI SUMITANI",
     role: "代表理事",
+    photo: "/member-sumitani.png",
     fields: ["探究", "教育", "グローバル"],
   },
   {
@@ -42,6 +43,7 @@ const members = [
     name: "牧山 昭郎",
     roman: "AKIO MAKIYAMA",
     role: "理事",
+    photo: "/member-makiyama.png",
     fields: ["PPM", "都市開発"],
   },
   {
@@ -49,6 +51,7 @@ const members = [
     name: "岡田 大士郎",
     roman: "DAISHIRO OKADA",
     role: "理事",
+    photo: "/member-okada.jpg",
     fields: ["金融", "イノベーション", "グローバル"],
   },
   {
@@ -56,6 +59,7 @@ const members = [
     name: "池田 哲哉",
     roman: "TETSUYA IKEDA",
     role: "理事",
+    photo: "/member-ikeda.jpg",
     fields: ["学び", "PPM", "組織"],
   },
 ];
@@ -230,6 +234,9 @@ export default function Home() {
               <div className="person-node mono">
                 <span>NODE / {member.node}</span>
                 <i aria-hidden="true" />
+              </div>
+              <div className="person-photo">
+                <img src={member.photo} alt={`${member.name} ${member.role}`} />
               </div>
               <div className="person-index" aria-hidden="true">{member.node}</div>
               <div className="person-info">
