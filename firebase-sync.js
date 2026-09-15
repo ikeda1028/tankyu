@@ -296,7 +296,7 @@ async function saveSnapshot(config, state, snapshot) {
     mediaUploadError = error?.message || "media upload failed";
     // Keep small inline images if Storage is unavailable; never replace them with empty strings.
     if (new TextEncoder().encode(JSON.stringify(uploadedSnapshot)).length > 750000) {
-      throw new Error("画像を保存できませんでした。端末のデータは保持しています。Firebase Storageの設定を確認してください。");
+      throw Object.assign(new Error("画像を保存できませんでした。端末のデータは保持しています。Firebase Storageの設定を確認してください。"), { code: "storage/media-save-failed", cause: error });
     }
   }
   const avatar = uploadedSnapshot.member?.avatar || {};

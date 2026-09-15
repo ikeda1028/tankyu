@@ -762,6 +762,7 @@ let firebaseAutoSyncRunning = false;
 let firebaseAutoSyncQueued = false;
 let firebaseAutoSyncReason = "";
 let firebaseAutoSaveReady = false;
+let firebaseSyncInFlight = false;
 let firebaseLoadFailed = false;
 let suppressFirebaseAutoSave = false;
 let pendingFieldPostImage = null;
@@ -1429,7 +1430,7 @@ function loadState() {
 }
 
 function shouldAutoSaveToFirebase() {
-  return Boolean(firebaseAutoSaveReady && !suppressFirebaseAutoSave && state.auth?.loggedIn && window.WakuwakuFirebase?.isAuthenticated(state.auth.email) && hasFirebaseConfig());
+  return Boolean(firebaseAutoSaveReady && !state.firebase?.autoSyncPaused && !suppressFirebaseAutoSave && state.auth?.loggedIn && window.WakuwakuFirebase?.isAuthenticated(state.auth.email) && hasFirebaseConfig());
 }
 
 function saveState(options = {}) {
@@ -1515,6 +1516,7 @@ function setFirebaseStatus(message, isError = false) {
   state.firebase = {
     ...(state.firebase || {}),
     lastStatus: message,
+    lastError: isError,
   };
   if (els.firebaseStatus) {
     els.firebaseStatus.textContent = message;
@@ -1532,7 +1534,17 @@ function renderFirebaseSettings() {
   const status = state.firebase?.lastStatus || (hasFirebaseConfig() ? "Firebase設定済み" : "未設定");
   const lastSync = state.firebase?.lastSyncAt ? ` / 最終 ${formatTime(new Date(state.firebase.lastSyncAt))}` : "";
   els.firebaseStatus.textContent = `${status}${lastSync}`;
-  els.firebaseStatus.classList.remove("error");
+  els.firebaseStatus.classList.toggle("error", Boolean(state.firebase?.lastError));
+  if (els.syncFirebaseButton) els.syncFirebaseButton.disabled = firebaseSyncInFlight;
+  if (els.loadFirebaseButton) els.loadFirebaseButton.disabled = firebaseSyncInFlight;
+}
+
+function pauseFirebaseAutoSync() {
+  state.firebase = { ...state.firebase, autoSyncPaused: true };
+  if (firebaseAutoSyncTimer) window.clearTimeout(firebaseAutoSyncTimer);
+  firebaseAutoSyncTimer = null;
+  firebaseAutoSyncQueued = false;
+  firebaseAutoSyncReason = "";
 }
 
 async function saveFirebaseConfig() {
@@ -1629,6 +1641,7 @@ function applyFirebaseNumericFields(targetState, firebaseResult) {
 
 async function syncFirebase(options = {}) {
   const automatic = Boolean(options?.automatic);
+  if (firebaseSyncInFlight || (automatic && state.firebase?.autoSyncPaused)) return false;
   if (!window.WakuwakuFirebase) {
     if (!automatic) setFirebaseStatus("Firebase同期機能を読み込めません", true);
     return false;
@@ -1643,9 +1656,13 @@ async function syncFirebase(options = {}) {
     return false;
   }
   const syncEmail = state.auth.email;
+  firebaseSyncInFlight = true;
+  if (firebaseAutoSyncTimer) window.clearTimeout(firebaseAutoSyncTimer);
+  firebaseAutoSyncTimer = null;
 
   try {
     setFirebaseStatus(automatic ? "Firebase自動同期中..." : "Firebase同期中...");
+    renderFirebaseSettings();
     const snapshot = createFirebaseSnapshot();
     snapshot.authMigrationVersion = 1;
     let publicWarning = "";
@@ -1675,7 +1692,10 @@ async function syncFirebase(options = {}) {
     state.firebase.lastSyncAt = new Date().toISOString();
     state.authMigrationVersion = 1;
     const mediaWarning = result.mediaUploadError ? " / 画像はStorage権限を確認" : "";
-    setFirebaseStatus(`${automatic ? "自動同期完了" : "Firestore保存完了"}: ${result.userId}${mediaWarning}${publicWarning}`, Boolean(result.mediaUploadError || publicWarning));
+    const needsAttention = Boolean(result.mediaUploadError || publicWarning);
+    if (needsAttention) pauseFirebaseAutoSync();
+    else state.firebase.autoSyncPaused = false;
+    setFirebaseStatus(`${automatic ? "自動同期完了" : "Firestore保存完了"}: ${result.userId}${mediaWarning}${publicWarning}${needsAttention ? " / 自動同期を一時停止しました" : ""}`, needsAttention);
     firebaseAutoSaveReady = true;
     suppressFirebaseAutoSave = true;
     saveState({ localOnly: true });
@@ -1683,15 +1703,26 @@ async function syncFirebase(options = {}) {
     renderFirebaseSettings();
     return true;
   } catch (error) {
-    setFirebaseStatus(getFirebaseErrorMessage(error), true);
+    if (!state.auth.loggedIn || state.auth.email !== syncEmail) return false;
+    pauseFirebaseAutoSync();
+    setFirebaseStatus(`${getFirebaseErrorMessage(error)}。自動同期を一時停止しました。設定確認後に「Firebase同期」で再試行してください`, true);
+    saveState({ localOnly: true });
     console.error(error);
     return false;
+  } finally {
+    firebaseSyncInFlight = false;
+    renderFirebaseSettings();
+    if (!firebaseAutoSyncRunning && firebaseAutoSyncReason && shouldAutoSaveToFirebase()) queueFirebaseSync(firebaseAutoSyncReason);
   }
 }
 
 function queueFirebaseSync(reason = "更新") {
   if (!shouldAutoSaveToFirebase()) return;
   firebaseAutoSyncReason = reason;
+  if (firebaseSyncInFlight) {
+    firebaseAutoSyncQueued = true;
+    return;
+  }
   if (firebaseAutoSyncTimer) {
     window.clearTimeout(firebaseAutoSyncTimer);
   }
@@ -1699,6 +1730,7 @@ function queueFirebaseSync(reason = "更新") {
 }
 
 async function runQueuedFirebaseSync() {
+  if (!shouldAutoSaveToFirebase()) return;
   if (firebaseAutoSyncRunning) {
     firebaseAutoSyncQueued = true;
     return;
@@ -1712,7 +1744,7 @@ async function runQueuedFirebaseSync() {
     await syncFirebase({ automatic: true, reason });
   } finally {
     firebaseAutoSyncRunning = false;
-    if (firebaseAutoSyncQueued || firebaseAutoSyncReason) {
+    if (shouldAutoSaveToFirebase() && (firebaseAutoSyncQueued || firebaseAutoSyncReason)) {
       firebaseAutoSyncQueued = false;
       queueFirebaseSync(firebaseAutoSyncReason || reason);
     }
@@ -1729,6 +1761,7 @@ function shouldAutoLoadFirebaseSnapshot() {
 }
 
 async function loadFirebaseSnapshot(options = {}) {
+  if (firebaseSyncInFlight) return false;
   firebaseLoadFailed = true;
   if (!window.WakuwakuFirebase) {
     if (!options.silent) setFirebaseStatus("Firebase同期機能を読み込めません", true);
@@ -1741,8 +1774,8 @@ async function loadFirebaseSnapshot(options = {}) {
   }
 
   try {
-    setFirebaseStatus(options.silent ? "Firebase自動読込中..." : "Firebase読込中...");
-    const savedConfig = state.firebase;
+    const savedConfig = { ...state.firebase };
+    if (!options.silent || !savedConfig.autoSyncPaused) setFirebaseStatus(options.silent ? "Firebase自動読込中..." : "Firebase読込中...");
     const requestedAuthEmail = String(options.authEmail || state.auth?.email || "").trim();
     const localSnapshot = JSON.parse(JSON.stringify(state));
     const result = await window.WakuwakuFirebase.loadSnapshot(config, state);
@@ -1780,6 +1813,10 @@ async function loadFirebaseSnapshot(options = {}) {
         ? `Firestore読込完了: ${result.userId} / 数値 ${appliedNumericFields.length}件`
         : `Firestore読込完了: ${result.userId}`,
     };
+    if (savedConfig.autoSyncPaused) {
+      state.firebase.lastStatus = savedConfig.lastStatus;
+      state.firebase.lastError = savedConfig.lastError;
+    }
     state.driveSync = { ...defaultState.driveSync, ...(state.driveSync || {}) };
     state.maps = { ...defaultState.maps, ...(state.maps || {}) };
     state.auth = { ...defaultState.auth, ...(state.auth || {}) };
@@ -1853,6 +1890,11 @@ function getFirebaseErrorMessage(error) {
     "auth/invalid-credential": "ログイン情報を確認するか、Googleでログインしてください",
     "auth/unverified-email": "メールアドレスを確認してからログインしてください",
     "permission-denied": "Firebaseのアクセス権で読み書きが拒否されています",
+    "storage/media-save-failed": "画像をFirebase Storageへ保存できません。端末のデータは保持しています",
+    "storage/unauthorized": "Firebase Storageの画像保存権限を確認してください",
+    "storage/retry-limit-exceeded": "Firebase Storageへの画像送信がタイムアウトしました",
+    "resource-exhausted": "Firebaseの容量または利用上限を超えています",
+    "unavailable": "ネットワークまたはFirebaseに接続できません。端末のデータは保持しています",
   };
   return messages[error?.code] || "クラウドに接続できませんでした。端末のデータは保持しています";
 }
