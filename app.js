@@ -1756,6 +1756,13 @@ async function loadFirebaseSnapshot(options = {}) {
     if ((!localSnapshot.authMigrationVersion || !result.snapshot?.authMigrationVersion) && requestedAuthEmail.toLowerCase() === String(localSnapshot.auth?.email || "").toLowerCase()) {
       const backupKey = `wakuwaku-before-auth-migration:${requestedAuthEmail.toLowerCase()}`;
       if (!localStorage.getItem(backupKey)) localStorage.setItem(backupKey, JSON.stringify(localSnapshot));
+      const backup = JSON.parse(localStorage.getItem(backupKey));
+      // Recover profile fields replaced by an older cloud snapshot during an interrupted migration.
+      for (const [key, value] of Object.entries(backup?.member || {})) {
+        if (JSON.stringify(localSnapshot.member?.[key]) === JSON.stringify(result.snapshot?.member?.[key])) {
+          localSnapshot.member = { ...localSnapshot.member, [key]: value };
+        }
+      }
       loadedSnapshot = mergeLegacyCloudSnapshot(loadedSnapshot, localSnapshot);
     }
     loadedSnapshot.authMigrationVersion = result.snapshot?.authMigrationVersion || 0;
@@ -1810,6 +1817,9 @@ async function loadFirebaseSnapshot(options = {}) {
 
 function mergeLegacyCloudSnapshot(cloud, local) {
   const merged = { ...cloud };
+  if (local.member?.name && local.member.name !== "管理者") {
+    merged.member = { ...cloud.member, ...local.member };
+  }
   for (const field of ["customEvents", "worlds", "fieldPosts"]) {
     const records = new Map((cloud[field] || []).map((record) => [record.id, record]));
     for (const record of local[field] || []) {
@@ -1827,7 +1837,7 @@ function mergeLegacyCloudSnapshot(cloud, local) {
   if ((localAvatar?.imageDataUrl || localAvatar?.downloadUrl) &&
       (!(cloudAvatar?.imageDataUrl || cloudAvatar?.downloadUrl) ||
        (Date.parse(localAvatar.generatedAt) || 0) > (Date.parse(cloudAvatar?.generatedAt) || 0))) {
-    merged.member = { ...cloud.member, avatar: localAvatar };
+    merged.member = { ...merged.member, avatar: localAvatar };
   }
   return merged;
 }
