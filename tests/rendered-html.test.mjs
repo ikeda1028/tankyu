@@ -27,6 +27,7 @@ test("renders the TLA public landing page", async () => {
   assert.ok(plainText.includes("社会は、どんな問いで動き出すのか。"));
   assert.ok(plainText.includes("社会の未来をひらく問いとは何か。"));
   assert.doesNotMatch(html, /制度だけではない|動き出す人です/);
+  assert.doesNotMatch(html, /founder-quote-controls|founder-quote-select|founder-quote-pause|自動切替を停止|自動切替を再開/);
   for (const person of ["炭谷 俊樹", "牧山 昭郎", "岡田 大士郎", "池田 哲哉"]) {
     assert.ok(html.includes(person), `Member missing: ${person}`);
   }

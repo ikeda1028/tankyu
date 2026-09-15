@@ -10,7 +10,6 @@ const quotes = [
 export default function FounderQuotes() {
   const ref = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(0);
-  const [paused, setPaused] = useState(false);
   const [interacting, setInteracting] = useState(false);
   const [visible, setVisible] = useState(false);
   const [reduced, setReduced] = useState(false);
@@ -34,13 +33,13 @@ export default function FounderQuotes() {
   }, []);
 
   useEffect(() => {
-    if (paused || interacting || !visible || !pageVisible || reduced) return;
+    if (interacting || !visible || !pageVisible || reduced) return;
     const timer = window.setInterval(() => setActive((value) => (value + 1) % quotes.length), 10000);
     return () => window.clearInterval(timer);
-  }, [paused, interacting, visible, pageVisible, reduced]);
+  }, [interacting, visible, pageVisible, reduced]);
 
-  return <div className="founder-message" ref={ref} role="region" aria-label="炭谷代表の言葉"
-    onMouseEnter={() => setInteracting(true)} onMouseLeave={() => setInteracting(false)}
+  return <div className="founder-message" ref={ref} role="region" aria-label="炭谷代表の言葉" tabIndex={0}
+    onMouseEnter={() => setInteracting(true)} onMouseLeave={() => setInteracting(ref.current === document.activeElement)}
     onFocusCapture={() => setInteracting(true)}
     onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setInteracting(false); }}>
     <span className="quote-symbol" aria-hidden="true">“</span>
@@ -52,12 +51,6 @@ export default function FounderQuotes() {
       </div>
       <footer><span>代表理事</span><strong>炭谷 俊樹</strong></footer>
     </blockquote>
-    <div className="founder-quote-controls">
-      <div className="founder-quote-select" role="group" aria-label="言葉を選ぶ">
-        {quotes.map((_, index) => <button key={index} type="button" aria-label={`${index + 1}つ目の言葉を表示`} aria-pressed={active === index} onClick={() => { setActive(index); setPaused(true); }}>0{index + 1}</button>)}
-      </div>
-      {!reduced && <button type="button" className="founder-quote-pause" aria-pressed={paused} onClick={() => setPaused((value) => !value)}>{paused ? "自動切替を再開" : "自動切替を停止"}</button>}
-    </div>
     <p className="founder-copy">個人の探究心を、組織や地域を動かす力へ。次の時代をつくるリーダーとプロジェクトを育てます。</p>
   </div>;
 }

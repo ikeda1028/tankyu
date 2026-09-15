@@ -128,13 +128,6 @@ h2 { font-size: clamp(32px,3.35vw,56px); line-height: 1.5; letter-spacing: -.035
 .founder-quote-text > span { display: block; overflow-wrap: anywhere; line-break: strict; }
 .founder-quote-text > span + span { margin-top: .35em; }
 .founder-quote-phrase { display: inline-block; }
-.founder-quote-controls { display: flex; flex-wrap: wrap; gap: 14px 25px; align-items: center; margin-top: 22px; }
-.founder-quote-select { display: flex; gap: 8px; }
-.founder-quote-select button, .founder-quote-pause { border: 0; background: transparent; min-height: 44px; padding: 8px; font-size: 14px; cursor: pointer; }
-.founder-quote-select button { min-width: 44px; border-bottom: 1px solid var(--line); color: var(--muted); }
-.founder-quote-select button[aria-pressed="true"] { color: var(--blue); border-bottom: 2px solid var(--blue); }
-.founder-quote-pause { color: var(--muted); }
-.founder-quote-pause:hover { color: var(--blue); }
 .founder-message footer { display: flex; align-items: baseline; gap: 22px; }
 .founder-message footer span { color: var(--muted); font-size: 14px; }
 .founder-message footer strong { font-size: 22px; font-weight: 500; white-space: nowrap; }
