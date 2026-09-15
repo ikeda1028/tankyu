@@ -7352,6 +7352,8 @@ async function initDatabase() {
 
     if (hasDbProfile) {
       Object.assign(state, dbState);
+      // Firebase connection status belongs to this device, not the IndexedDB profile defaults.
+      state.firebase = { ...defaultState.firebase, ...stateBeforeDbLoad.firebase };
       if (stateBeforeDbLoad.auth?.loggedIn && stateBeforeDbLoad.auth?.email) {
         state.auth = stateBeforeDbLoad.auth;
       }

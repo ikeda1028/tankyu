@@ -74,4 +74,26 @@ finish({ snapshot: {}, userId: "owner", mediaUploadError: "Storage unavailable" 
 await warningRetry;
 assert.equal(state.firebase.autoSyncPaused, true, "Inline fallback warns without repeatedly retrying Storage");
 assert.equal(timers.size, 0);
+
+const pausedStatus = state.firebase.lastStatus;
+Object.assign(context, {
+  defaultState: { quest: 0, firebase: {}, guardian: {} },
+  indexedDB: {}, getEncounters: () => [], render() {},
+  normalizeChildProfile: (profile) => profile || {}, dedupeCustomEvents() {},
+  hasPortableUserData: () => true, shouldAutoLoadFirebaseSnapshot: () => false,
+});
+context.els.dbStatus = {};
+context.window.indexedDB = {};
+context.window.WakuwakuDB = {
+  openDatabase: async () => ({}), seedEvents: async () => {}, writeState: async () => {},
+  readState: async () => ({ quest: 1, member: { name: "Owner" }, activity: [], reflections: [], feedbacks: [], worlds: [], firebase: {} }),
+};
+api.getAuthenticatedUser = async () => ({});
+context.loadFirebaseSnapshot = async () => false;
+vm.runInContext("let appDb, dbReady = false, firebaseLoadFailed = false;", context);
+vm.runInContext(section("async function initDatabase(", "async function renderDatabaseStatus("), context);
+await context.initDatabase();
+assert.equal(state.firebase.autoSyncPaused, true, "IndexedDB startup must preserve device sync pause");
+assert.equal(state.firebase.lastStatus, pausedStatus);
+assert.equal(timers.size, 0);
 console.log("PASS: no retry loop, single in-flight save, explicit recovery, warning pause");
