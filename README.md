@@ -40,6 +40,15 @@
 
 ## ローカル起動
 
+### Firebaseの本人認証と既存データ移行
+
+- Firebase AuthenticationでGoogleプロバイダを有効にし、承認済みドメインへ公開ドメインと開発用ホストを登録する。
+- Firestoreへ `firestore.rules` を適用する。認証済み・メール確認済みの本人だけが自身の `wakuwakuUsers` を読み書きできる。会員データの一般公開はしない。
+- 既存利用者は設定の「Googleで本人確認」で、保存に使ったものと同じメールアドレスを選ぶ。メールとパスワードのログインは、Firebaseで登録済みのアカウントのみ対応する。デモは端末内で利用する。
+- 初回移行時は端末の状態を `wakuwaku-before-auth-migration:<email>` にバックアップし、端末だけにある探究ポイント・ワールド・現場投稿と新しいアバターを引き継ぐ。読み込みに失敗した場合は自動保存しない。
+- 期限切れ期間に作成した3Dは、作成した端末でも本人確認して同期する必要がある。GLBの公開URLは探究ポイントの `model3d` とともに保存する。
+- この設定はFirestoreの会員スナップショット用。画像のStorage保存には、別途バケットとStorageの本人限定ルールが必要。
+
 このフォルダで静的サーバーを起動し、ブラウザで `http://127.0.0.1:4173` を開きます。
 
 ```bash
@@ -116,7 +125,7 @@ Firebaseを使う場合は、Firebase ConsoleでWebアプリを追加し、表�
 
 - Cloud Firestore: 生徒ごとのプロフィール、探究ポイント、ログ、振り返り、フィードバック、現場投稿メタデータを保存
 - Firebase Storage: 現場写真の本体を保存
-- Firebase Authentication: 将来の本ログインに拡張予定
+- Firebase Authentication: Googleログインによる本人確認
 
 現在の実装では、Firestoreの `wakuwakuUsers/{ユーザーID}` に1ユーザー分のスナップショットを保存します。現場投稿の写真本体はFirebase Storageの `fieldPosts/{ユーザーID}/{投稿ID}.jpg` に保存し、Firestoreには写真の有無・名前・サイズ・Storageパス・表示URLを保存します。
 
@@ -125,6 +134,14 @@ AIアバターはローカルのIndexedDBでは `avatars` ストアに保存さ�
 別ブラウザや別端末で同じアバターを表示するにはFirebase同期が必要です。公開版にFirebase設定が入っている場合、アバター生成後に自動でFirebaseへ保存し、ローカルにアバターがないブラウザでは起動時にFirebaseから自動読込します。
 
 現場写真まで同期する場合は、Firebase ConsoleでStorageも有効化してください。MVP確認ではテストモードで動作確認できますが、公開運用ではFirebase AuthenticationとStorage/Firestore Security Rulesを設定して、本人のデータだけ読み書きできるようにしてください。
+
+### 池田さんの公開コンテンツ
+
+`ikeda@manabinomichi.com` が本人認証して同期すると、探究ポイント・ワールド・付属キャラクター・3Dモデルを `publicExplorers/ikeda@manabinomichi_com/points` と `worlds` に公開します。座標のあるコンテンツを対象とし、全員がログインせずに地図から閲覧できます。更新は池田さん本人だけです。
+
+公開用には許可した項目だけを抽出します。会員情報、写真投稿、活動記録、現在地、ワールド内の個人の発見は公開しません。公開コンテンツは閲覧用メモリに読み込み、他の利用者の個人スナップショットには混ぜません。既存の端末内データは本人認証後の初回同期で移行します。
+
+Storageへの画像アップロードが失敗した場合、小容量の画像はFirestore内に保持します。容量に余裕がない場合は保存エラーとして扱い、画像を空にして保存することはしません。
 
 公開版で常にFirebaseを使う場合は、VercelのEnvironment Variablesに `FIREBASE_*` を設定します。ブラウザに配信されるFirebase設定は秘密鍵ではありませんが、Firestore Security Rulesで読み書き範囲を制限してください。
 

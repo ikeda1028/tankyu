@@ -32,10 +32,12 @@
 
         <form id="login-form" class="auth-form">
           <h2>ログイン</h2>
+          <button id="google-login-button" class="primary-button" type="button">Googleでログイン</button>
+          <p id="login-status" role="status" aria-live="polite"></p>
           <label for="login-email">メールアドレス</label>
           <input id="login-email" type="email" placeholder="student@example.com" required />
           <label for="login-password">パスワード</label>
-          <input id="login-password" type="password" placeholder="8文字以上" required />
+          <input id="login-password" type="password" autocomplete="current-password" placeholder="登録済みのパスワード" required />
           <button class="primary-button" type="submit">ログイン</button>
           <button id="demo-login-button" class="secondary-button" type="button">デモではじめる</button>
         </form>
@@ -1086,6 +1088,7 @@
 
                 <section class="drive-sync-box firebase-sync-box">
                   <label for="firebase-config">Firebase設定</label>
+                  <button id="firebase-google-login-button" class="secondary-button" type="button">Googleで本人確認</button>
                   <textarea id="firebase-config" rows="5" placeholder='{"apiKey":"...","authDomain":"...","projectId":"...","appId":"..."}'></textarea>
                   <div class="drive-sync-actions">
                     <button id="save-firebase-config-button" class="secondary-button" type="button">設定保存</button>

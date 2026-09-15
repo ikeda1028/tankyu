@@ -1,4 +1,5 @@
 const STORAGE_KEY = "wakuwaku-quest-state-v3";
+let publicExploration = { points: [], worlds: [] };
 const PUBLIC_API_BASE = location.hostname.endsWith("vercel.app")
   ? location.origin
   : "https://tankyu-five.vercel.app";
@@ -204,6 +205,7 @@ function hasValidSeedLatLng(position) {
 }
 
 const defaultState = {
+  authMigrationVersion: 0,
   auth: {
     loggedIn: false,
     email: "",
@@ -760,6 +762,7 @@ let firebaseAutoSyncRunning = false;
 let firebaseAutoSyncQueued = false;
 let firebaseAutoSyncReason = "";
 let firebaseAutoSaveReady = false;
+let firebaseLoadFailed = false;
 let suppressFirebaseAutoSave = false;
 let pendingFieldPostImage = null;
 let pendingFieldPostLocation = null;
@@ -1051,7 +1054,9 @@ function useFudoModelForEvent() {
 }
 
 function getEncounters() {
-  return [...seedEncounters, ...state.customEvents].map((event) => {
+  const shared = publicExploration.points.map((event) => ({ ...event, publicReadOnly: true }));
+  const events = new Map([...seedEncounters, ...shared, ...state.customEvents].map((event) => [event.id, event]));
+  return [...events.values()].map((event) => {
     const withCharacter = ensureEventCharacter(event);
     return { ...withCharacter, model3d: normalizeEventModel3d(withCharacter?.model3d) };
   });
@@ -1424,7 +1429,7 @@ function loadState() {
 }
 
 function shouldAutoSaveToFirebase() {
-  return Boolean(firebaseAutoSaveReady && !suppressFirebaseAutoSave && state.auth?.loggedIn && state.auth?.email && hasFirebaseConfig());
+  return Boolean(firebaseAutoSaveReady && !suppressFirebaseAutoSave && state.auth?.loggedIn && window.WakuwakuFirebase?.isAuthenticated(state.auth.email) && hasFirebaseConfig());
 }
 
 function saveState(options = {}) {
@@ -1530,7 +1535,7 @@ function renderFirebaseSettings() {
   els.firebaseStatus.classList.remove("error");
 }
 
-function saveFirebaseConfig() {
+async function saveFirebaseConfig() {
   try {
     const configJson = els.firebaseConfig.value.trim();
     const config = parseFirebaseConfigJson(configJson);
@@ -1543,8 +1548,14 @@ function saveFirebaseConfig() {
       configJson: JSON.stringify(config, null, 2),
       lastStatus: "Firebase設定を保存しました",
     };
-    firebaseAutoSaveReady = Boolean(state.auth?.loggedIn && state.auth?.email);
-    saveState({ reason: "Firebase設定保存" });
+    firebaseAutoSaveReady = false;
+    saveState({ localOnly: true });
+    await loadPublicExploration();
+    if (state.auth?.loggedIn) {
+      await loadFirebaseSnapshot({ silent: true });
+      firebaseAutoSaveReady = !firebaseLoadFailed;
+      queueFirebaseSync("Firebase設定保存");
+    }
     renderFirebaseSettings();
   } catch {
     setFirebaseStatus("Firebase設定JSONを確認してください", true);
@@ -1627,10 +1638,16 @@ async function syncFirebase(options = {}) {
     if (!automatic) setFirebaseStatus("Firebase設定を入力してください", true);
     return false;
   }
+  if (!firebaseAutoSaveReady) {
+    setFirebaseStatus("Googleで本人確認して保存データを読み込んでください", true);
+    return false;
+  }
+  const syncEmail = state.auth.email;
 
   try {
     setFirebaseStatus(automatic ? "Firebase自動同期中..." : "Firebase同期中...");
     const result = await window.WakuwakuFirebase.saveSnapshot(config, state, createFirebaseSnapshot());
+    if (!state.auth.loggedIn || state.auth.email !== syncEmail) return false;
     if (Array.isArray(result.snapshot?.fieldPosts)) {
       state.fieldPosts = result.snapshot.fieldPosts;
     }
@@ -1644,8 +1661,18 @@ async function syncFirebase(options = {}) {
       state.customEvents = result.snapshot.customEvents.map(ensureEventCharacter);
     }
     state.firebase.lastSyncAt = new Date().toISOString();
+    let publicWarning = "";
+    if (syncEmail.toLowerCase() === "ikeda@manabinomichi.com") {
+      try {
+        const shared = await window.WakuwakuFirebase.publishExploration(config, state, result.snapshot);
+        if (shared) publicExploration = shared;
+      } catch (error) {
+        publicWarning = " / みんなへの公開は未完了です";
+        console.error(error);
+      }
+    }
     const mediaWarning = result.mediaUploadError ? " / 画像はStorage権限を確認" : "";
-    setFirebaseStatus(`${automatic ? "自動同期完了" : "Firestore保存完了"}: ${result.userId}${mediaWarning}`, Boolean(result.mediaUploadError));
+    setFirebaseStatus(`${automatic ? "自動同期完了" : "Firestore保存完了"}: ${result.userId}${mediaWarning}${publicWarning}`, Boolean(result.mediaUploadError || publicWarning));
     firebaseAutoSaveReady = true;
     suppressFirebaseAutoSave = true;
     saveState({ localOnly: true });
@@ -1653,14 +1680,14 @@ async function syncFirebase(options = {}) {
     renderFirebaseSettings();
     return true;
   } catch (error) {
-    setFirebaseStatus(`${automatic ? "Firebase自動同期" : "Firebase同期"}エラー。設定とFirestoreルールを確認してください`, true);
+    setFirebaseStatus(getFirebaseErrorMessage(error), true);
     console.error(error);
     return false;
   }
 }
 
 function queueFirebaseSync(reason = "更新") {
-  if (!hasFirebaseConfig()) return;
+  if (!shouldAutoSaveToFirebase()) return;
   firebaseAutoSyncReason = reason;
   if (firebaseAutoSyncTimer) {
     window.clearTimeout(firebaseAutoSyncTimer);
@@ -1699,6 +1726,7 @@ function shouldAutoLoadFirebaseSnapshot() {
 }
 
 async function loadFirebaseSnapshot(options = {}) {
+  firebaseLoadFailed = true;
   if (!window.WakuwakuFirebase) {
     if (!options.silent) setFirebaseStatus("Firebase同期機能を読み込めません", true);
     return false;
@@ -1713,12 +1741,21 @@ async function loadFirebaseSnapshot(options = {}) {
     setFirebaseStatus(options.silent ? "Firebase自動読込中..." : "Firebase読込中...");
     const savedConfig = state.firebase;
     const requestedAuthEmail = String(options.authEmail || state.auth?.email || "").trim();
+    const localSnapshot = JSON.parse(JSON.stringify(state));
     const result = await window.WakuwakuFirebase.loadSnapshot(config, state);
+    if (!state.auth.loggedIn || state.auth.email.toLowerCase() !== requestedAuthEmail.toLowerCase()) return false;
+    firebaseLoadFailed = false;
     if (!result?.snapshot && !result?.stats) {
       if (!options.silent) setFirebaseStatus("Firebaseに保存データまたは数値がありません", true);
       return false;
     }
-    const loadedSnapshot = result.snapshot ? { ...defaultState, ...result.snapshot } : { ...state };
+    let loadedSnapshot = result.snapshot ? { ...defaultState, ...result.snapshot } : { ...state };
+    if (!localSnapshot.authMigrationVersion && requestedAuthEmail.toLowerCase() === String(localSnapshot.auth?.email || "").toLowerCase()) {
+      const backupKey = `wakuwaku-before-auth-migration:${requestedAuthEmail.toLowerCase()}`;
+      if (!localStorage.getItem(backupKey)) localStorage.setItem(backupKey, JSON.stringify(localSnapshot));
+      loadedSnapshot = mergeLegacyCloudSnapshot(loadedSnapshot, localSnapshot);
+    }
+    loadedSnapshot.authMigrationVersion = 1;
     const appliedNumericFields = applyFirebaseNumericFields(loadedSnapshot, result);
     if (result.snapshot && !hasPortableUserData(loadedSnapshot) && !appliedNumericFields.length) {
       if (!options.silent) setFirebaseStatus("Firebaseに引き継げるデータがまだありません", true);
@@ -1760,10 +1797,51 @@ async function loadFirebaseSnapshot(options = {}) {
     applyAgeBasedMode({ force: true });
     return true;
   } catch (error) {
-    setFirebaseStatus("Firebase読込エラー。設定とFirestoreルールを確認してください", true);
+    firebaseLoadFailed = true;
+    firebaseAutoSaveReady = false;
+    setFirebaseStatus(getFirebaseErrorMessage(error), true);
     console.error(error);
     return false;
   }
+}
+
+function mergeLegacyCloudSnapshot(cloud, local) {
+  const merged = { ...cloud };
+  for (const field of ["customEvents", "worlds", "fieldPosts"]) {
+    const records = new Map((cloud[field] || []).map((record) => [record.id, record]));
+    for (const record of local[field] || []) {
+      if (!record.id) continue;
+      const remote = records.get(record.id);
+      if (!remote) { records.set(record.id, record); continue; }
+      const time = (item) => Date.parse(item.updatedAt || item.createdAt || "") || 0;
+      const newer = time(record) >= time(remote) ? record : remote;
+      records.set(record.id, { ...remote, ...newer, model3d: newer.model3d || record.model3d || remote.model3d || null });
+    }
+    merged[field] = [...records.values()];
+  }
+  const localAvatar = local.member?.avatar;
+  const cloudAvatar = cloud.member?.avatar;
+  if ((localAvatar?.imageDataUrl || localAvatar?.downloadUrl) &&
+      (!(cloudAvatar?.imageDataUrl || cloudAvatar?.downloadUrl) ||
+       (Date.parse(localAvatar.generatedAt) || 0) > (Date.parse(cloudAvatar?.generatedAt) || 0))) {
+    merged.member = { ...cloud.member, avatar: localAvatar };
+  }
+  return merged;
+}
+
+function getFirebaseErrorMessage(error) {
+  const messages = {
+    "auth/identity-required": "Googleで本人確認すると保存データを読み込めます",
+    "auth/popup-blocked": "ポップアップを許可して、もう一度Googleでログインしてください",
+    "auth/popup-closed-by-user": "ログインを中断しました",
+    "auth/cancelled-popup-request": "別のログイン画面を確認してください",
+    "auth/unauthorized-domain": "このサイトはFirebaseの承認済みドメインに登録されていません",
+    "auth/operation-not-allowed": "Firebaseでこのログイン方法を有効にしてください",
+    "auth/invalid-credential": "ログイン情報を確認するか、Googleでログインしてください",
+    "auth/unverified-email": "メールアドレスを確認してからログインしてください",
+    "permission-denied": "Firebaseのアクセス権で読み書きが拒否されています",
+  };
+  return messages[error?.code] || "クラウドに接続できませんでした。端末のデータは保持しています";
 }
 
 function getMapsKey() {
@@ -1788,12 +1866,12 @@ function getPosterEmails() {
 
 function isAdminUser() {
   const email = String(state.auth?.email || "").trim().toLowerCase();
-  return Boolean(email && getAdminEmails().includes(email));
+  return Boolean(state.auth.loggedIn && window.WakuwakuFirebase?.isAuthenticated(email) && getAdminEmails().includes(email));
 }
 
 function canEditPointCharacter() {
   const email = String(state.auth?.email || "").trim().toLowerCase();
-  return Boolean(email && (isAdminUser() || getPosterEmails().includes(email)));
+  return Boolean(state.auth.loggedIn && window.WakuwakuFirebase?.isAuthenticated(email) && (isAdminUser() || getPosterEmails().includes(email)));
 }
 
 function isAdminEmail(email) {
@@ -4068,7 +4146,7 @@ function isKidsWorld(world) {
 
 function getMapVisibleWorlds() {
   const kidsMapActive = Boolean(state.ui?.kidsMapActive);
-  return (Array.isArray(state.worlds) ? state.worlds : [])
+  return getAvailableWorlds()
     .filter((world) => (kidsMapActive ? isKidsWorld(world) : !isKidsWorld(world)))
     .map((world) => {
       const entrancePosition = resolveWorldEntrancePosition(world);
@@ -4232,6 +4310,7 @@ async function checkModel3dTask() {
 
 function saveCurrentModel3dToWorld() {
   const selectedWorld = getSelectedWorld();
+  if (selectedWorld?.publicReadOnly) return;
   const result = state.ui?.model3dLastResult || null;
   if (!selectedWorld || state.ui?.selectedWorldId === "__new__") {
     setModel3dStatus("先にワールドを保存", true);
@@ -4351,7 +4430,7 @@ function buildWorldVisualPrompt(world) {
 }
 
 async function generateWorldVisualMap(world) {
-  if (!world?.concept) return null;
+  if (!world?.concept || world.publicReadOnly) return null;
   const prompt = buildWorldVisualPrompt(world);
   setWorldStatus("AIがワールド画像を生成中...");
   const response = await fetch(getGenerateImageApiPath(), {
@@ -4433,11 +4512,11 @@ function renderWorldMapPreview(world = getSelectedWorld()) {
       ${zones.length ? `<span class="world-position-marker">${currentIndex + 1}</span>` : ""}
     </div>
     ${
-      model3d?.taskId
+      model3d?.taskId || model3d?.modelUrl
         ? `<div class="world-model3d-saved">
           <strong>3Dモデル保存済み</strong>
-          <span>${escapeHtml(model3d.status || "saved")} / task: ${escapeHtml(model3d.taskId)}</span>
-          ${model3d.modelUrl ? `<a href="${escapeHtml(model3d.modelUrl)}" target="_blank" rel="noopener">保存したGLBを開く</a>` : "<small>モデルURLは未取得です。タスクIDで再確認できます。</small>"}
+          <span>${escapeHtml(model3d.status || "saved")}</span>
+          ${model3d.modelUrl ? `<a href="${escapeHtml(getModelWorldUrl(model3d, world.title))}">3Dワールドに入る</a>` : "<small>モデルURLは未取得です。タスクIDで再確認できます。</small>"}
         </div>`
         : ""
     }
@@ -4445,7 +4524,7 @@ function renderWorldMapPreview(world = getSelectedWorld()) {
       <button type="button" data-world-move="-1" ${currentIndex <= 0 ? "disabled" : ""}>←</button>
       <strong>${escapeHtml(currentZone?.name || "入口")}</strong>
       <button type="button" data-world-move="1" ${currentIndex >= zones.length - 1 ? "disabled" : ""}>→</button>
-      <button type="button" data-world-regenerate-map="1">画像を作り直す</button>
+      ${world.publicReadOnly ? "" : '<button type="button" data-world-regenerate-map="1">画像を作り直す</button>'}
     </div>
     <div class="world-zone-grid">
       ${zones
@@ -4488,9 +4567,15 @@ function renderWorldMapPreview(world = getSelectedWorld()) {
 }
 
 function getSelectedWorld() {
-  const worlds = Array.isArray(state.worlds) ? state.worlds : [];
+  const worlds = state.ui?.worldViewMode === "edit" ? state.worlds : getAvailableWorlds();
   if (state.ui?.selectedWorldId === "__new__") return null;
   return worlds.find((world) => world.id === state.ui?.selectedWorldId) || worlds[0] || null;
+}
+
+function getAvailableWorlds() {
+  const worlds = new Map(publicExploration.worlds.map((world) => [world.id, { ...world, publicReadOnly: true }]));
+  for (const world of state.worlds || []) worlds.set(world.id, world);
+  return [...worlds.values()];
 }
 
 function moveToWorldZone(index) {
@@ -4499,6 +4584,12 @@ function moveToWorldZone(index) {
   const zones = Array.isArray(world.map?.zones) ? world.map.zones : [];
   if (!zones.length) return;
   const nextIndex = Math.max(0, Math.min(zones.length - 1, Number(index) || 0));
+  if (world.publicReadOnly) {
+    const shared = publicExploration.worlds.find((item) => item.id === world.id);
+    if (shared) shared.currentZoneIndex = nextIndex;
+    renderWorlds();
+    return;
+  }
   world.currentZoneIndex = nextIndex;
   world.updatedAt = new Date().toISOString();
   saveState();
@@ -4636,6 +4727,7 @@ async function generateAndSaveWorld() {
 
 function mapLatestDiscoveryToWorld() {
   const world = getSelectedWorld();
+  if (world?.publicReadOnly) return;
   const latest = [...(state.fieldPosts || [])].sort((a, b) => String(b.at || "").localeCompare(String(a.at || "")))[0];
   if (!world) {
     setWorldStatus("先にワールドを作ってください", true);
@@ -4662,8 +4754,8 @@ function mapLatestDiscoveryToWorld() {
 
 function renderWorlds() {
   if (!els.worldsView) return;
-  const worlds = Array.isArray(state.worlds) ? state.worlds : [];
   const editMode = state.ui?.worldViewMode === "edit";
+  const worlds = editMode ? state.worlds : getAvailableWorlds();
   els.worldsView.classList.toggle("world-editor-mode", editMode);
   els.worldsView.classList.toggle("world-reader-mode", !editMode);
   const worldHeading = els.worldsView.querySelector(".worlds-main .section-head h2");
@@ -4672,6 +4764,7 @@ function renderWorlds() {
   if (worldEyebrow) worldEyebrow.textContent = editMode ? "ワールド作成" : "ワールド入口";
   if (els.worldCount) els.worldCount.textContent = `${worlds.length}件`;
   const selected = getSelectedWorld();
+  if (els.mapLatestDiscoveryButton) els.mapLatestDiscoveryButton.hidden = !!selected?.publicReadOnly;
   if (editMode && selected) fillWorldForm(selected);
   renderWorldMapPreview(selected);
   if (!els.worldList) return;
@@ -4882,7 +4975,7 @@ function renderCharacterCard(encounter) {
   if (!els.characterCard) return;
   const character = getEventCharacter(encounter);
   const model3d = normalizeEventModel3d(encounter?.model3d);
-  const canEditCharacter = canEditPointCharacter();
+  const canEditCharacter = canEditPointCharacter() && !encounter?.publicReadOnly;
   const editActionMarkup = canEditCharacter
     ? `<div class="character-card-actions">
           <button type="button" data-point-character="${escapeHtml(encounter.id)}">キャラ/アバター編集</button>
@@ -7043,7 +7136,40 @@ function addPartyRole() {
 
 async function handleLogin(event) {
   event.preventDefault();
-  const email = els.loginEmail.value.trim();
+  try {
+    const user = await window.WakuwakuFirebase.signInPassword(getFirebaseConfig(), els.loginEmail.value.trim(), els.loginPassword.value);
+    els.loginPassword.value = "";
+    await finishAuthenticatedLogin(user);
+  } catch (error) {
+    document.querySelector("#login-status").textContent = getFirebaseErrorMessage(error);
+  }
+}
+
+async function handleGoogleLogin() {
+  const buttons = document.querySelectorAll("#google-login-button, #firebase-google-login-button");
+  buttons.forEach((button) => { button.disabled = true; });
+  try {
+    const expectedEmail = state.auth.loggedIn ? state.auth.email : "";
+    const user = await window.WakuwakuFirebase.signInGoogle(getFirebaseConfig());
+    if (expectedEmail && user.email.toLowerCase() !== expectedEmail.toLowerCase()) {
+      await window.WakuwakuFirebase.signOut();
+      const message = `保存に使っていた ${expectedEmail} のGoogleアカウントを選んでください`;
+      setFirebaseStatus(message, true);
+      document.querySelector("#login-status").textContent = message;
+      return;
+    }
+    await finishAuthenticatedLogin(user);
+  } catch (error) {
+    const message = getFirebaseErrorMessage(error);
+    setFirebaseStatus(message, true);
+    document.querySelector("#login-status").textContent = message;
+  } finally {
+    buttons.forEach((button) => { button.disabled = false; });
+  }
+}
+
+async function finishAuthenticatedLogin(user) {
+  const email = user.email;
   firebaseAutoSaveReady = false;
   prepareLoginIdentity(email);
   addActivity(`${state.auth.email || "デモユーザー"}でログイン`);
@@ -7053,7 +7179,7 @@ async function handleLogin(event) {
   if (!loadedFromFirebase && !state.member.name) {
     if (!ensureAdminProfile(email)) showMemberForm();
   }
-  firebaseAutoSaveReady = true;
+  firebaseAutoSaveReady = !firebaseLoadFailed;
   saveState(loadedFromFirebase || hasPortableUserData() ? { reason: loadedFromFirebase ? "ログイン後同期" : "ログイン初期保存" } : { localOnly: true });
   render();
   if (state.member.name && !openMapAfterOpeningIfReady()) applyAgeBasedMode({ force: true });
@@ -7061,6 +7187,7 @@ async function handleLogin(event) {
 }
 
 async function handleDemoLogin() {
+  await window.WakuwakuFirebase?.signOut();
   els.loginEmail.value = "student@example.com";
   els.loginPassword.value = "password";
   const email = "student@example.com";
@@ -7069,12 +7196,8 @@ async function handleDemoLogin() {
   addActivity("デモユーザーでログイン");
   saveState({ localOnly: true });
   render();
-  const loadedFromFirebase = await loadFirebaseSnapshot({ silent: true, authEmail: email });
-  if (!loadedFromFirebase && !state.member.name) {
-    if (!ensureAdminProfile(email)) showMemberForm();
-  }
-  firebaseAutoSaveReady = true;
-  saveState(loadedFromFirebase || hasPortableUserData() ? { reason: loadedFromFirebase ? "ログイン後同期" : "ログイン初期保存" } : { localOnly: true });
+  if (!state.member.name) showMemberForm();
+  saveState({ localOnly: true });
   render();
   if (state.member.name && !openMapAfterOpeningIfReady()) applyAgeBasedMode({ force: true });
   scheduleGoogleMapAutoLoad();
@@ -7142,9 +7265,11 @@ async function saveMemberInfo(event) {
   }
 }
 
-function logout() {
+async function logout() {
   firebaseAutoSaveReady = false;
-  state.auth = { loggedIn: false, email: "" };
+  if (firebaseAutoSyncTimer) window.clearTimeout(firebaseAutoSyncTimer);
+  await window.WakuwakuFirebase?.signOut();
+  state.auth = { ...state.auth, loggedIn: false };
   saveState({ localOnly: true });
   render();
 }
@@ -7190,8 +7315,9 @@ async function initDatabase() {
     els.dbStatus.textContent = "接続中";
     render();
     if (state.auth?.loggedIn && hasFirebaseConfig()) {
+      await window.WakuwakuFirebase.getAuthenticatedUser(getFirebaseConfig());
       const loaded = await loadFirebaseSnapshot({ silent: true });
-      firebaseAutoSaveReady = loaded || Boolean(state.member?.name);
+      firebaseAutoSaveReady = !firebaseLoadFailed && (loaded || Boolean(state.member?.name));
       if (!loaded && hasPortableUserData()) queueFirebaseSync("起動時クラウド初期同期");
     } else if (shouldAutoLoadFirebaseSnapshot()) {
       const loaded = await loadFirebaseSnapshot({ silent: true });
@@ -8448,6 +8574,7 @@ function editAiSuggestion(index) {
 }
 
 function editPointCharacter(eventId = state.selected) {
+  if (!canEditPointCharacter()) return;
   const customEvent = state.customEvents.find((event) => event.id === eventId);
   if (customEvent) {
     startEditingEvent(eventId);
@@ -8455,7 +8582,7 @@ function editPointCharacter(eventId = state.selected) {
     return;
   }
   const encounter = getEncounters().find((item) => item.id === eventId) || getSelectedEncounter();
-  if (!encounter) return;
+  if (!encounter || encounter.publicReadOnly) return;
   const draft = ensureEventCharacter({
     ...encounter,
     id: "",
@@ -8731,6 +8858,8 @@ document.querySelector("#thanks-button").addEventListener("click", receiveThanks
 els.kidsTakePhotoButton?.addEventListener("click", openKidsFieldPost);
 els.kidsStartAdventureButton?.addEventListener("click", startAdventure);
 els.loginForm.addEventListener("submit", handleLogin);
+document.querySelector("#google-login-button")?.addEventListener("click", handleGoogleLogin);
+document.querySelector("#firebase-google-login-button")?.addEventListener("click", handleGoogleLogin);
 els.demoLoginButton.addEventListener("click", handleDemoLogin);
 els.memberForm.addEventListener("submit", saveMemberInfo);
 [
@@ -9046,3 +9175,14 @@ if (state.auth.loggedIn && applyAgeBasedMode({ force: true })) {
   saveState();
 }
 initDatabase();
+loadPublicExploration();
+
+async function loadPublicExploration() {
+  if (!hasFirebaseConfig()) return;
+  try {
+    publicExploration = await window.WakuwakuFirebase.loadPublicExploration(getFirebaseConfig());
+    render();
+  } catch (error) {
+    console.warn("Public exploration could not be loaded:", error);
+  }
+}

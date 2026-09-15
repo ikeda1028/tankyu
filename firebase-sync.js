@@ -1,12 +1,17 @@
 const FIREBASE_APP_URL = "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 const FIREBASE_FIRESTORE_URL = "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 const FIREBASE_STORAGE_URL = "https://www.gstatic.com/firebasejs/10.12.5/firebase-storage.js";
+const FIREBASE_AUTH_URL = "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 const FIREBASE_COLLECTION = "wakuwakuUsers";
+const PUBLIC_OWNER_EMAIL = "ikeda@manabinomichi.com";
+const PUBLIC_OWNER_ID = "ikeda@manabinomichi_com";
+let lastPublishedContent = "";
 
 let firebaseModulesPromise = null;
 let firebaseApp = null;
 let firebaseDb = null;
 let firebaseStorage = null;
+let firebaseAuth = null;
 
 function hasFirebaseConfig(config) {
   return Boolean(config?.apiKey && config?.projectId && config?.appId);
@@ -14,10 +19,11 @@ function hasFirebaseConfig(config) {
 
 async function loadFirebaseModules() {
   if (!firebaseModulesPromise) {
-    firebaseModulesPromise = Promise.all([import(FIREBASE_APP_URL), import(FIREBASE_FIRESTORE_URL), import(FIREBASE_STORAGE_URL)]).then(([app, firestore, storage]) => ({
+    firebaseModulesPromise = Promise.all([import(FIREBASE_APP_URL), import(FIREBASE_FIRESTORE_URL), import(FIREBASE_STORAGE_URL), import(FIREBASE_AUTH_URL)]).then(([app, firestore, storage, auth]) => ({
       app,
       firestore,
       storage,
+      auth,
     }));
   }
   return firebaseModulesPromise;
@@ -28,13 +34,54 @@ async function connectFirebase(config) {
     throw new Error("Firebase設定を入力してください");
   }
 
-  const { app, firestore, storage } = await loadFirebaseModules();
+  const { app, firestore, storage, auth } = await loadFirebaseModules();
   if (!firebaseApp) {
     firebaseApp = app.initializeApp(config, "wakuwakuQuest");
     firebaseDb = firestore.getFirestore(firebaseApp);
     firebaseStorage = storage.getStorage(firebaseApp);
+    firebaseAuth = auth.getAuth(firebaseApp);
   }
-  return { firestore, storage, db: firebaseDb, storageBucket: firebaseStorage };
+  return { firestore, storage, auth, db: firebaseDb, storageBucket: firebaseStorage, authInstance: firebaseAuth };
+}
+
+function isAuthenticated(email) {
+  const user = firebaseAuth?.currentUser;
+  return Boolean(user?.emailVerified && user.email?.toLowerCase() === String(email || "").trim().toLowerCase());
+}
+
+async function getAuthenticatedUser(config) {
+  const { authInstance } = await connectFirebase(config);
+  await authInstance.authStateReady();
+  return authInstance.currentUser;
+}
+
+async function requireAuthenticatedUser(config, state) {
+  await getAuthenticatedUser(config);
+  if (!isAuthenticated(state?.auth?.email)) {
+    throw Object.assign(new Error("保存に使っていたGoogleアカウントで本人確認してください"), { code: "auth/identity-required" });
+  }
+  return firebaseAuth.currentUser;
+}
+
+async function signInGoogle(config) {
+  const { auth, authInstance } = await connectFirebase(config);
+  const provider = new auth.GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: "select_account" });
+  const result = await auth.signInWithPopup(authInstance, provider);
+  return result.user;
+}
+
+async function signInPassword(config, email, password) {
+  const { auth, authInstance } = await connectFirebase(config);
+  const result = await auth.signInWithEmailAndPassword(authInstance, email, password);
+  if (!result.user.emailVerified) throw Object.assign(new Error("メールアドレスの確認が必要です"), { code: "auth/unverified-email" });
+  return result.user;
+}
+
+async function signOut() {
+  if (!firebaseAuth) return;
+  const { auth } = await loadFirebaseModules();
+  await auth.signOut(firebaseAuth);
 }
 
 function getFirebaseUserId(state) {
@@ -230,20 +277,8 @@ async function uploadEventCharacterImages(firebase, userId, snapshot) {
   };
 }
 
-function stripDataUrlsForFirestore(value) {
-  if (Array.isArray(value)) return value.map(stripDataUrlsForFirestore);
-  if (!value || typeof value !== "object") return value;
-  return Object.fromEntries(
-    Object.entries(value).map(([key, item]) => {
-      if ((key === "imageDataUrl" || key === "dataUrl") && String(item || "").startsWith("data:image/")) {
-        return [key, ""];
-      }
-      return [key, stripDataUrlsForFirestore(item)];
-    })
-  );
-}
-
 async function saveSnapshot(config, state, snapshot) {
+  await requireAuthenticatedUser(config, state);
   const firebase = await connectFirebase(config);
   const { firestore, db } = firebase;
   const userId = getFirebaseUserId(state);
@@ -251,13 +286,16 @@ async function saveSnapshot(config, state, snapshot) {
   let uploadedSnapshot = snapshot;
   let mediaUploadError = "";
   try {
-    const avatarSnapshot = await uploadMemberAvatar(firebase, userId, uploadedSnapshot);
-    const worldSnapshot = await uploadWorldMapImages(firebase, userId, avatarSnapshot);
-    const eventCharacterSnapshot = await uploadEventCharacterImages(firebase, userId, worldSnapshot);
-    uploadedSnapshot = await uploadFieldPostImages(firebase, userId, eventCharacterSnapshot);
+    uploadedSnapshot = await uploadMemberAvatar(firebase, userId, uploadedSnapshot);
+    uploadedSnapshot = await uploadWorldMapImages(firebase, userId, uploadedSnapshot);
+    uploadedSnapshot = await uploadEventCharacterImages(firebase, userId, uploadedSnapshot);
+    uploadedSnapshot = await uploadFieldPostImages(firebase, userId, uploadedSnapshot);
   } catch (error) {
     mediaUploadError = error?.message || "media upload failed";
-    uploadedSnapshot = stripDataUrlsForFirestore(uploadedSnapshot);
+    // Keep small inline images if Storage is unavailable; never replace them with empty strings.
+    if (new TextEncoder().encode(JSON.stringify(uploadedSnapshot)).length > 750000) {
+      throw new Error("画像を保存できませんでした。端末のデータは保持しています。Firebase Storageの設定を確認してください。");
+    }
   }
   const avatar = uploadedSnapshot.member?.avatar || {};
   const childProfile = uploadedSnapshot.childProfile || {};
@@ -322,12 +360,18 @@ async function saveSnapshot(config, state, snapshot) {
 }
 
 async function loadSnapshot(config, state) {
+  await requireAuthenticatedUser(config, state);
   const { firestore, db } = await connectFirebase(config);
   const userIds = getFirebaseUserIdAliases(state);
   for (const userId of userIds) {
     const ref = firestore.doc(db, FIREBASE_COLLECTION, userId);
-    const snap = await firestore.getDoc(ref);
-    if (snap.exists()) return { userId, ...snap.data() };
+    try {
+      const snap = await firestore.getDoc(ref);
+      if (snap.exists()) return { userId, ...snap.data() };
+    } catch (error) {
+      // Legacy aliases may not exist or belong to this identity. The canonical read must succeed.
+      if (userId === userIds[0] || error.code !== "permission-denied") throw error;
+    }
   }
   const emailLower = String(state?.auth?.email || "").trim().toLowerCase();
   if (emailLower) {
@@ -342,8 +386,84 @@ async function loadSnapshot(config, state) {
   return null;
 }
 
+function pickPublicFields(value, names) {
+  return Object.fromEntries(names.filter((name) => value?.[name] !== undefined).map((name) => [name, value[name]]));
+}
+
+function createPublicExploration(snapshot) {
+  const model = (value) => value ? pickPublicFields(value, ["title", "modelUrl", "url", "provider", "status", "addedAt"]) : null;
+  const position = (value) => value && value.lat != null && value.lng != null
+    && String(value.lat).trim() !== "" && String(value.lng).trim() !== ""
+    && Number.isFinite(Number(value.lat)) && Number.isFinite(Number(value.lng))
+    && Math.abs(Number(value.lat)) <= 90 && Math.abs(Number(value.lng)) <= 180
+    ? { lat: Number(value.lat), lng: Number(value.lng) } : null;
+  const points = (snapshot.customEvents || []).map((point) => ({
+    ...pickPublicFields(point, ["id", "title", "description", "impact", "locationName", "tags", "keywords", "index", "color", "eventType", "startDate", "endDate", "questionPath", "createdAt", "updatedAt"]),
+    position: position(point.position),
+    boost: pickPublicFields(point.boost, ["joy", "distance", "reflection"]),
+    character: point.character ? pickPublicFields(point.character, ["name", "role", "message", "symbol", "color", "localOnly", "radius", "imageDataUrl", "downloadUrl"]) : null,
+    model3d: model(point.model3d),
+  })).filter((point) => point.id && point.position);
+  const worlds = (snapshot.worlds || []).map((world) => {
+    const source = points.find((point) => point.id === world.sourcePointId || point.title === world.entrance);
+    return {
+      ...pickPublicFields(world, ["id", "title", "concept", "entrance", "riddle", "requiredItems", "ageMode", "sourceMode", "kidsOnly", "sourcePointId", "createdAt", "updatedAt"]),
+      entrancePosition: position(world.entrancePosition) || source?.position || null,
+      map: { ...pickPublicFields(world.map, ["summary", "entranceRiddle"]), zones: (world.map?.zones || []).map((zone) => pickPublicFields(zone, ["name", "clue", "item"])) },
+      visualMap: pickPublicFields(world.visualMap, ["imageDataUrl", "downloadUrl"]),
+      model3d: model(world.model3d),
+    };
+  }).filter((world) => world.id && world.entrancePosition);
+  return { points, worlds };
+}
+
+async function loadPublicExploration(config) {
+  const { firestore, db } = await connectFirebase(config);
+  const result = {};
+  for (const kind of ["points", "worlds"]) {
+    const collection = firestore.collection(db, "publicExplorers", PUBLIC_OWNER_ID, kind);
+    const snapshot = await firestore.getDocs(collection);
+    result[kind] = snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }));
+  }
+  return result;
+}
+
+async function publishExploration(config, state, snapshot) {
+  await requireAuthenticatedUser(config, state);
+  if (state.auth.email.toLowerCase() !== PUBLIC_OWNER_EMAIL) return null;
+  const content = createPublicExploration(snapshot);
+  const signature = JSON.stringify(content);
+  if (signature === lastPublishedContent) return content;
+  const { firestore, db } = await connectFirebase(config);
+  for (const kind of ["points", "worlds"]) {
+    const collection = firestore.collection(db, "publicExplorers", PUBLIC_OWNER_ID, kind);
+    const existing = await firestore.getDocs(collection);
+    const ids = new Set(content[kind].map((record) => record.id));
+    const operations = content[kind].map((record) => ({ ref: firestore.doc(collection, record.id), record }));
+    for (const doc of existing.docs) if (!ids.has(doc.id)) operations.push({ ref: doc.ref });
+    for (let start = 0; start < operations.length; start += 400) {
+      const batch = firestore.writeBatch(db);
+      for (const operation of operations.slice(start, start + 400)) {
+        if (operation.record) batch.set(operation.ref, operation.record);
+        else batch.delete(operation.ref);
+      }
+      await batch.commit();
+    }
+  }
+  lastPublishedContent = signature;
+  return content;
+}
+
 window.WakuwakuFirebase = {
+  isAuthenticated,
+  getAuthenticatedUser,
+  signInGoogle,
+  signInPassword,
+  signOut,
   hasFirebaseConfig,
   saveSnapshot,
   loadSnapshot,
+  createPublicExploration,
+  loadPublicExploration,
+  publishExploration,
 };
