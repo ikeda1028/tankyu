@@ -1818,7 +1818,7 @@ async function loadFirebaseSnapshot(options = {}) {
 function mergeLegacyCloudSnapshot(cloud, local) {
   const merged = { ...cloud };
   if (local.member?.name && local.member.name !== "管理者") {
-    merged.member = { ...cloud.member, ...local.member };
+    merged.member = { ...cloud.member, ...local.member, avatar: cloud.member?.avatar || local.member.avatar };
   }
   for (const field of ["customEvents", "worlds", "fieldPosts"]) {
     const records = new Map((cloud[field] || []).map((record) => [record.id, record]));

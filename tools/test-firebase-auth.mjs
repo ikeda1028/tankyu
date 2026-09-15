@@ -52,6 +52,9 @@ assert.equal(merged.fieldPosts[0].id, "photo");
 assert.equal(merged.member.name, "Owner");
 assert.equal(merged.member.avatar.downloadUrl, local.member.avatar.downloadUrl);
 assert.equal(cloud.customEvents[0].model3d, undefined);
+const withProfile = context.mergeLegacyCloudSnapshot({ member: { name: "Owner", grade: "old", avatar: { downloadUrl: "cloud.png" } } }, { member: { name: "Owner", grade: "new", avatar: {} } });
+assert.equal(withProfile.member.grade, "new");
+assert.equal(withProfile.member.avatar.downloadUrl, "cloud.png");
 const privateSentinel = "PRIVATE_ONLY";
 const mixed = {
   auth: { email: privateSentinel }, member: { name: privateSentinel },
