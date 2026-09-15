@@ -553,13 +553,14 @@
                   <div id="event-character-preview" class="event-character-preview" aria-live="polite"></div>
                 </fieldset>
                 <fieldset class="character-fieldset">
-                  <div class="fieldset-head">
+                  <div class="fieldset-head model-fieldset-head">
                     <legend>現地3Dモデル</legend>
                     <button id="use-manabi-model-button" class="secondary-button mini-action" type="button">MANABI渋谷3Fをセット</button>
+                    <button id="use-fudo-model-button" class="secondary-button mini-action" type="button">不動尊3Dをセット</button>
                   </div>
                   <p class="character-suggestion-status">GLBモデルを探究ポイントに紐づけます。現地限定のアイテムやワールド入口として使えます。</p>
                   <label for="event-model-url">GLBモデルURL</label>
-                  <input id="event-model-url" type="url" placeholder="例：assets/MANABI_Shibuya_3F.glb" />
+                  <input id="event-model-url" type="text" inputmode="url" placeholder="例：assets/fudo.glb" />
                   <label for="event-model-title">3Dモデル名</label>
                   <input id="event-model-title" type="text" placeholder="例：MANABI渋谷3Fワールド" />
                 </fieldset>

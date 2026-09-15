@@ -664,6 +664,7 @@ const els = {
   eventModelUrl: document.querySelector("#event-model-url"),
   eventModelTitle: document.querySelector("#event-model-title"),
   useManabiModelButton: document.querySelector("#use-manabi-model-button"),
+  useFudoModelButton: document.querySelector("#use-fudo-model-button"),
   eventLat: document.querySelector("#event-lat"),
   eventLng: document.querySelector("#event-lng"),
   useMapCenterButton: document.querySelector("#use-map-center-button"),
@@ -991,8 +992,26 @@ function ensureEventCharacter(event) {
   return character ? { ...event, character } : { ...event, character: createFallbackCharacter(event) };
 }
 
+function normalizeEventModelUrl(value) {
+  let source = String(value || "").trim();
+  if (!source) return "";
+  if (/^[^/\\:?#]+\.glb$/i.test(source)) source = `assets/${source}`;
+  try {
+    let url = new URL(source, `${PUBLIC_API_BASE}/`);
+    if (/\/model-world(?:\.html)?\/?$/.test(url.pathname)) {
+      const modelSource = url.searchParams.get("src");
+      if (!modelSource) return "";
+      url = new URL(modelSource, `${PUBLIC_API_BASE}/`);
+    }
+    if (!["https:", "http:"].includes(url.protocol)) return "";
+    return url.href;
+  } catch {
+    return "";
+  }
+}
+
 function normalizeEventModel3d(model3d) {
-  const modelUrl = String(model3d?.modelUrl || model3d?.url || "").trim();
+  const modelUrl = normalizeEventModelUrl(model3d?.modelUrl || model3d?.url);
   if (!modelUrl) return null;
   return {
     title: String(model3d?.title || "現地3Dモデル").trim() || "現地3Dモデル",
@@ -1023,6 +1042,12 @@ function useManabiModelForEvent() {
   if (els.eventModelUrl) els.eventModelUrl.value = "assets/MANABI_Shibuya_3F.glb";
   if (els.eventModelTitle) els.eventModelTitle.value = "MANABI渋谷3F";
   if (els.eventAdminStatus) els.eventAdminStatus.textContent = "3Dモデルをセット";
+}
+
+function useFudoModelForEvent() {
+  if (els.eventModelUrl) els.eventModelUrl.value = `${PUBLIC_API_BASE}/assets/fudo.glb`;
+  if (els.eventModelTitle) els.eventModelTitle.value = "不動尊";
+  if (els.eventAdminStatus) els.eventAdminStatus.textContent = "不動尊3Dをセット。位置を確認して保存してください";
 }
 
 function getEncounters() {
@@ -8533,6 +8558,17 @@ function registerEvent(event) {
 
   const tags = splitList(els.eventTags.value);
   const keywords = splitList(els.eventKeywords.value);
+  const model3d = getEventModel3dFromForm(title);
+  if (els.eventModelUrl?.value.trim() && !model3d) {
+    els.eventAdminStatus.textContent = "3Dモデルの公開URLを確認してください";
+    els.eventModelUrl.focus();
+    return;
+  }
+  if (model3d && (!els.eventLat.value.trim() || !els.eventLng.value.trim())) {
+    els.eventAdminStatus.textContent = "3Dの入口を置く位置を地図で指定してください";
+    els.openLocationMapButton?.focus();
+    return;
+  }
   const position = getEventPosition();
   if (!position) return;
   const characterPayload = {
@@ -8563,7 +8599,7 @@ function registerEvent(event) {
     startDate: els.eventStartDate.value,
     endDate: els.eventEndDate.value,
     character,
-    model3d: getEventModel3dFromForm(title),
+    model3d,
     questionPath,
     color: els.eventColor.value || "#2f8f63",
     position,
@@ -8646,13 +8682,15 @@ function renderRegisteredEvents() {
     ? events
         .map((event) => {
           const character = getEventCharacter(event);
+          const model3d = normalizeEventModel3d(event.model3d);
           return `<button class="registered-event-card" type="button" data-id="${event.id}">
             <strong>${event.title}</strong>
             <span>${[event.impact, event.locationName, getEventPeriodLabel(event)].filter(Boolean).join(" / ")}</span>
             <span>キャラ: ${escapeHtml(character?.name || "自動設定")}</span>
+            ${model3d ? `<span>3D入口: ${escapeHtml(model3d.title)}</span>` : ""}
             <em>${event.index}</em>
             <span class="registered-event-actions">
-              <span>${state.ui.editingEventId === event.id ? "編集中" : "詳細を見る"}</span>
+              <span>${state.ui.editingEventId === event.id ? "編集中" : "地図で見る"}</span>
               <span class="registered-action-group">
                 <span class="registered-edit-control" data-edit-id="${event.id}">編集</span>
                 ${admin ? `<span class="registered-delete-control" data-delete-id="${event.id}">削除</span>` : ""}
@@ -8668,6 +8706,10 @@ function renderRegisteredEvents() {
       saveState();
       render();
       showMode("quest");
+      const encounter = getEncounters().find((item) => item.id === card.dataset.id);
+      if (googleMap && hasValidLatLng(encounter?.position)) {
+        focusGoogleMapPoint(encounter.position, Math.max(googleMap.getZoom() || 17, 17));
+      }
     });
   });
   els.registeredEventList.querySelectorAll(".registered-edit-control").forEach((button) => {
@@ -8766,6 +8808,7 @@ els.registerAllAiEventsButton?.addEventListener("click", registerAllAiSuggestion
 ].forEach((input) => input?.addEventListener("input", () => renderEventCharacterPreview()));
 els.eventCharacterEnabled?.addEventListener("change", () => renderEventCharacterPreview());
 els.useManabiModelButton?.addEventListener("click", useManabiModelForEvent);
+els.useFudoModelButton?.addEventListener("click", useFudoModelForEvent);
 els.useMapCenterButton.addEventListener("click", useMapCenterForEvent);
 els.openLocationMapButton.addEventListener("click", initializeEventLocationMap);
 els.eventLat.addEventListener("input", syncEventLocationMarkerFromInputs);
