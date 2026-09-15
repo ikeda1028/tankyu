@@ -1646,7 +1646,19 @@ async function syncFirebase(options = {}) {
 
   try {
     setFirebaseStatus(automatic ? "Firebase自動同期中..." : "Firebase同期中...");
-    const result = await window.WakuwakuFirebase.saveSnapshot(config, state, createFirebaseSnapshot());
+    const snapshot = createFirebaseSnapshot();
+    snapshot.authMigrationVersion = 1;
+    let publicWarning = "";
+    if (syncEmail.toLowerCase() === "ikeda@manabinomichi.com") {
+      try {
+        const shared = await window.WakuwakuFirebase.publishExploration(config, state, snapshot);
+        if (shared) publicExploration = shared;
+      } catch (error) {
+        publicWarning = " / みんなへの公開は未完了です";
+        console.error(error);
+      }
+    }
+    const result = await window.WakuwakuFirebase.saveSnapshot(config, state, snapshot);
     if (!state.auth.loggedIn || state.auth.email !== syncEmail) return false;
     if (Array.isArray(result.snapshot?.fieldPosts)) {
       state.fieldPosts = result.snapshot.fieldPosts;
@@ -1661,16 +1673,7 @@ async function syncFirebase(options = {}) {
       state.customEvents = result.snapshot.customEvents.map(ensureEventCharacter);
     }
     state.firebase.lastSyncAt = new Date().toISOString();
-    let publicWarning = "";
-    if (syncEmail.toLowerCase() === "ikeda@manabinomichi.com") {
-      try {
-        const shared = await window.WakuwakuFirebase.publishExploration(config, state, result.snapshot);
-        if (shared) publicExploration = shared;
-      } catch (error) {
-        publicWarning = " / みんなへの公開は未完了です";
-        console.error(error);
-      }
-    }
+    state.authMigrationVersion = 1;
     const mediaWarning = result.mediaUploadError ? " / 画像はStorage権限を確認" : "";
     setFirebaseStatus(`${automatic ? "自動同期完了" : "Firestore保存完了"}: ${result.userId}${mediaWarning}${publicWarning}`, Boolean(result.mediaUploadError || publicWarning));
     firebaseAutoSaveReady = true;
@@ -1750,12 +1753,12 @@ async function loadFirebaseSnapshot(options = {}) {
       return false;
     }
     let loadedSnapshot = result.snapshot ? { ...defaultState, ...result.snapshot } : { ...state };
-    if (!localSnapshot.authMigrationVersion && requestedAuthEmail.toLowerCase() === String(localSnapshot.auth?.email || "").toLowerCase()) {
+    if ((!localSnapshot.authMigrationVersion || !result.snapshot?.authMigrationVersion) && requestedAuthEmail.toLowerCase() === String(localSnapshot.auth?.email || "").toLowerCase()) {
       const backupKey = `wakuwaku-before-auth-migration:${requestedAuthEmail.toLowerCase()}`;
       if (!localStorage.getItem(backupKey)) localStorage.setItem(backupKey, JSON.stringify(localSnapshot));
       loadedSnapshot = mergeLegacyCloudSnapshot(loadedSnapshot, localSnapshot);
     }
-    loadedSnapshot.authMigrationVersion = 1;
+    loadedSnapshot.authMigrationVersion = result.snapshot?.authMigrationVersion || 0;
     const appliedNumericFields = applyFirebaseNumericFields(loadedSnapshot, result);
     if (result.snapshot && !hasPortableUserData(loadedSnapshot) && !appliedNumericFields.length) {
       if (!options.silent) setFirebaseStatus("Firebaseに引き継げるデータがまだありません", true);

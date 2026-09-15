@@ -39,6 +39,8 @@ async function connectFirebase(config) {
     firebaseApp = app.initializeApp(config, "wakuwakuQuest");
     firebaseDb = firestore.getFirestore(firebaseApp);
     firebaseStorage = storage.getStorage(firebaseApp);
+    firebaseStorage.maxUploadRetryTime = 30000;
+    firebaseStorage.maxOperationRetryTime = 15000;
     firebaseAuth = auth.getAuth(firebaseApp);
   }
   return { firestore, storage, auth, db: firebaseDb, storageBucket: firebaseStorage, authInstance: firebaseAuth };
