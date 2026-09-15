@@ -122,8 +122,19 @@ h2 { font-size: clamp(32px,3.35vw,56px); line-height: 1.5; letter-spacing: -.035
 .founder-message { padding: 16px 0; }
 .quote-symbol { color: var(--blue); font-family: Georgia,serif; font-size: 80px; line-height: .7; display: block; height: 38px; }
 .founder-message blockquote { margin: 0; }
-.founder-message blockquote > p { font-size: clamp(24px,2.6vw,42px); line-height: 1.8; letter-spacing: -.02em; font-weight: 400; margin: 18px 0 30px; }
-.quote-break { display: none; }
+.founder-quote-stack { display: grid; margin: 18px 0 30px; }
+.founder-quote-text { grid-area: 1/1; align-self: center; font-size: clamp(24px,2.6vw,42px); line-height: 1.8; letter-spacing: -.02em; font-weight: 400; margin: 0; opacity: 0; visibility: hidden; transition: opacity .7s ease, visibility .7s; }
+.founder-quote-text[data-active="true"] { opacity: 1; visibility: visible; }
+.founder-quote-text > span { display: block; overflow-wrap: anywhere; line-break: strict; }
+.founder-quote-text > span + span { margin-top: .35em; }
+.founder-quote-phrase { display: inline-block; }
+.founder-quote-controls { display: flex; flex-wrap: wrap; gap: 14px 25px; align-items: center; margin-top: 22px; }
+.founder-quote-select { display: flex; gap: 8px; }
+.founder-quote-select button, .founder-quote-pause { border: 0; background: transparent; min-height: 44px; padding: 8px; font-size: 14px; cursor: pointer; }
+.founder-quote-select button { min-width: 44px; border-bottom: 1px solid var(--line); color: var(--muted); }
+.founder-quote-select button[aria-pressed="true"] { color: var(--blue); border-bottom: 2px solid var(--blue); }
+.founder-quote-pause { color: var(--muted); }
+.founder-quote-pause:hover { color: var(--blue); }
 .founder-message footer { display: flex; align-items: baseline; gap: 22px; }
 .founder-message footer span { color: var(--muted); font-size: 14px; }
 .founder-message footer strong { font-size: 22px; font-weight: 500; white-space: nowrap; }
@@ -178,7 +189,7 @@ h2 { font-size: clamp(32px,3.35vw,56px); line-height: 1.5; letter-spacing: -.035
   .intro-layout { gap: 5vw; }.field-card { padding-left: 20px; padding-right: 20px; }.field-card h3 { font-size: 20px; }
   .people-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 42px 28px; }
   .person-photo { aspect-ratio: 1.5; }.person-copy { min-height: 0; }.person-fields { margin-top: 19px; }
-  .founder-feature { gap: 5vw; }.founder-message blockquote > p { font-size: 27px; }.quote-break { display: block; }
+  .founder-feature { gap: 5vw; }.founder-quote-text { font-size: 27px; }
   .process-item { padding-right: 20px; }.process-item p { font-size: 14px; }.process-track::before { right: -20px; }
 }
 @media(max-width:760px) {
@@ -226,8 +237,8 @@ h2 { font-size: clamp(32px,3.35vw,56px); line-height: 1.5; letter-spacing: -.035
   .process-item h3 { font-size: 23px; margin: 12px 0 9px; }.process-item p { max-width: none; font-size: 16px; }
   .founder-feature { grid-template-columns: 1fr; gap: 37px; }
   .founder-portrait img { aspect-ratio: 1.2; max-height: 440px; }.founder-portrait figcaption { font-size: 11px; }
-  .founder-message { padding: 0; }.founder-message blockquote > p { font-size: clamp(25px,5.2vw,37px); line-height: 1.9; }
-  .quote-break { display: none; }.founder-copy { max-width: 100%; font-size: 15px; }
+  .founder-message { padding: 0; }.founder-quote-text { font-size: clamp(25px,5.2vw,37px); line-height: 1.9; }
+  .founder-copy { max-width: 100%; font-size: 15px; }
   .people-heading { margin-top: 59px; gap: 10px; }.people-heading h3 { font-size: 20px; }.people-heading > span { font-size: 10px; }
   .people-grid { gap: 34px 20px; }
   .person-photo { aspect-ratio: 1.12; }.person-info h3 { font-size: 23px; }.person-roman { font-size: 10px; }

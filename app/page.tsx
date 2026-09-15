@@ -1,5 +1,6 @@
 import NetworkScene from "./network-scene";
 import JourneyLine from "./journey-line";
+import FounderQuotes from "./founder-quotes";
 
 const fields = [
   { number: "01", label: "BUSINESS", title: "組織・事業を変える", question: "なぜ、いいアイデアが\n実行につながらない？", copy: "新規事業、組織変革、人的資本、AI活用。組織の内側にある問いから、実行可能なプロジェクトを設計します。", tags: "新規事業 / 組織変革 / AI活用" },
@@ -89,7 +90,7 @@ export default function Home() {
         <div className="section-heading"><h2 id="people-title">未来を動かすのは、<br />問いを持つ人。</h2><p>異なる領域の知と経験が、<br />ひとつの問いのもとに集まる。</p></div>
         <div className="founder-feature">
           <figure className="founder-portrait"><img src="/member-sumitani.png" alt="炭谷俊樹 代表理事" width="586" height="408" loading="lazy" /><figcaption className="mono">TOSHIKI SUMITANI / FOUNDING VOICE</figcaption></figure>
-          <div className="founder-message"><span className="quote-symbol" aria-hidden="true">“</span><blockquote><p>社会を変えるのは、<br />制度だけではない。<br />問いを持ち、<br className="quote-break" />動き出す人です。</p><footer><span>代表理事</span><strong>炭谷 俊樹</strong></footer></blockquote><p className="founder-copy">個人の探究心を、組織や地域を動かす力へ。次の時代をつくるリーダーとプロジェクトを育てます。</p></div>
+          <FounderQuotes />
         </div>
         <div className="people-heading"><h3>TLAを動かす4人</h3><span className="mono">OUR MEMBERS</span></div>
         <div className="people-grid">{members.map((member) => <article className="person-card" key={member.node}>

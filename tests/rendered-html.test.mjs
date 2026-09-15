@@ -22,6 +22,11 @@ test("renders the TLA public landing page", async () => {
   assert.match(html, /地域・社会を変える/);
   assert.match(html, /学びを変える/);
   assert.match(html, /AIとの対話を始める/);
+  const plainText = html.replace(/<[^>]*>/g, "");
+  assert.ok(plainText.includes("組織はどんな問いで変わるのか。"));
+  assert.ok(plainText.includes("社会は、どんな問いで動き出すのか。"));
+  assert.ok(plainText.includes("社会の未来をひらく問いとは何か。"));
+  assert.doesNotMatch(html, /制度だけではない|動き出す人です/);
   for (const person of ["炭谷 俊樹", "牧山 昭郎", "岡田 大士郎", "池田 哲哉"]) {
     assert.ok(html.includes(person), `Member missing: ${person}`);
   }
