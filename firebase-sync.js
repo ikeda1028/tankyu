@@ -392,6 +392,50 @@ function pickPublicFields(value, names) {
   return Object.fromEntries(names.filter((name) => value?.[name] !== undefined).map((name) => [name, value[name]]));
 }
 
+function createMemberProfile(snapshot) {
+  return {
+    member: pickPublicFields(snapshot.member, ["name", "age", "birthdate", "school", "grade", "region", "initialInterest", "heroRole", "partyRoles"]),
+    childProfile: pickPublicFields(snapshot.childProfile, ["id", "nickname", "age", "birthdate", "region", "favoriteThings", "favoriteColor", "guardianId", "permissions", "onboardingComplete", "onboardingCompletedAt", "updatedAt"]),
+  };
+}
+
+async function saveMemberProfile(config, state, snapshot, expectedRevision = null) {
+  const identity = { auth: { ...state.auth } };
+  const profile = JSON.parse(JSON.stringify(createMemberProfile(snapshot)));
+  await requireAuthenticatedUser(config, identity);
+  const { firestore, db } = await connectFirebase(config);
+  const ref = firestore.doc(db, FIREBASE_COLLECTION, getFirebaseUserId(identity));
+  return firestore.runTransaction(db, async (transaction) => {
+    const document = await transaction.get(ref);
+    const existing = document.exists() ? document.data().memberProfile : null;
+    // Initial migration must never overwrite a profile already created on another device.
+    if (expectedRevision === null && existing) return existing;
+    if (expectedRevision !== null && (existing?.revision || 0) !== expectedRevision) {
+      throw Object.assign(new Error("別の端末で会員情報が更新されています。最新の情報を読み込んでから保存してください"), { code: "profile/conflict" });
+    }
+    const saved = { ...profile, revision: (existing?.revision || 0) + 1 };
+    transaction.set(ref, {
+      userId: getFirebaseUserId(identity),
+      email: identity.auth.email,
+      emailLower: identity.auth.email.trim().toLowerCase(),
+      memberProfile: saved,
+      memberProfileUpdatedAt: firestore.serverTimestamp(),
+    }, { merge: true });
+    return saved;
+  });
+}
+
+async function watchMemberProfile(config, state, onChange, onError) {
+  const identity = { auth: { ...state.auth } };
+  await requireAuthenticatedUser(config, identity);
+  const { firestore, db } = await connectFirebase(config);
+  const ref = firestore.doc(db, FIREBASE_COLLECTION, getFirebaseUserId(identity));
+  return firestore.onSnapshot(ref, (document) => {
+    const profile = document.data()?.memberProfile;
+    if (profile) onChange(profile);
+  }, onError);
+}
+
 function createPublicExploration(snapshot) {
   const model = (value) => value ? pickPublicFields(value, ["title", "modelUrl", "url", "provider", "status", "addedAt"]) : null;
   const position = (value) => value && value.lat != null && value.lng != null
@@ -468,4 +512,7 @@ window.WakuwakuFirebase = {
   createPublicExploration,
   loadPublicExploration,
   publishExploration,
+  createMemberProfile,
+  saveMemberProfile,
+  watchMemberProfile,
 };

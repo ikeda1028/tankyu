@@ -763,6 +763,10 @@ let firebaseAutoSyncQueued = false;
 let firebaseAutoSyncReason = "";
 let firebaseAutoSaveReady = false;
 let firebaseSyncInFlight = false;
+let memberProfileRevision = 0;
+let memberProfileSaving = false;
+let stopMemberProfileWatch = null;
+let memberProfileWatchToken = 0;
 let firebaseLoadFailed = false;
 let suppressFirebaseAutoSave = false;
 let pendingFieldPostImage = null;
@@ -1781,7 +1785,7 @@ async function loadFirebaseSnapshot(options = {}) {
     const result = await window.WakuwakuFirebase.loadSnapshot(config, state);
     if (!state.auth.loggedIn || state.auth.email.toLowerCase() !== requestedAuthEmail.toLowerCase()) return false;
     firebaseLoadFailed = false;
-    if (!result?.snapshot && !result?.stats) {
+    if (!result?.snapshot && !result?.stats && !result?.memberProfile) {
       if (!options.silent) setFirebaseStatus("Firebaseに保存データまたは数値がありません", true);
       return false;
     }
@@ -1799,6 +1803,15 @@ async function loadFirebaseSnapshot(options = {}) {
       loadedSnapshot = mergeLegacyCloudSnapshot(loadedSnapshot, localSnapshot);
     }
     loadedSnapshot.authMigrationVersion = result.snapshot?.authMigrationVersion || 0;
+    let profile = result.memberProfile;
+    if (!profile && loadedSnapshot.member?.name) {
+      profile = await window.WakuwakuFirebase.saveMemberProfile(config, state, loadedSnapshot);
+    }
+    if (!state.auth.loggedIn || state.auth.email.toLowerCase() !== requestedAuthEmail.toLowerCase()) return false;
+    if (profile) {
+      applyCloudMemberProfile(loadedSnapshot, profile);
+      memberProfileRevision = profile.revision;
+    }
     const appliedNumericFields = applyFirebaseNumericFields(loadedSnapshot, result);
     if (result.snapshot && !hasPortableUserData(loadedSnapshot) && !appliedNumericFields.length) {
       if (!options.silent) setFirebaseStatus("Firebaseに引き継げるデータがまだありません", true);
@@ -1842,6 +1855,7 @@ async function loadFirebaseSnapshot(options = {}) {
     suppressFirebaseAutoSave = false;
     render();
     applyAgeBasedMode({ force: true });
+    startMemberProfileWatch();
     return true;
   } catch (error) {
     firebaseLoadFailed = true;
@@ -1849,6 +1863,71 @@ async function loadFirebaseSnapshot(options = {}) {
     setFirebaseStatus(getFirebaseErrorMessage(error), true);
     console.error(error);
     return false;
+  }
+}
+
+function applyCloudMemberProfile(target, profile) {
+  target.member = { ...target.member, ...profile.member };
+  target.childProfile = normalizeChildProfile({ ...target.childProfile, ...profile.childProfile });
+}
+
+function stopWatchingMemberProfile() {
+  memberProfileWatchToken++;
+  stopMemberProfileWatch?.();
+  stopMemberProfileWatch = null;
+}
+
+async function startMemberProfileWatch() {
+  stopWatchingMemberProfile();
+  const token = memberProfileWatchToken;
+  const email = state.auth.email;
+  try {
+    const stop = await window.WakuwakuFirebase.watchMemberProfile(getFirebaseConfig(), state, (profile) => {
+      if (token !== memberProfileWatchToken || !state.auth.loggedIn || state.auth.email !== email || profile.revision <= memberProfileRevision) return;
+      if (memberProfileSaving || state.ui.memberEditing || document.activeElement?.closest("#kids-profile-form, #child-profile-form")) return;
+      applyCloudMemberProfile(state, profile);
+      memberProfileRevision = profile.revision;
+      saveState({ localOnly: true });
+      render();
+      applyAgeBasedMode({ force: true });
+    }, (error) => console.warn("Member profile subscription:", error));
+    if (token !== memberProfileWatchToken) stop();
+    else stopMemberProfileWatch = stop;
+  } catch (error) {
+    console.warn("Member profile subscription:", error);
+  }
+}
+
+async function syncMemberProfile() {
+  if (memberProfileSaving) {
+    setMemberStatus("会員情報の保存中です。完了後にもう一度保存してください", true);
+    return false;
+  }
+  if (!window.WakuwakuFirebase?.isAuthenticated(state.auth.email)) {
+    setMemberStatus("端末に保存しました。端末間の同期には同じGoogleアカウントでログインしてください", true);
+    return false;
+  }
+  if (!firebaseAutoSaveReady) {
+    setMemberStatus("端末に保存しました。クラウドの読込が完了していません。「Firebaseから読込」後に再度保存してください", true);
+    return false;
+  }
+  const email = state.auth.email;
+  memberProfileSaving = true;
+  let saved = false;
+  try {
+    const profile = await window.WakuwakuFirebase.saveMemberProfile(getFirebaseConfig(), state, state, memberProfileRevision);
+    if (!state.auth.loggedIn || state.auth.email !== email) return false;
+    memberProfileRevision = profile.revision;
+    saveState({ localOnly: true });
+    saved = true;
+    return true;
+  } catch (error) {
+    if (state.auth.email === email) setMemberStatus(getFirebaseErrorMessage(error), true);
+    console.error(error);
+    return false;
+  } finally {
+    memberProfileSaving = false;
+    if (saved && state.auth.loggedIn && state.auth.email === email) startMemberProfileWatch();
   }
 }
 
@@ -1890,6 +1969,7 @@ function getFirebaseErrorMessage(error) {
     "auth/invalid-credential": "ログイン情報を確認するか、Googleでログインしてください",
     "auth/unverified-email": "メールアドレスを確認してからログインしてください",
     "permission-denied": "Firebaseのアクセス権で読み書きが拒否されています",
+    "profile/conflict": "別の端末で会員情報が更新されています。「Firebaseから読込」で最新情報を確認してから編集してください",
     "storage/media-save-failed": "画像をFirebase Storageへ保存できません。端末のデータは保持しています",
     "storage/unauthorized": "Firebase Storageの画像保存権限を確認してください",
     "storage/retry-limit-exceeded": "Firebase Storageへの画像送信がタイムアウトしました",
@@ -5933,7 +6013,7 @@ function updateKidsProfileAvatarPreview() {
   );
 }
 
-function saveKidsProfileEdit(event) {
+async function saveKidsProfileEdit(event) {
   event.preventDefault();
   const previous = normalizeChildProfile(state.childProfile);
   const currentAvatar = normalizeAvatar(state.member.avatar);
@@ -5966,6 +6046,7 @@ function saveKidsProfileEdit(event) {
   render();
   renderKidsAvatarProfile();
   queueFirebaseSync("キッズ個人設定更新");
+  await syncMemberProfile();
 }
 
 function buildKidsAvatarPrompt() {
@@ -6594,7 +6675,7 @@ function updateKidsOnboardingAvatarPreview() {
   );
 }
 
-function saveKidsOnboarding(event) {
+async function saveKidsOnboarding(event) {
   event.preventDefault();
   const previous = normalizeChildProfile(state.childProfile);
   const avatar = normalizeAvatar({
@@ -6629,6 +6710,7 @@ function saveKidsOnboarding(event) {
   render();
   if (els.kidsOnboardingStatus) els.kidsOnboardingStatus.textContent = "ぼうけんをはじめました";
   queueFirebaseSync("Kids初回体験完了");
+  await syncMemberProfile();
 }
 
 function renderGuardianMode() {
@@ -6869,7 +6951,7 @@ function fillChildProfileForm() {
   }
 }
 
-function saveChildProfile(event) {
+async function saveChildProfile(event) {
   event.preventDefault();
   const previous = normalizeChildProfile(state.childProfile);
   const nickname = els.childNickname.value.trim();
@@ -6916,6 +6998,8 @@ function saveChildProfile(event) {
   if (els.childProfileStatus) els.childProfileStatus.textContent = "保存しました";
   applyAgeBasedMode();
   queueFirebaseSync("子どもプロフィール更新");
+  const synced = await syncMemberProfile();
+  if (els.childProfileStatus) els.childProfileStatus.textContent = synced ? "プロフィールをクラウドに保存しました" : "端末に保存しました。プロフィールのクラウド同期は未完了です";
 }
 
 function setMemberStatus(message, isError = false) {
@@ -7225,6 +7309,8 @@ async function handleGoogleLogin() {
 
 async function finishAuthenticatedLogin(user) {
   const email = user.email;
+  stopWatchingMemberProfile();
+  memberProfileRevision = 0;
   firebaseAutoSaveReady = false;
   prepareLoginIdentity(email);
   addActivity(`${state.auth.email || "デモユーザー"}でログイン`);
@@ -7242,6 +7328,8 @@ async function finishAuthenticatedLogin(user) {
 }
 
 async function handleDemoLogin() {
+  stopWatchingMemberProfile();
+  memberProfileRevision = 0;
   await window.WakuwakuFirebase?.signOut();
   els.loginEmail.value = "student@example.com";
   els.loginPassword.value = "password";
@@ -7310,17 +7398,14 @@ async function saveMemberInfo(event) {
   }
   if (hasFirebaseConfig()) {
     setMemberStatus("会員情報を保存しました。クラウドへ同期中...");
-    const synced = await syncFirebase({ automatic: true, reason: isFirstMemberSetup ? "初回会員登録" : "会員情報更新" });
-    setMemberStatus(
-      synced
-        ? "会員情報を保存し、同じIDで使えるように同期しました"
-        : "会員情報は端末に保存しました。Firebase同期は設定を確認してください。",
-      !synced
-    );
+    const synced = await syncMemberProfile();
+    if (synced) setMemberStatus("会員情報をクラウドに保存しました。画像の同期とは別に、同じIDの端末へ反映されます");
   }
 }
 
 async function logout() {
+  stopWatchingMemberProfile();
+  memberProfileRevision = 0;
   firebaseAutoSaveReady = false;
   if (firebaseAutoSyncTimer) window.clearTimeout(firebaseAutoSyncTimer);
   await window.WakuwakuFirebase?.signOut();
@@ -8943,6 +9028,7 @@ els.backLoginButton.addEventListener("click", () => {
     state.ui.memberEditing = false;
     saveState();
     render();
+    startMemberProfileWatch();
     return;
   }
   state.auth = { loggedIn: false, email: "" };
