@@ -404,6 +404,10 @@ const els = {
   settingsView: document.querySelector(".settings-view"),
   screenMenuButton: document.querySelector("#screen-menu-button"),
   screenMenu: document.querySelector("#screen-menu"),
+  accountButton: document.querySelector("#account-button"),
+  accountPanel: document.querySelector("#account-panel"),
+  closeAccountButton: document.querySelector("#close-account-button"),
+  accountBackdrop: document.querySelector("#account-backdrop"),
   worldsView: document.querySelector(".worlds-view"),
   kidsView: document.querySelector(".kids-view"),
   guardianView: document.querySelector(".guardian-view"),
@@ -3838,10 +3842,36 @@ function renderModeNavigation() {
   const isKidsAudience = audienceMode === "kids";
   const isKidsScreen = state.ui?.mode === "kids" || Boolean(state.ui?.kidsMapActive);
   document.body.classList.toggle("kids-screen-active", isKidsScreen);
+  document.body.classList.toggle("map-screen-active", state.ui?.mode === "quest");
+  if (isKidsScreen || !state.auth?.loggedIn) setAccountPanelOpen(false, false);
   document.querySelectorAll(".mode-tabs button, .screen-menu button[data-mode]").forEach((button) => {
     const mode = button.dataset.mode;
     button.classList.toggle("hidden", !isKidsAudience && mode === "kids");
   });
+}
+
+function setAccountPanelOpen(open, restoreFocus = true) {
+  if (!els.accountPanel) return;
+  const allowed = window.matchMedia("(max-width: 620px)").matches && !document.body.classList.contains("kids-screen-active") && state.auth?.loggedIn;
+  const wasOpen = document.body.classList.contains("account-panel-open");
+  const visible = Boolean(open && allowed);
+  document.body.classList.toggle("account-panel-open", visible);
+  els.accountButton?.setAttribute("aria-expanded", String(visible));
+  els.accountPanel.toggleAttribute("aria-modal", visible);
+  if (visible) {
+    els.accountPanel.setAttribute("role", "dialog");
+    els.accountPanel.setAttribute("aria-modal", "true");
+  } else {
+    els.accountPanel.removeAttribute("role");
+  }
+  if (els.accountBackdrop) els.accountBackdrop.hidden = !visible;
+  document.querySelector(".map-area").inert = visible;
+  if (visible) {
+    closeScreenMenu();
+    els.closeAccountButton?.focus();
+  } else if (wasOpen && restoreFocus && allowed) {
+    els.accountButton?.focus();
+  }
 }
 
 function setScreenMenuOpen(open) {
@@ -7032,6 +7062,7 @@ function setMemberStatus(message, isError = false) {
 }
 
 function showMemberForm() {
+  setAccountPanelOpen(false, false);
   state.ui.memberEditing = true;
   els.authScreen.classList.remove("hidden");
   els.loginForm.classList.add("hidden");
@@ -7425,6 +7456,7 @@ async function saveMemberInfo(event) {
 }
 
 async function logout() {
+  setAccountPanelOpen(false, false);
   stopWatchingMemberProfile();
   memberProfileRevision = 0;
   firebaseAutoSaveReady = false;
@@ -7710,6 +7742,7 @@ async function syncAllToDrive() {
 }
 
 function selectRecommendation() {
+  setAccountPanelOpen(false);
   const text = els.sparkInput.value.trim();
   if (text) {
     state.sparks.unshift({ text, at: new Date().toISOString() });
@@ -7971,6 +8004,7 @@ function requiresGuardianConfirmation(mode) {
 }
 
 function showMode(mode, options = {}) {
+  setAccountPanelOpen(false);
   if ((mode === "guardian" && state.ui.mode !== "guardian") || requiresGuardianConfirmation(mode)) {
     if (!confirmGuardianMode()) return;
   }
@@ -9270,6 +9304,23 @@ document.querySelectorAll(".mode-tabs button").forEach((button) => {
   });
 });
 els.screenMenuButton?.addEventListener("click", toggleScreenMenu);
+els.accountButton?.addEventListener("click", () => setAccountPanelOpen(true));
+els.closeAccountButton?.addEventListener("click", () => setAccountPanelOpen(false));
+els.accountBackdrop?.addEventListener("click", () => setAccountPanelOpen(false));
+window.matchMedia("(max-width: 620px)").addEventListener("change", () => setAccountPanelOpen(false, false));
+document.addEventListener("keydown", (event) => {
+  if (!document.body.classList.contains("account-panel-open")) return;
+  if (event.key === "Escape") {
+    event.preventDefault();
+    setAccountPanelOpen(false);
+  } else if (event.key === "Tab") {
+    const items = [...els.accountPanel.querySelectorAll('button, input, textarea, select, a[href], [tabindex="0"]')].filter((item) => !item.disabled && item.getClientRects().length);
+    const first = items[0];
+    const last = items[items.length - 1];
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+  }
+});
 els.screenMenu?.querySelectorAll("button[data-mode]").forEach((button) => {
   button.addEventListener("click", (event) => {
     event.stopPropagation();

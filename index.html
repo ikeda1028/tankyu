@@ -142,7 +142,12 @@
     </section>
 
     <main class="shell">
-      <aside class="sidebar" aria-label="探究プロフィール">
+      <button id="account-backdrop" class="account-backdrop" type="button" aria-label="アカウントを閉じる" tabindex="-1" hidden></button>
+      <aside id="account-panel" class="sidebar" aria-label="探究プロフィール">
+        <div class="mobile-account-header">
+          <h2>アカウント</h2>
+          <button id="close-account-button" class="account-icon-button" type="button" aria-label="アカウントを閉じる" title="閉じる"><img src="assets/close.svg" width="24" height="24" alt="" /></button>
+        </div>
         <div class="brand">
           <div class="brand-mark">WQ</div>
           <div>
@@ -270,6 +275,7 @@
             <button id="map-search-button" type="button">探す</button>
           </div>
           <div class="topbar-actions">
+            <button id="account-button" class="account-icon-button" type="button" aria-label="アカウントを開く" title="アカウント" aria-expanded="false" aria-controls="account-panel"><img src="assets/account.svg" width="24" height="24" alt="" /></button>
             <div class="mode-tabs" role="tablist" aria-label="表示モード">
               <button type="button" data-mode="kids" onclick="window.setQuestMode && window.setQuestMode('kids')">キッズ</button>
               <button class="active" type="button" data-mode="quest" onclick="window.setQuestMode && window.setQuestMode('quest')">探究</button>

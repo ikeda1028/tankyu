@@ -196,6 +196,29 @@ button {
   overflow-y: auto;
 }
 
+#account-button,
+.mobile-account-header,
+.account-backdrop {
+  display: none;
+}
+
+.account-icon-button {
+  display: grid;
+  place-items: center;
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+}
+
+.account-icon-button:focus-visible {
+  outline: 3px solid var(--blue);
+  outline-offset: 2px;
+}
+
 .brand {
   display: flex;
   align-items: center;
@@ -6892,6 +6915,118 @@ body:has(.map-canvas.kids-map-active) .kids-navigator-bot {
   .theme-places,
   .theme-bases {
     grid-column: 1;
+  }
+}
+
+@media (max-width: 620px) {
+  body:not(.kids-screen-active) .sidebar {
+    display: none;
+  }
+
+  body:not(.kids-screen-active) #account-button {
+    display: grid;
+    order: 1;
+  }
+
+  body:not(.kids-screen-active) .topbar {
+    top: max(8px, env(safe-area-inset-top));
+    left: 8px;
+    right: 8px;
+    gap: 8px;
+    padding: 8px;
+  }
+
+  body:not(.kids-screen-active) .topbar-actions {
+    gap: 6px;
+  }
+
+  body:not(.kids-screen-active) .topbar-actions .mode-tabs {
+    flex: 1;
+  }
+
+  body:not(.kids-screen-active) .mode-tabs button {
+    padding: 0 8px;
+    font-size: 12px;
+  }
+
+  body:not(.kids-screen-active) .screen-menu-wrap {
+    order: 2;
+  }
+
+  body.map-screen-active:not(.kids-screen-active) {
+    overflow: hidden;
+  }
+
+  body.map-screen-active:not(.kids-screen-active) .shell,
+  body.map-screen-active:not(.kids-screen-active) .map-area {
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  body.map-screen-active:not(.kids-screen-active) .map-controls {
+    position: absolute;
+    top: calc(132px + env(safe-area-inset-top));
+    right: 16px;
+  }
+
+  body.map-screen-active:not(.kids-screen-active) .hero-stream {
+    display: none;
+  }
+
+  body.account-panel-open {
+    overflow: hidden;
+  }
+
+  body.account-panel-open:not(.kids-screen-active) .sidebar {
+    position: fixed;
+    z-index: 26;
+    inset: 0 0 0 auto;
+    display: flex;
+    width: min(420px, calc(100% - 24px));
+    height: 100dvh;
+    max-height: 100dvh;
+    padding: max(12px, env(safe-area-inset-top)) 12px max(16px, env(safe-area-inset-bottom));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    background: #f8faf6;
+    box-shadow: var(--shadow);
+  }
+
+  .mobile-account-header {
+    position: sticky;
+    z-index: 1;
+    top: calc(-1 * max(12px, env(safe-area-inset-top)));
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 0;
+    background: #f8faf6;
+  }
+
+  .mobile-account-header h2 {
+    margin: 0;
+    font-size: 18px;
+  }
+
+  .sidebar > .brand {
+    display: none;
+  }
+
+  .account-backdrop:not([hidden]) {
+    display: block;
+    position: fixed;
+    z-index: 25;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    background: rgb(0 0 0 / 32%);
+  }
+
+  body:not(.kids-screen-active) :is(.feedback-view, .hero-growth-view, .settings-view, .worlds-view, .guardian-view, .event-admin-view) {
+    margin-top: calc(140px + env(safe-area-inset-top));
   }
 }
 
