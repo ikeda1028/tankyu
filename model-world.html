@@ -37,11 +37,23 @@
       @keyframes pulse { 0%, 100% { transform: translate(-50%, -50%) scale(1); } 50% { transform: translate(-50%, -50%) scale(1.08); } }
     </style>
   </head>
-  <body>
+  <body class="entry-locked">
+    <style>
+      .entry-locked model-viewer, .entry-locked .walk-controls, .entry-locked .hint, .entry-locked .item-panel { display: none; }
+      .entry-gate { min-height: 100svh; display: grid; place-content: center; gap: 16px; padding: 88px 24px 24px; text-align: center; }
+      .entry-gate p { max-width: 520px; line-height: 1.8; }
+      .entry-gate button { min-height: 48px; padding: 12px 20px; border: 0; border-radius: 8px; background: #dffbe9; color: #17352d; font: inherit; font-weight: 700; }
+      .entry-gate[hidden] { display: none; }
+    </style>
     <div class="topbar">
       <div class="title"><small>3D WORLD ENTRANCE</small><strong id="world-title">3Dワールド</strong></div>
       <a class="back" href="/" aria-label="地図へ戻る">×</a>
     </div>
+    <section class="entry-gate" id="entry-gate">
+      <h1 id="entry-heading">現地限定ワールド</h1>
+      <p id="entry-status" role="status"></p>
+      <button id="entry-check" type="button">現在地を確認して入る</button>
+    </section>
     <model-viewer
       id="world-model"
       alt="探究ポイントの3Dワールド"
@@ -70,6 +82,7 @@
       <p id="item-text">2階に隠された探究アイテムを見つけました。現地で気づいたことを記録すると、この場所の謎がひとつ開きます。</p>
       <button id="item-close" type="button">地図にもどる前に観察する</button>
     </section>
+    <script src="world-access.js"></script>
     <script>
       const params = new URLSearchParams(location.search);
       const rawSrc = (params.get("src") || "").trim();
@@ -94,10 +107,63 @@
       titleEl.textContent = title;
       document.title = `${title} | Wakuwaku Quest`;
       const modelSrc = resolveModelSrc(rawSrc);
-      if (modelSrc) {
-        viewer.src = modelSrc;
-      } else {
+      if (!modelSrc) {
         document.body.innerHTML = '<main class="error"><div><h1>3Dモデルが見つかりません</h1><p>探究ポイントの3DモデルURLを確認してください。</p><p><a class="back" href="/">×</a></p></div></main>';
+      }
+
+      const kids = params.get("kids") === "1";
+      const entrance = WorldAccess.position({ lat: params.get("lat"), lng: params.get("lng") });
+      const gate = document.querySelector("#entry-gate");
+      const entryStatus = document.querySelector("#entry-status");
+      const entryButton = document.querySelector("#entry-check");
+      let entryWatch = null;
+      let entryTimer = null;
+      let lastFix = null;
+      function lockEntry(result) {
+        document.body.classList.add("entry-locked");
+        viewer.removeAttribute("src");
+        itemPanel.classList.remove("visible");
+        viewer.querySelectorAll(".world-item-hotspot").forEach((item) => item.remove());
+        if (entryWatch !== null) navigator.geolocation.clearWatch(entryWatch);
+        entryWatch = null;
+        clearInterval(entryTimer);
+        entryTimer = null;
+        if (gate) gate.hidden = false;
+        if (entryStatus) entryStatus.textContent = WorldAccess.message(result, kids);
+      }
+      function acceptFix(fix) {
+        const result = WorldAccess.assess(entrance, fix);
+        if (!result.allowed) { lockEntry(result); return false; }
+        lastFix = fix;
+        document.body.classList.remove("entry-locked");
+        gate.hidden = true;
+        if (!viewer.getAttribute("src")) viewer.src = modelSrc;
+        return true;
+      }
+      if (modelSrc && gate) {
+        if (kids) {
+          document.querySelector("#entry-heading").textContent = "げんちで はいれる せかい";
+          entryButton.textContent = "いまいる ばしょを たしかめる";
+        }
+        lockEntry(WorldAccess.assess(entrance, null));
+        entryButton.disabled = !entrance;
+        entryButton.addEventListener("click", async () => {
+          entryButton.disabled = true;
+          entryStatus.textContent = kids ? "ばしょを たしかめています…" : "現在地を確認中…";
+          try {
+            const fix = await WorldAccess.locate();
+            if (document.hidden || !acceptFix(fix)) return;
+            entryWatch = navigator.geolocation.watchPosition(acceptFix, () => lockEntry({ reason: "location" }), { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 });
+            entryTimer = setInterval(() => {
+              const result = WorldAccess.assess(entrance, lastFix);
+              if (!result.allowed) lockEntry(result);
+            }, 5000);
+          } catch (error) {
+            lockEntry({ reason: "location" });
+            entryStatus.textContent = kids ? "ばしょが わかりません。おとなのひとと いちじょうほうの せっていを みてね。" : "現在地を確認できません。端末・ブラウザの位置情報を許可して、再確認してください。";
+          } finally { entryButton.disabled = !entrance; }
+        });
+        document.addEventListener("visibilitychange", () => { if (document.hidden) lockEntry({ reason: "location" }); });
       }
 
       function isFudoWorld() {

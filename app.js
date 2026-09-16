@@ -1044,10 +1044,14 @@ function getEventModel3dFromForm(title = "現地3Dモデル") {
   });
 }
 
-function getModelWorldUrl(model3d, title = "3Dワールド") {
+function getModelWorldUrl(model3d, title = "3Dワールド", entrance = null) {
   const model = normalizeEventModel3d(model3d);
   if (!model) return "";
-  return `/model-world.html?src=${encodeURIComponent(model.modelUrl)}&title=${encodeURIComponent(model.title || title)}`;
+  const params = new URLSearchParams({ src: model.modelUrl, title: model.title || title });
+  const point = WorldAccess.position(entrance);
+  if (point) { params.set("lat", point.lat); params.set("lng", point.lng); }
+  if (getModeForUserAge() === "kids") params.set("kids", "1");
+  return `/model-world.html?${params}`;
 }
 
 function useManabiModelForEvent() {
@@ -1278,6 +1282,14 @@ function updateLocationFromPosition(position, options = {}) {
     lng: position.coords.longitude,
   };
   if (!hasValidLatLng(current)) return;
+  if (state.ui?.mode === "worlds" && state.ui?.worldViewMode !== "edit") {
+    const world = getSelectedWorld();
+    if (world && worldEntryFixes.has(world.id)) {
+      const wasAllowed = canViewWorldHere(world);
+      worldEntryFixes.set(world.id, position);
+      if (wasAllowed !== canViewWorldHere(world)) renderWorldMapPreview(world);
+    }
+  }
   const distance = lastWatchedLocation ? getDistanceMeters(lastWatchedLocation, current) : Infinity;
   const force = Boolean(options.force);
   if (!force && distance < 2) return;
@@ -3069,7 +3081,7 @@ function renderGoogleMapMarkers() {
       keepEncounterOpenAfterMarkerTap();
       const model3d = normalizeEventModel3d(encounter.model3d);
       if (model3d) {
-        window.location.href = getModelWorldUrl(model3d, encounter.title);
+        window.location.href = getModelWorldUrl(model3d, encounter.title, encounter.position);
         return;
       }
       suppressThemeMapAutoFocus = true;
@@ -4330,12 +4342,32 @@ function isKidsWorld(world) {
   return (world?.ageMode || "") === "kids" || world?.sourceMode === "kids" || world?.kidsOnly === true;
 }
 
+// Entry checks must use the saved entrance, never the current map selection or GPS as a fallback.
+function getWorldAccessPosition(world) {
+  const source = world?.sourcePointId ? getEncounters().find((point) => point.id === world.sourcePointId) : null;
+  return WorldAccess.position(world?.entrancePosition) || WorldAccess.position(source?.position);
+}
+
+const worldEntryFixes = new Map();
+setInterval(() => {
+  if (state.ui?.mode !== "worlds" || state.ui?.worldViewMode === "edit") return;
+  const world = getSelectedWorld();
+  if (world && worldEntryFixes.has(world.id) && !canViewWorldHere(world)) {
+    worldEntryFixes.delete(world.id);
+    renderWorldMapPreview(world);
+  }
+}, 5000);
+
+function canViewWorldHere(world) {
+  return WorldAccess.assess(getWorldAccessPosition(world), worldEntryFixes.get(world.id)).allowed;
+}
+
 function getMapVisibleWorlds() {
   const kidsMapActive = Boolean(state.ui?.kidsMapActive);
   return getAvailableWorlds()
     .filter((world) => (kidsMapActive ? isKidsWorld(world) : !isKidsWorld(world)))
     .map((world) => {
-      const entrancePosition = resolveWorldEntrancePosition(world);
+      const entrancePosition = getWorldAccessPosition(world);
       return entrancePosition ? { ...world, entrancePosition } : null;
     })
     .filter(Boolean);
@@ -4677,6 +4709,33 @@ function renderWorldMapPreview(world = getSelectedWorld()) {
     els.worldMapPreview.innerHTML = `<p class="empty-note">コンセプトを入れて、AIでマップを生成できます。</p>`;
     return;
   }
+  if (state.ui?.worldViewMode !== "edit" && !canViewWorldHere(world)) {
+    const kids = getCurrentWorldAgeMode() === "kids";
+    const result = WorldAccess.assess(getWorldAccessPosition(world), worldEntryFixes.get(world.id));
+    els.worldMapPreview.innerHTML = `<article class="world-map-card">
+      <h3>${escapeHtml(world.title)}</h3>
+      <span>${escapeHtml(world.entrance || (kids ? "いりぐち" : "ワールド入口"))}</span>
+      <p role="status" data-world-entry-status>${escapeHtml(WorldAccess.message(result, kids))}</p>
+      <button type="button" data-world-check-location ${result.reason === "entrance" ? "disabled" : ""}>${kids ? "いまいる ばしょを たしかめる" : "現在地を確認して入る"}</button>
+      <button type="button" data-world-back>${kids ? "ちずに もどる" : "地図へ戻る"}</button>
+    </article>`;
+    els.worldMapPreview.querySelector("[data-world-back]").addEventListener("click", () => showMode("quest"));
+    els.worldMapPreview.querySelector("[data-world-check-location]").addEventListener("click", async (event) => {
+      const button = event.currentTarget;
+      const status = els.worldMapPreview.querySelector("[data-world-entry-status]");
+      button.disabled = true;
+      status.textContent = kids ? "ばしょを たしかめています…" : "現在地を確認中…";
+      try {
+        const fix = await WorldAccess.locate();
+        worldEntryFixes.set(world.id, fix);
+        if (canViewWorldHere(world)) startCurrentLocationWatch();
+        if (getSelectedWorld()?.id === world.id) renderWorldMapPreview(world);
+      } catch (error) {
+        status.textContent = kids ? "ばしょを たしかめられませんでした。おとなのひとと いちじょうほうの せっていを みてね。" : getGeolocationErrorMessage(error);
+      } finally { button.disabled = false; }
+    });
+    return;
+  }
   const zones = Array.isArray(world.map?.zones) ? world.map.zones : [];
   const discoveries = Array.isArray(world.discoveries) ? world.discoveries : [];
   const currentIndex = getWorldCurrentZoneIndex(world);
@@ -4702,7 +4761,7 @@ function renderWorldMapPreview(world = getSelectedWorld()) {
         ? `<div class="world-model3d-saved">
           <strong>3Dモデル保存済み</strong>
           <span>${escapeHtml(model3d.status || "saved")}</span>
-          ${model3d.modelUrl ? `<a href="${escapeHtml(getModelWorldUrl(model3d, world.title))}">3Dワールドに入る</a>` : "<small>モデルURLは未取得です。タスクIDで再確認できます。</small>"}
+          ${model3d.modelUrl ? `<a href="${escapeHtml(getModelWorldUrl(model3d, world.title, getWorldAccessPosition(world)))}">3Dワールドに入る</a>` : "<small>モデルURLは未取得です。タスクIDで再確認できます。</small>"}
         </div>`
         : ""
     }
@@ -4767,6 +4826,7 @@ function getAvailableWorlds() {
 function moveToWorldZone(index) {
   const world = getSelectedWorld();
   if (!world) return;
+  if (state.ui?.worldViewMode !== "edit" && !canViewWorldHere(world)) { renderWorldMapPreview(world); return; }
   const zones = Array.isArray(world.map?.zones) ? world.map.zones : [];
   if (!zones.length) return;
   const nextIndex = Math.max(0, Math.min(zones.length - 1, Number(index) || 0));
@@ -5169,7 +5229,7 @@ function renderCharacterCard(encounter) {
     : "";
   const model3dMarkup = model3d
     ? `<div class="character-card-actions">
-          <a class="secondary-button mini-action" href="${escapeHtml(getModelWorldUrl(model3d, encounter?.title))}">${escapeHtml(model3d.title || "3Dモデル")}に入る</a>
+          <a class="secondary-button mini-action" href="${escapeHtml(getModelWorldUrl(model3d, encounter?.title, encounter?.position))}">${escapeHtml(model3d.title || "3Dモデル")}に入る（現地限定）</a>
         </div>`
     : "";
   if (!character) {
