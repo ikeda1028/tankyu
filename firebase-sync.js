@@ -118,6 +118,23 @@ function dataUrlToBlob(dataUrl) {
   return new Blob([bytes], { type: contentType });
 }
 
+async function uploadImage(firebase, uid, kind, dataUrl) {
+  if (!uid) throw Object.assign(new Error("画像保存には本人確認が必要です"), { code: "auth/identity-required" });
+  const blob = dataUrlToBlob(dataUrl);
+  const extension = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" }[blob.type];
+  if (!extension || blob.size > 10 * 1024 * 1024) {
+    throw Object.assign(new Error("画像は10MB以下のJPEG・PNG・WebP・GIFを使用してください"), { code: "storage/invalid-image" });
+  }
+  // Immutable paths prevent cached URLs and concurrent devices from replacing another image.
+  const digest = await crypto.subtle.digest("SHA-256", await blob.arrayBuffer());
+  const hash = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+  const storagePath = `media/${uid}/${kind}/${hash}.${extension}`;
+  const imageRef = firebase.storage.ref(firebase.storageBucket, storagePath);
+  await firebase.storage.uploadBytes(imageRef, blob, { contentType: blob.type });
+  const downloadUrl = await firebase.storage.getDownloadURL(imageRef);
+  return { storagePath, downloadUrl, uploadedAt: new Date().toISOString() };
+}
+
 async function uploadFieldPostImages(firebase, userId, snapshot) {
   const posts = Array.isArray(snapshot?.fieldPosts) ? snapshot.fieldPosts : [];
   const uploadedPosts = [];
@@ -129,18 +146,8 @@ async function uploadFieldPostImages(firebase, userId, snapshot) {
       continue;
     }
 
-    const safePostId = String(post.id || `post-${Date.now()}`).replace(/[^a-zA-Z0-9_-]/g, "_");
-    const storagePath = `fieldPosts/${userId}/${safePostId}.jpg`;
-    const imageRef = firebase.storage.ref(firebase.storageBucket, storagePath);
     const blob = dataUrlToBlob(image.dataUrl);
-    await firebase.storage.uploadBytes(imageRef, blob, {
-      contentType: image.type || blob.type || "image/jpeg",
-      customMetadata: {
-        originalName: image.name || "",
-        eventId: post.eventId || "",
-      },
-    });
-    const downloadUrl = await firebase.storage.getDownloadURL(imageRef);
+    const stored = await uploadImage(firebase, userId, "fieldPosts", image.dataUrl);
     uploadedPosts.push({
       ...post,
       image: {
@@ -148,8 +155,7 @@ async function uploadFieldPostImages(firebase, userId, snapshot) {
         type: image.type || blob.type || "image/jpeg",
         size: image.size || blob.size || 0,
         hasPhoto: true,
-        storagePath,
-        downloadUrl,
+        ...stored,
       },
     });
   }
@@ -164,18 +170,7 @@ async function uploadMemberAvatar(firebase, userId, snapshot) {
   const avatar = snapshot?.member?.avatar;
   if (!avatar?.imageDataUrl) return snapshot;
 
-  const storagePath = `avatars/${userId}/avatar.jpg`;
-  const imageRef = firebase.storage.ref(firebase.storageBucket, storagePath);
-  const blob = dataUrlToBlob(avatar.imageDataUrl);
-  await firebase.storage.uploadBytes(imageRef, blob, {
-    contentType: blob.type || "image/jpeg",
-    customMetadata: {
-      userId,
-      generationStage: avatar.generationStage || "simple",
-      aura: avatar.aura || "",
-    },
-  });
-  const downloadUrl = await firebase.storage.getDownloadURL(imageRef);
+  const stored = await uploadImage(firebase, userId, "avatars", avatar.imageDataUrl);
 
   return {
     ...snapshot,
@@ -185,9 +180,7 @@ async function uploadMemberAvatar(firebase, userId, snapshot) {
         ...avatar,
         imageDataUrl: "",
         hasImage: true,
-        storagePath,
-        downloadUrl,
-        uploadedAt: new Date().toISOString(),
+        ...stored,
       },
     },
   };
@@ -204,28 +197,14 @@ async function uploadWorldMapImages(firebase, userId, snapshot) {
       continue;
     }
 
-    const safeWorldId = String(world.id || `world-${Date.now()}`).replace(/[^a-zA-Z0-9_-]/g, "_");
-    const storagePath = `worldMaps/${userId}/${safeWorldId}.jpg`;
-    const imageRef = firebase.storage.ref(firebase.storageBucket, storagePath);
-    const blob = dataUrlToBlob(visualMap.imageDataUrl);
-    await firebase.storage.uploadBytes(imageRef, blob, {
-      contentType: blob.type || "image/jpeg",
-      customMetadata: {
-        userId,
-        worldId: world.id || "",
-        worldTitle: world.title || "",
-      },
-    });
-    const downloadUrl = await firebase.storage.getDownloadURL(imageRef);
+    const stored = await uploadImage(firebase, userId, "worldMaps", visualMap.imageDataUrl);
     uploadedWorlds.push({
       ...world,
       visualMap: {
         ...visualMap,
         imageDataUrl: "",
         hasImage: true,
-        storagePath,
-        downloadUrl,
-        uploadedAt: new Date().toISOString(),
+        ...stored,
       },
     });
   }
@@ -247,28 +226,14 @@ async function uploadEventCharacterImages(firebase, userId, snapshot) {
       continue;
     }
 
-    const safeEventId = String(event.id || `event-${Date.now()}`).replace(/[^a-zA-Z0-9_-]/g, "_");
-    const storagePath = `eventCharacters/${userId}/${safeEventId}.jpg`;
-    const imageRef = firebase.storage.ref(firebase.storageBucket, storagePath);
-    const blob = dataUrlToBlob(character.imageDataUrl);
-    await firebase.storage.uploadBytes(imageRef, blob, {
-      contentType: blob.type || "image/jpeg",
-      customMetadata: {
-        userId,
-        eventId: event.id || "",
-        characterName: character.name || "",
-      },
-    });
-    const downloadUrl = await firebase.storage.getDownloadURL(imageRef);
+    const stored = await uploadImage(firebase, userId, "eventCharacters", character.imageDataUrl);
     uploadedEvents.push({
       ...event,
       character: {
         ...character,
         imageDataUrl: "",
         hasImage: true,
-        storagePath,
-        downloadUrl,
-        uploadedAt: new Date().toISOString(),
+        ...stored,
       },
     });
   }
@@ -280,18 +245,19 @@ async function uploadEventCharacterImages(firebase, userId, snapshot) {
 }
 
 async function saveSnapshot(config, state, snapshot) {
-  await requireAuthenticatedUser(config, state);
+  const identity = { auth: { ...state.auth } };
+  const user = await requireAuthenticatedUser(config, identity);
   const firebase = await connectFirebase(config);
   const { firestore, db } = firebase;
-  const userId = getFirebaseUserId(state);
+  const userId = getFirebaseUserId(identity);
   const ref = firestore.doc(db, FIREBASE_COLLECTION, userId);
   let uploadedSnapshot = snapshot;
   let mediaUploadError = "";
   try {
-    uploadedSnapshot = await uploadMemberAvatar(firebase, userId, uploadedSnapshot);
-    uploadedSnapshot = await uploadWorldMapImages(firebase, userId, uploadedSnapshot);
-    uploadedSnapshot = await uploadEventCharacterImages(firebase, userId, uploadedSnapshot);
-    uploadedSnapshot = await uploadFieldPostImages(firebase, userId, uploadedSnapshot);
+    uploadedSnapshot = await uploadMemberAvatar(firebase, user.uid, uploadedSnapshot);
+    uploadedSnapshot = await uploadWorldMapImages(firebase, user.uid, uploadedSnapshot);
+    uploadedSnapshot = await uploadEventCharacterImages(firebase, user.uid, uploadedSnapshot);
+    uploadedSnapshot = await uploadFieldPostImages(firebase, user.uid, uploadedSnapshot);
   } catch (error) {
     mediaUploadError = error?.message || "media upload failed";
     // Keep small inline images if Storage is unavailable; never replace them with empty strings.
@@ -303,20 +269,20 @@ async function saveSnapshot(config, state, snapshot) {
   const childProfile = uploadedSnapshot.childProfile || {};
   const permissions = childProfile.permissions || {};
   const stats = {
-    quest: Number(state?.quest || 0),
-    hp: Number(state?.quest || 0),
-    joy: Number(state?.joy || 0),
-    drive: Number(state?.drive || 0),
-    thanks: Number(state?.thanks || 0),
-    streak: Number(state?.streak || 0),
+    quest: Number(snapshot?.quest || 0),
+    hp: Number(snapshot?.quest || 0),
+    joy: Number(snapshot?.joy || 0),
+    drive: Number(snapshot?.drive || 0),
+    thanks: Number(snapshot?.thanks || 0),
+    streak: Number(snapshot?.streak || 0),
   };
   await firestore.setDoc(
     ref,
     {
       userId,
-      email: state?.auth?.email || "",
-      emailLower: String(state?.auth?.email || "").trim().toLowerCase(),
-      displayName: state?.member?.name || "",
+      email: identity.auth.email,
+      emailLower: identity.auth.email.trim().toLowerCase(),
+      displayName: snapshot?.member?.name || "",
       mediaUploadError,
       childProfile: {
         id: childProfile.id || "",

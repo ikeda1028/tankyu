@@ -1681,18 +1681,18 @@ async function syncFirebase(options = {}) {
     }
     const result = await window.WakuwakuFirebase.saveSnapshot(config, state, snapshot);
     if (!state.auth.loggedIn || state.auth.email !== syncEmail) return false;
-    if (Array.isArray(result.snapshot?.fieldPosts)) {
-      state.fieldPosts = result.snapshot.fieldPosts;
+    applySavedMediaSnapshot(state, snapshot, result.snapshot);
+    if (syncEmail.toLowerCase() === "ikeda@manabinomichi.com" && !result.mediaUploadError) {
+      try {
+        const shared = await window.WakuwakuFirebase.publishExploration(config, { auth: { email: syncEmail } }, result.snapshot);
+        if (shared) publicExploration = shared;
+        publicWarning = "";
+      } catch (error) {
+        publicWarning = " / みんなへの公開は未完了です";
+        console.error(error);
+      }
     }
-    if (result.snapshot?.member?.avatar) {
-      state.member.avatar = normalizeAvatar(result.snapshot.member.avatar);
-    }
-    if (Array.isArray(result.snapshot?.worlds)) {
-      state.worlds = result.snapshot.worlds;
-    }
-    if (Array.isArray(result.snapshot?.customEvents)) {
-      state.customEvents = result.snapshot.customEvents.map(ensureEventCharacter);
-    }
+    if (!state.auth.loggedIn || state.auth.email !== syncEmail) return false;
     state.firebase.lastSyncAt = new Date().toISOString();
     state.authMigrationVersion = 1;
     const mediaWarning = result.mediaUploadError ? " / 画像はStorage権限を確認" : "";
@@ -1752,6 +1752,23 @@ async function runQueuedFirebaseSync() {
       firebaseAutoSyncQueued = false;
       queueFirebaseSync(firebaseAutoSyncReason || reason);
     }
+  }
+}
+
+function applySavedMediaSnapshot(target, original, saved) {
+  // A slow upload may finish after a new edit. Only replace the media that was actually saved.
+  const unchanged = (current, previous) => JSON.stringify(current) === JSON.stringify(previous);
+  if (saved?.member?.avatar && unchanged(target.member?.avatar, original.member?.avatar)) {
+    target.member.avatar = normalizeAvatar(saved.member.avatar);
+  }
+  for (const [collection, field] of [["fieldPosts", "image"], ["worlds", "visualMap"], ["customEvents", "character"]]) {
+    const before = new Map((original[collection] || []).map((record) => [record.id, record]));
+    const after = new Map((saved?.[collection] || []).map((record) => [record.id, record]));
+    if (!Array.isArray(target[collection])) continue;
+    target[collection] = target[collection].map((record) => {
+      if (!before.has(record.id) || !after.get(record.id)?.[field] || !unchanged(record[field], before.get(record.id)[field])) return record;
+      return { ...record, [field]: after.get(record.id)[field] };
+    });
   }
 }
 
@@ -1973,9 +1990,13 @@ function getFirebaseErrorMessage(error) {
     "storage/media-save-failed": "画像をFirebase Storageへ保存できません。端末のデータは保持しています",
     "storage/unauthorized": "Firebase Storageの画像保存権限を確認してください",
     "storage/retry-limit-exceeded": "Firebase Storageへの画像送信がタイムアウトしました",
+    "storage/bucket-not-found": "Firebase Storageの保存先がありません。Blazeプランへの変更後、Storageの利用を開始してください",
+    "storage/invalid-image": "画像は10MB以下のJPEG・PNG・WebP・GIFを使用してください。端末の画像は保持しています",
+    "storage/quota-exceeded": "Firebase Storageの利用上限または請求設定を確認してください",
     "resource-exhausted": "Firebaseの容量または利用上限を超えています",
     "unavailable": "ネットワークまたはFirebaseに接続できません。端末のデータは保持しています",
   };
+  if (error?.code === "storage/media-save-failed" && messages[error.cause?.code]) return messages[error.cause.code];
   return messages[error?.code] || "クラウドに接続できませんでした。端末のデータは保持しています";
 }
 
