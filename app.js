@@ -3945,6 +3945,17 @@ function closeOpeningScreen() {
   openMapAfterOpening();
 }
 
+function startOpeningFlow() {
+  const url = new URL(window.location.href);
+  if (url.searchParams.get("return") === "map") {
+    url.searchParams.delete("return");
+    window.history.replaceState(window.history.state, "", url.href);
+    closeOpeningScreen();
+    return;
+  }
+  playOpeningVideo();
+}
+
 function playOpeningVideo() {
   if (!els.openingScreen || !els.openingVideo) return;
   els.openingScreen.classList.remove("hidden");
@@ -9600,7 +9611,6 @@ window.addEventListener("orientationchange", requestPortraitOrientationLock);
 window.addEventListener("resize", requestPortraitOrientationLock);
 
 render();
-playOpeningVideo();
 if (state.auth.loggedIn && applyAgeBasedMode({ force: true })) {
   // 年齢に応じた初期表示を優先します。
 } else if (state.ui.mode && state.ui.mode !== "quest" && state.ui.mode !== "guardian") {
@@ -9609,6 +9619,7 @@ if (state.auth.loggedIn && applyAgeBasedMode({ force: true })) {
   state.ui.mode = "quest";
   saveState();
 }
+startOpeningFlow();
 initDatabase();
 loadPublicExploration();
 

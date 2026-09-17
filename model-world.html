@@ -47,7 +47,7 @@
     </style>
     <div class="topbar">
       <div class="title"><small>3D WORLD ENTRANCE</small><strong id="world-title">3Dワールド</strong></div>
-      <a class="back" href="/" aria-label="地図へ戻る">×</a>
+      <a class="back" href="/?return=map" aria-label="地図へ戻る">×</a>
     </div>
     <section class="entry-gate" id="entry-gate">
       <h1 id="entry-heading">現地限定ワールド</h1>
@@ -108,7 +108,7 @@
       document.title = `${title} | Wakuwaku Quest`;
       const modelSrc = resolveModelSrc(rawSrc);
       if (!modelSrc) {
-        document.body.innerHTML = '<main class="error"><div><h1>3Dモデルが見つかりません</h1><p>探究ポイントの3DモデルURLを確認してください。</p><p><a class="back" href="/">×</a></p></div></main>';
+        document.body.innerHTML = '<main class="error"><div><h1>3Dモデルが見つかりません</h1><p>探究ポイントの3DモデルURLを確認してください。</p><p><a class="back" href="/?return=map" aria-label="地図へ戻る">×</a></p></div></main>';
       }
 
       const kids = params.get("kids") === "1";
