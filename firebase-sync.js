@@ -413,7 +413,7 @@ function createPublicExploration(snapshot) {
     ...pickPublicFields(point, ["id", "title", "description", "impact", "locationName", "tags", "keywords", "index", "color", "eventType", "startDate", "endDate", "questionPath", "createdAt", "updatedAt"]),
     position: position(point.position),
     boost: pickPublicFields(point.boost, ["joy", "distance", "reflection"]),
-    character: point.character ? pickPublicFields(point.character, ["name", "role", "message", "symbol", "color", "localOnly", "radius", "mentorEnabled", "mentorLevel", "imageDataUrl", "downloadUrl"]) : null,
+    character: point.character ? { ...pickPublicFields(point.character, ["name", "role", "message", "symbol", "color", "localOnly", "radius", "mentorEnabled", "mentorLevel", "imageDataUrl", "downloadUrl"]), model3d: model(point.character.model3d) } : null,
     model3d: model(point.model3d),
   })).filter((point) => point.id && point.position);
   const worlds = (snapshot.worlds || []).map((world) => {

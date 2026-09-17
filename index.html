@@ -497,6 +497,41 @@
           </section>
         </section>
 
+        <section class="mentor-settings-view hidden" aria-label="メンター設定">
+          <header class="section-head"><h2>メンター設定</h2><button type="button" data-admin-return class="secondary-button">管理者画面へ戻る</button></header>
+          <div class="mentor-settings-layout">
+            <form id="mentor-settings-form">
+              <label for="mentor-point">配置する探究ポイント</label>
+              <select id="mentor-point" required></select>
+              <button type="button" data-admin-open="event-admin" class="secondary-button mini-action">探究ポイントを登録</button>
+              <label for="mentor-name">メンター名</label>
+              <input id="mentor-name" maxlength="40" required />
+              <label for="mentor-role">役割・専門分野</label>
+              <input id="mentor-role" maxlength="40" />
+              <label for="mentor-rank">出会えるレベル</label>
+              <select id="mentor-rank">
+                <option value="1">Lv.1 観察と気づき</option><option value="2">Lv.2 背景と根拠</option>
+                <option value="3">Lv.3 構造と関係</option><option value="4">Lv.4 分野をつなぐ</option><option value="5">Lv.5 実践と改善</option>
+              </select>
+              <label class="mentor-toggle"><input id="mentor-enabled" type="checkbox" />師匠として選択できる</label>
+              <label for="mentor-message">出会いのメッセージ</label>
+              <textarea id="mentor-message" rows="3" maxlength="180"></textarea>
+              <label for="mentor-model-url">3Dモデルの公開GLB URL</label>
+              <input id="mentor-model-url" type="text" inputmode="url" placeholder="https://example.com/mentor.glb" />
+              <div class="mentor-settings-actions">
+                <button id="mentor-preview-button" type="button" class="secondary-button">3Dを確認</button>
+                <button id="mentor-remove-model" type="button" class="secondary-button">3Dを解除</button>
+              </div>
+              <button id="mentor-save" type="submit">保存</button>
+              <p id="mentor-settings-status" role="status"></p>
+            </form>
+            <section class="mentor-appearance" aria-label="メンタープレビュー">
+              <h3 id="mentor-preview-title">メンター</h3>
+              <div id="mentor-model-preview" class="mentor-model-stage"></div>
+            </section>
+          </div>
+        </section>
+
         <section class="event-admin-view hidden" aria-label="探究ポイント登録">
           <button type="button" data-admin-return class="secondary-button hidden">管理者画面へ戻る</button>
           <div class="event-admin-shell">
@@ -1293,6 +1328,7 @@
     <script src="public-config.js"></script>
     <script src="world-access.js"></script>
     <script src="mentor-progression.js"></script>
+    <script src="mentor-models.js"></script>
     <script src="app.js"></script>
   </body>
 </html>
