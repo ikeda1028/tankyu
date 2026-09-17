@@ -266,6 +266,7 @@ const defaultState = {
   joyActions: [],
   completed: [],
   visitedCharacters: [],
+  mentorship: { unlockedAt: "", selectedEventId: "", met: [] },
   reflections: [],
   feedbacks: [],
   fieldPosts: [],
@@ -376,6 +377,11 @@ const els = {
   explorationDepthOutput: document.querySelector("#exploration-depth-output"),
   bestDepth: document.querySelector("#best-depth"),
   growthPath: document.querySelector("#growth-path"),
+  growthPathPanel: document.querySelector("#growth-path-panel"),
+  mentorChoice: document.querySelector("#mentor-choice"),
+  mentorLevel: document.querySelector("#mentor-level"),
+  selectedMentor: document.querySelector("#selected-mentor"),
+  mentorNextLevel: document.querySelector("#mentor-next-level"),
   eventDrawer: document.querySelector(".event-drawer"),
   eventCount: document.querySelector("#event-count"),
   eventList: document.querySelector("#event-list"),
@@ -402,6 +408,10 @@ const els = {
   questViews: document.querySelectorAll(".quest-view"),
   heroGrowthView: document.querySelector(".hero-growth-view"),
   settingsView: document.querySelector(".settings-view"),
+  adminView: document.querySelector(".admin-view"),
+  adminSummary: document.querySelector("#admin-summary"),
+  adminMentorList: document.querySelector("#admin-mentor-list"),
+  adminMentorSearch: document.querySelector("#admin-mentor-search"),
   screenMenuButton: document.querySelector("#screen-menu-button"),
   screenMenu: document.querySelector("#screen-menu"),
   accountButton: document.querySelector("#account-button"),
@@ -663,6 +673,8 @@ const els = {
   eventCharacterEnabled: document.querySelector("#event-character-enabled"),
   eventCharacterName: document.querySelector("#event-character-name"),
   eventCharacterRole: document.querySelector("#event-character-role"),
+  eventMentorEnabled: document.querySelector("#event-mentor-enabled"),
+  eventMentorLevel: document.querySelector("#event-mentor-level"),
   eventCharacterMessage: document.querySelector("#event-character-message"),
   eventCharacterPreview: document.querySelector("#event-character-preview"),
   suggestCharacterButton: document.querySelector("#suggest-character-button"),
@@ -863,7 +875,7 @@ function applyAgeBasedMode(options = {}) {
   if (!state.auth?.loggedIn || state.ui?.memberEditing) return false;
   const mode = getModeForUserAge();
   if (!mode) return false;
-  const protectedModes = ["guardian", "settings", "event-admin", "feedback"];
+  const protectedModes = ["guardian", "settings", "admin", "event-admin", "feedback"];
   if (!options.force && protectedModes.includes(state.ui?.mode)) return false;
   state.ui.mode = mode;
   state.ui.kidsMapActive = false;
@@ -1216,6 +1228,8 @@ function normalizeCharacter(character) {
   return {
     name,
     role: String(character.role || "現地案内人").trim().slice(0, 40),
+    mentorEnabled: character.mentorEnabled !== false,
+    mentorLevel: MentorProgression.level(character.mentorLevel),
     message: String(character.message || "現地で観察したことを手がかりに、次の問いを見つけよう。").trim().slice(0, 180),
     localOnly: character.localOnly !== false,
     personality: String(character.personality || "").trim().slice(0, 120),
@@ -1244,6 +1258,21 @@ function markCharacterVisited(encounter) {
     at: new Date().toISOString(),
   });
   state.visitedCharacters = state.visitedCharacters.slice(0, 60);
+  return true;
+}
+
+let latestMentorFix = null;
+
+function meetMentorHere(encounter, fix) {
+  if (!encounter || !WorldAccess.assess(encounter.position, fix).allowed) return false;
+  const result = MentorProgression.meet(state.mentorship, getEventCharacter(encounter), encounter.id, state.quest, new Date().toISOString());
+  if (!result.changed) return false;
+  state.mentorship = result.progress;
+  markCharacterVisited(encounter);
+  addActivity(`${getEventCharacter(encounter).name}と師匠として出会った`);
+  renderGrowthPath();
+  renderMentors();
+  queueFirebaseSync("師匠との出会い");
   return true;
 }
 
@@ -1277,6 +1306,8 @@ function requestCurrentPosition(options = {}) {
 
 function updateLocationFromPosition(position, options = {}) {
   if (!position?.coords) return;
+  latestMentorFix = position;
+  if (state.ui?.encounterPanel === "open" && meetMentorHere(getSelectedEncounter(), position)) renderCharacterCard(getSelectedEncounter());
   const current = {
     lat: position.coords.latitude,
     lng: position.coords.longitude,
@@ -1414,6 +1445,8 @@ async function unlockLocalCharacter(encounter) {
   try {
     els.matchReason.textContent = "現地キャラクターのため現在地を確認中...";
     const position = await requestCurrentPositionWithFallback();
+    latestMentorFix = position;
+    meetMentorHere(encounter, position);
     const current = { lat: position.coords.latitude, lng: position.coords.longitude };
     const distance = getDistanceMeters(current, encounter.position);
     if (distance > 300) {
@@ -3858,7 +3891,11 @@ function renderModeNavigation() {
   if (isKidsScreen || !state.auth?.loggedIn) setAccountPanelOpen(false, false);
   document.querySelectorAll(".mode-tabs button, .screen-menu button[data-mode]").forEach((button) => {
     const mode = button.dataset.mode;
-    button.classList.toggle("hidden", !isKidsAudience && mode === "kids");
+    button.classList.toggle("hidden", (!isKidsAudience && mode === "kids") || (mode === "admin" && !isAdminUser()));
+  });
+  document.querySelectorAll("[data-admin-entry], [data-admin-return]").forEach((button) => {
+    const readerWorld = button.closest(".worlds-view") && state.ui?.worldViewMode !== "edit";
+    button.classList.toggle("hidden", !isAdminUser() || Boolean(readerWorld));
   });
 }
 
@@ -4527,6 +4564,7 @@ async function checkModel3dTask() {
 }
 
 function saveCurrentModel3dToWorld() {
+  if (!isAdminUser()) return;
   const selectedWorld = getSelectedWorld();
   if (selectedWorld?.publicReadOnly) return;
   const result = state.ui?.model3dLastResult || null;
@@ -4648,7 +4686,7 @@ function buildWorldVisualPrompt(world) {
 }
 
 async function generateWorldVisualMap(world) {
-  if (!world?.concept || world.publicReadOnly) return null;
+  if (!isAdminUser() || !world?.concept || world.publicReadOnly) return null;
   const prompt = buildWorldVisualPrompt(world);
   setWorldStatus("AIがワールド画像を生成中...");
   const response = await fetch(getGenerateImageApiPath(), {
@@ -4671,6 +4709,7 @@ async function generateWorldVisualMap(world) {
 }
 
 async function generateWorldMap() {
+  if (!isAdminUser()) return null;
   const payload = getWorldPayloadFromForm();
   if (!payload.concept) {
     setWorldStatus("コンセプトを入力してください", true);
@@ -4769,7 +4808,7 @@ function renderWorldMapPreview(world = getSelectedWorld()) {
       <button type="button" data-world-move="-1" ${currentIndex <= 0 ? "disabled" : ""}>←</button>
       <strong>${escapeHtml(currentZone?.name || "入口")}</strong>
       <button type="button" data-world-move="1" ${currentIndex >= zones.length - 1 ? "disabled" : ""}>→</button>
-      ${world.publicReadOnly ? "" : '<button type="button" data-world-regenerate-map="1">画像を作り直す</button>'}
+      ${world.publicReadOnly || !isAdminUser() ? "" : '<button type="button" data-world-regenerate-map="1">画像を作り直す</button>'}
     </div>
     <div class="world-zone-grid">
       ${zones
@@ -4858,6 +4897,7 @@ function fillWorldForm(world) {
 }
 
 function createWorldDraftFromPoint(eventId = state.selected) {
+  if (!isAdminUser()) return;
   const encounter = getEncounters().find((item) => item.id === eventId) || getSelectedEncounter();
   if (!encounter) return;
   const questions = getEncounterQuestions(encounter);
@@ -4886,6 +4926,7 @@ function createWorldDraftFromPoint(eventId = state.selected) {
 
 async function saveWorld(event) {
   event?.preventDefault();
+  if (!isAdminUser()) return;
   if (!Array.isArray(state.worlds)) state.worlds = [];
   const payload = getWorldPayloadFromForm();
   if (!payload.concept) {
@@ -4934,6 +4975,7 @@ async function saveWorld(event) {
 }
 
 async function generateAndSaveWorld() {
+  if (!isAdminUser()) return;
   if (!Array.isArray(state.worlds)) state.worlds = [];
   const payload = getWorldPayloadFromForm();
   const map = await generateWorldMap();
@@ -5219,6 +5261,7 @@ function isFudozakaDragonEncounter(encounter) {
 
 function renderCharacterCard(encounter) {
   if (!els.characterCard) return;
+  if (state.ui?.encounterPanel === "open") meetMentorHere(encounter, latestMentorFix);
   const character = getEventCharacter(encounter);
   const model3d = normalizeEventModel3d(encounter?.model3d);
   const canEditCharacter = canEditPointCharacter() && !encounter?.publicReadOnly;
@@ -5274,6 +5317,36 @@ function renderCharacterCard(encounter) {
     event.stopPropagation();
     editPointCharacter(encounter.id);
   });
+  if (character.mentorEnabled) {
+    const progress = MentorProgression.normalize(state.mentorship);
+    const met = progress.met.some((item) => item.eventId === encounter.id);
+    const eligible = character.mentorLevel <= MentorProgression.playerLevel(state.quest);
+    const action = document.createElement("button");
+    action.type = "button";
+    action.className = "secondary-button mini-action";
+    action.disabled = !met && !eligible;
+    action.textContent = met ? "この師匠を選ぶ" : eligible ? `Lv.${character.mentorLevel}の師匠に会う` : `Lv.${character.mentorLevel}で出会えます`;
+    const status = document.createElement("p");
+    status.setAttribute("role", "status");
+    status.textContent = met ? "出会い済み" : `現地100m以内 / ${MentorProgression.specialties[character.mentorLevel - 1]}`;
+    action.addEventListener("click", async () => {
+      if (met) { selectMentor(encounter.id); status.textContent = "師匠を選びました"; return; }
+      action.disabled = true;
+      status.textContent = "現在地を確認中…";
+      try {
+        const fix = await WorldAccess.locate();
+        latestMentorFix = fix;
+        const result = WorldAccess.assess(encounter.position, fix);
+        if (!result.allowed) { status.textContent = WorldAccess.message(result); return; }
+        if (meetMentorHere(encounter, fix)) {
+          renderCharacterCard(encounter);
+          if (window.matchMedia("(max-width: 620px)").matches && getModeForUserAge() !== "kids") setAccountPanelOpen(true);
+        }
+      } catch (error) { status.textContent = getGeolocationErrorMessage(error); }
+      finally { action.disabled = false; }
+    });
+    els.characterCard.append(status, action);
+  }
 }
 
 function setFieldPostStatus(message, isError = false) {
@@ -5476,6 +5549,9 @@ function saveFieldPost() {
 }
 
 function renderGrowthPath() {
+  const unlocked = Boolean(MentorProgression.normalize(state.mentorship).unlockedAt);
+  els.growthPathPanel?.classList.toggle("hidden", !unlocked);
+  if (!unlocked) { els.growthPath.innerHTML = ""; return; }
   const labels = ["事象に出会う", "背景を調べる", "構造をつかむ", "別領域へ越境", "小さく実装"];
   const maxDepth = getBestDepth();
   els.growthPath.innerHTML = labels
@@ -5484,6 +5560,36 @@ function renderGrowthPath() {
       return `<span class="${active.trim()}">${label}</span>`;
     })
     .join("");
+}
+
+function selectMentor(eventId) {
+  const progress = MentorProgression.normalize(state.mentorship);
+  if (!progress.met.some((item) => item.eventId === eventId)) return;
+  progress.selectedEventId = eventId;
+  state.mentorship = progress;
+  saveState();
+  renderMentors();
+  queueFirebaseSync("師匠の選択");
+}
+
+function renderMentors() {
+  if (!els.mentorChoice) return;
+  const progress = MentorProgression.normalize(state.mentorship);
+  const level = MentorProgression.playerLevel(state.quest);
+  els.mentorLevel.textContent = `Lv.${level}`;
+  const candidates = getEncounters().filter((point) => getEventCharacter(point)?.mentorEnabled);
+  const availableIds = new Set(progress.met.map((item) => item.eventId));
+  els.mentorChoice.innerHTML = `<option value="" disabled>${progress.met.length ? "師匠を選んでください" : "まだ師匠に出会っていません"}</option>` + progress.met.map((item) => `<option value="${escapeHtml(item.eventId)}">${escapeHtml(item.name)} / Lv.${item.level}</option>`).join("") + candidates.filter((point) => !availableIds.has(point.id)).map((point) => {
+    const rank = getEventCharacter(point).mentorLevel;
+    return `<option disabled>${escapeHtml(point.title)} / Lv.${rank} / ${rank > level ? "レベル未到達" : "現地で出会う"}</option>`;
+  }).join("");
+  els.mentorChoice.value = progress.selectedEventId;
+  const selected = progress.met.find((item) => item.eventId === progress.selectedEventId);
+  const point = selected && candidates.find((item) => item.id === selected.eventId);
+  const character = point && getEventCharacter(point);
+  const image = character?.imageDataUrl || character?.downloadUrl || "assets/account.svg";
+  els.selectedMentor.innerHTML = selected ? `<img src="${escapeHtml(image)}" alt=""><strong>${escapeHtml(selected.name)}</strong><span>Lv.${selected.level} / ${MentorProgression.specialties[selected.level - 1]}</span><p>${escapeHtml(getEncounterQuestions(point)[selected.level - 1])}</p>` : `<p>${progress.unlockedAt ? "師匠を選べます。探究の広がりが解放されました。" : "地図上の案内キャラクターに会いに行こう。"}</p>`;
+  els.mentorNextLevel.textContent = level < 5 ? `次はLv.${level + 1} / 探究値 ${MentorProgression.thresholds[level]}（あと${Math.max(0, MentorProgression.thresholds[level] - state.quest)}）` : "Lv.5 / すべてのレベルの師匠と出会えます";
 }
 
 function renderFeedbackView() {
@@ -5578,6 +5684,7 @@ function createFallbackCharacter(encounter) {
   return {
     name: `${theme}ナビ`,
     role: "探究案内人",
+    mentorLevel: ({ "vacant-house-townwalk": 2, "forest-data-camp": 3, "food-loss-market-lab": 4, "ai-learning-hackday": 5 })[encounter?.id] || 1,
     message: getEncounterQuestions(encounter)[0] || "この場所で見える事実から、次の問いを探してみよう。",
     localOnly: true,
   };
@@ -5714,7 +5821,9 @@ function render() {
   renderInterests();
   renderActivity();
   renderGrowthPath();
+  renderMentors();
   renderFeedbackView();
+  renderAdminHub();
   renderWorlds();
   renderThemeEvaluation();
   renderAiSuggestions();
@@ -8063,13 +8172,39 @@ function requiresGuardianConfirmation(mode) {
   return state.ui.mode === "kids" && ["guardian", "event-admin", "feedback", "settings"].includes(mode);
 }
 
+function canOpenManagementMode(mode, options = {}) {
+  if (mode === "admin" || (mode === "worlds" && options.worldEditor)) return isAdminUser();
+  if (mode === "event-admin") return canEditPointCharacter();
+  return true;
+}
+
+function renderAdminHub() {
+  if (!els.adminView) return;
+  if (!isAdminUser()) { els.adminView.classList.add("hidden"); els.adminMentorList.innerHTML = ""; return; }
+  const points = getEncounters();
+  els.adminSummary.textContent = `ワールド ${state.worlds.length}件 / 探究ポイント ${points.length}件 / メンター ${points.filter((point) => getEventCharacter(point)?.mentorEnabled).length}人`;
+  const query = (els.adminMentorSearch?.value || "").trim().toLowerCase();
+  els.adminMentorList.innerHTML = points.filter((point) => `${point.title} ${getEventCharacter(point)?.name}`.toLowerCase().includes(query)).map((point) => {
+    const character = getEventCharacter(point);
+    const own = state.customEvents.some((item) => item.id === point.id);
+    return `<div class="admin-mentor-row"><div><strong>${escapeHtml(character.name)}</strong><span>${escapeHtml(point.title)}</span><span>${character.mentorEnabled ? `Lv.${character.mentorLevel} / ${MentorProgression.specialties[character.mentorLevel - 1]}` : "師匠の選択対象外"}</span></div><button type="button" class="secondary-button" data-admin-mentor="${escapeHtml(point.id)}" ${point.publicReadOnly ? "disabled" : ""}>${point.publicReadOnly ? "閲覧のみ" : own ? "設定" : "コピーして設定"}</button></div>`;
+  }).join("") || '<p class="empty-note">該当するメンターはいません。</p>';
+  els.adminMentorList.querySelectorAll("[data-admin-mentor]").forEach((button) => button.addEventListener("click", () => {
+    if (!isAdminUser()) return;
+    editPointCharacter(button.dataset.adminMentor);
+    els.eventMentorLevel?.focus();
+  }));
+}
+
 function showMode(mode, options = {}) {
+  if (!canOpenManagementMode(mode, options)) { window.alert("この画面を開く権限がありません。"); return; }
   setAccountPanelOpen(false);
   if ((mode === "guardian" && state.ui.mode !== "guardian") || requiresGuardianConfirmation(mode)) {
     if (!confirmGuardianMode()) return;
   }
   const feedback = mode === "feedback";
   const eventAdmin = mode === "event-admin";
+  const admin = mode === "admin";
   const capital = mode === "capital";
   const settings = mode === "settings";
   const worlds = mode === "worlds";
@@ -8089,8 +8224,9 @@ function showMode(mode, options = {}) {
   saveState();
   const kidsMapOnly = mode === "quest" && Boolean(options.kidsMap);
   els.questViews.forEach((view) =>
-    view.classList.toggle("hidden", feedback || eventAdmin || capital || settings || worlds || kids || guardian || (kidsMapOnly && !view.classList.contains("map-canvas")))
+    view.classList.toggle("hidden", feedback || eventAdmin || admin || capital || settings || worlds || kids || guardian || (kidsMapOnly && !view.classList.contains("map-canvas")))
   );
+  els.adminView?.classList.toggle("hidden", !admin);
   els.feedbackView.classList.toggle("hidden", !feedback);
   els.eventAdminView.classList.toggle("hidden", !eventAdmin);
   els.heroGrowthView?.classList.toggle("hidden", !capital);
@@ -8105,6 +8241,7 @@ function showMode(mode, options = {}) {
   renderKidsMode();
   renderGuardianMode();
   renderWorlds();
+  if (admin) renderAdminHub();
   renderModeNavigation();
   applyKidsMapOnlyVisibility();
 }
@@ -8471,6 +8608,8 @@ function getEventCharacterPreviewData(extra = {}) {
   const typed = normalizeCharacter({
     name: els.eventCharacterName?.value.trim() || extra.name || fallback.name,
     role: els.eventCharacterRole?.value.trim() || extra.role || fallback.role,
+    mentorEnabled: els.eventMentorEnabled?.checked !== false,
+    mentorLevel: MentorProgression.level(els.eventMentorLevel?.value),
     message: els.eventCharacterMessage?.value.trim() || extra.message || fallback.message,
     localOnly: els.eventCharacterEnabled?.checked !== false,
     personality: extra.personality || fallback.personality || "",
@@ -8519,6 +8658,8 @@ function getRequiredCharacterFromForm(payload) {
   const typedCharacter = normalizeCharacter({
     name: els.eventCharacterName?.value.trim(),
     role: els.eventCharacterRole?.value.trim() || "現地案内人",
+    mentorEnabled: els.eventMentorEnabled?.checked !== false,
+    mentorLevel: MentorProgression.level(els.eventMentorLevel?.value),
     message: els.eventCharacterMessage?.value.trim() || "現地で見えたことを記録して、次の問いを見つけよう。",
     localOnly,
     imageDataUrl: eventGeneratedCharacterImageDataUrl,
@@ -8530,6 +8671,8 @@ function getRequiredCharacterFromForm(payload) {
 
   const fallbackCharacter = normalizeCharacter({
     ...buildFallbackCharacter(payload),
+    mentorEnabled: els.eventMentorEnabled?.checked !== false,
+    mentorLevel: MentorProgression.level(els.eventMentorLevel?.value),
     localOnly,
     imageDataUrl: eventGeneratedCharacterImageDataUrl,
     downloadUrl: eventGeneratedCharacterDownloadUrl,
@@ -8708,6 +8851,7 @@ function syncEventLocationMarkerFromInputs() {
 }
 
 function addEventRecord(eventData) {
+  if (!canEditPointCharacter()) return;
   const duplicate = state.customEvents.find((event) => event.title === eventData.title && event.impact === eventData.impact);
   if (duplicate) {
     state.selected = duplicate.id;
@@ -8786,6 +8930,8 @@ function populateEventForm(eventData) {
   if (els.eventCharacterEnabled) els.eventCharacterEnabled.checked = Boolean(eventData.character?.localOnly ?? true);
   if (els.eventCharacterName) els.eventCharacterName.value = character.name || "";
   if (els.eventCharacterRole) els.eventCharacterRole.value = character.role || "";
+  if (els.eventMentorEnabled) els.eventMentorEnabled.checked = character.mentorEnabled !== false;
+  if (els.eventMentorLevel) els.eventMentorLevel.value = String(MentorProgression.level(character.mentorLevel));
   if (els.eventCharacterMessage) els.eventCharacterMessage.value = character.message || "";
   if (els.eventImagePrompt && character.visualPrompt) els.eventImagePrompt.value = character.visualPrompt;
   const model3d = normalizeEventModel3d(eventData.model3d);
@@ -8859,6 +9005,7 @@ function editPointCharacter(eventId = state.selected) {
 }
 
 function startEditingEvent(eventId) {
+  if (!canEditPointCharacter()) return;
   const eventData = state.customEvents.find((event) => event.id === eventId);
   if (!eventData) return;
   state.ui.editingEventId = eventData.id;
@@ -8931,6 +9078,7 @@ function registerAllAiSuggestions() {
 }
 
 function registerEvent(event) {
+  if (!canEditPointCharacter()) { event?.preventDefault(); return; }
   event.preventDefault();
   const title = els.eventTitle.value.trim();
   const impact = els.eventImpact.value.trim();
@@ -9171,6 +9319,16 @@ els.aiSearchWord?.addEventListener("keydown", (event) => {
 });
 els.generateEventImageButton?.addEventListener("click", generateEventImage);
 els.suggestCharacterButton?.addEventListener("click", suggestEventCharacter);
+els.mentorChoice?.addEventListener("change", () => selectMentor(els.mentorChoice.value));
+document.querySelectorAll("[data-admin-entry], [data-admin-return]").forEach((button) => button.addEventListener("click", () => showMode("admin")));
+document.querySelector("[data-admin-back-map]")?.addEventListener("click", () => showMode("quest"));
+document.querySelectorAll("[data-admin-open]").forEach((button) => button.addEventListener("click", () => {
+  if (!isAdminUser()) return;
+  const mode = button.dataset.adminOpen;
+  if (mode === "mentors") { els.adminMentorSearch?.focus(); return; }
+  showMode(mode, { worldEditor: mode === "worlds" });
+}));
+els.adminMentorSearch?.addEventListener("input", renderAdminHub);
 els.registerAllAiEventsButton?.addEventListener("click", registerAllAiSuggestions);
 [
   els.eventTitle,
@@ -9189,6 +9347,8 @@ els.registerAllAiEventsButton?.addEventListener("click", registerAllAiSuggestion
   els.eventLocation,
   els.eventCharacterName,
   els.eventCharacterRole,
+  els.eventMentorEnabled,
+  els.eventMentorLevel,
   els.eventCharacterMessage,
   els.eventCharacterEnabled,
   els.eventImagePrompt,

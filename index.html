@@ -215,7 +215,15 @@
           <div class="pill-row" id="interest-pills"></div>
         </section>
 
-        <section class="panel">
+        <section class="panel" id="mentor-panel">
+          <div class="section-head"><h2>師匠</h2><span id="mentor-level" class="small-badge"></span></div>
+          <label for="mentor-choice">メンターを選ぶ</label>
+          <select id="mentor-choice"></select>
+          <div id="selected-mentor" class="selected-mentor" aria-live="polite"></div>
+          <p id="mentor-next-level" class="mission-text"></p>
+        </section>
+
+        <section class="panel hidden" id="growth-path-panel">
           <div class="section-head">
             <h2>探究の広がり</h2>
             <span id="best-depth" class="small-badge">背景</span>
@@ -285,8 +293,7 @@
             <div class="screen-menu-wrap">
               <button id="screen-menu-button" class="screen-menu-button" type="button" aria-label="画面メニューを開く" aria-expanded="false">⚙</button>
               <div id="screen-menu" class="screen-menu hidden" role="menu" aria-label="画面メニュー">
-                <button type="button" role="menuitem" data-mode="worlds">ワールド</button>
-                <button type="button" role="menuitem" data-mode="event-admin">探究ポイント登録</button>
+                <button type="button" role="menuitem" data-mode="admin" class="hidden">管理者画面</button>
                 <button type="button" role="menuitem" data-mode="guardian">保護者</button>
                 <button type="button" role="menuitem" data-mode="settings">設定</button>
               </div>
@@ -474,7 +481,24 @@
           <div id="field-post-list" class="field-post-list"></div>
         </section>
 
+        <section class="admin-view hidden" aria-label="管理者画面">
+          <header class="section-head"><h2>管理者画面</h2><button type="button" data-admin-back-map class="secondary-button">地図へ戻る</button></header>
+          <nav class="admin-navigation" aria-label="管理項目">
+            <button type="button" data-admin-open="worlds" class="secondary-button">ワールド管理</button>
+            <button type="button" data-admin-open="event-admin" class="secondary-button">探究ポイント管理</button>
+            <button type="button" data-admin-open="mentors" class="secondary-button">メンター管理</button>
+          </nav>
+          <p id="admin-summary"></p>
+          <section id="admin-mentors" class="admin-mentors">
+            <h3>メンター管理</h3>
+            <label for="admin-mentor-search">メンター・探究ポイントを検索</label>
+            <input id="admin-mentor-search" type="search" placeholder="名前・場所" />
+            <div id="admin-mentor-list" class="admin-mentor-list"></div>
+          </section>
+        </section>
+
         <section class="event-admin-view hidden" aria-label="探究ポイント登録">
+          <button type="button" data-admin-return class="secondary-button hidden">管理者画面へ戻る</button>
           <div class="event-admin-shell">
             <section class="event-admin-main">
               <div class="section-head">
@@ -556,6 +580,15 @@
                       <input id="event-character-role" type="text" placeholder="例：現地案内人、問いの番人" />
                     </div>
                   </div>
+                  <div class="character-toggle-row">
+                    <label for="event-mentor-enabled">師匠として選択できる</label>
+                    <input id="event-mentor-enabled" type="checkbox" checked />
+                  </div>
+                  <label for="event-mentor-level">メンターレベル</label>
+                  <select id="event-mentor-level">
+                    <option value="1">Lv.1 観察と気づき</option><option value="2">Lv.2 背景と根拠</option>
+                    <option value="3">Lv.3 構造と関係</option><option value="4">Lv.4 分野をつなぐ</option><option value="5">Lv.5 実践と改善</option>
+                  </select>
                   <label for="event-character-message">現地で出会った時のメッセージ</label>
                   <textarea id="event-character-message" rows="3" placeholder="例：ここで見えるものを3つ記録して、なぜこの場所に集まるのか考えてみよう。"></textarea>
                   <div id="event-character-preview" class="event-character-preview" aria-live="polite"></div>
@@ -1050,6 +1083,7 @@
         </section>
 
         <section class="settings-view hidden" aria-label="設定">
+          <button type="button" data-admin-entry class="secondary-button hidden">管理者画面を開く</button>
           <div class="settings-shell">
             <section class="settings-main">
               <div class="section-head">
@@ -1109,6 +1143,7 @@
         </section>
 
         <section class="worlds-view hidden" aria-label="ワールド作成">
+          <button type="button" data-admin-return class="secondary-button hidden">管理者画面へ戻る</button>
           <div class="worlds-shell">
             <section class="worlds-main">
               <div class="section-head">
@@ -1257,6 +1292,7 @@
     <script src="firebase-sync.js"></script>
     <script src="public-config.js"></script>
     <script src="world-access.js"></script>
+    <script src="mentor-progression.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

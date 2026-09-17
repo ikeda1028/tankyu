@@ -2087,6 +2087,7 @@ body:has(.map-canvas.kids-map-active) #theme-evaluation-panel {
 .feedback-view,
 .hero-growth-view,
 .settings-view,
+.admin-view,
 .worlds-view,
 .kids-view,
 .guardian-view {
@@ -7025,7 +7026,7 @@ body:has(.map-canvas.kids-map-active) .kids-navigator-bot {
     background: rgb(0 0 0 / 32%);
   }
 
-  body:not(.kids-screen-active) :is(.feedback-view, .hero-growth-view, .settings-view, .worlds-view, .guardian-view, .event-admin-view) {
+  body:not(.kids-screen-active) :is(.feedback-view, .hero-growth-view, .settings-view, .admin-view, .worlds-view, .guardian-view, .event-admin-view) {
     margin-top: calc(140px + env(safe-area-inset-top));
   }
 }
@@ -7069,4 +7070,25 @@ body:has(.map-canvas.kids-map-active) .kids-navigator-bot {
     font-size: 15px;
     font-weight: 700;
   }
+}
+.selected-mentor { display: grid; gap: 8px; margin-top: 14px; overflow-wrap: anywhere; }
+.selected-mentor img { width: 72px; height: 72px; object-fit: contain; border-radius: 8px; }
+.selected-mentor p { margin: 0; line-height: 1.6; }
+#mentor-choice { width: 100%; min-width: 0; min-height: 44px; padding: 8px; border: 1px solid #dce4df; border-radius: 8px; background: #fff; color: #17211b; font: inherit; font-size: 14px; }
+.admin-view { background: #f8faf9; padding: 20px; }
+.admin-view > .section-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; }
+.admin-view > .section-head h2 { font-size: 20px; margin: 0; }
+.admin-view > .section-head button { width: auto; }
+.admin-navigation { display: flex; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid #dce4df; padding-bottom: 16px; }
+.admin-navigation > button { width: auto; flex: 1 1 160px; }
+.admin-mentors { margin-top: 24px; }
+#admin-mentor-search { display: block; width: 100%; max-width: 480px; min-height: 44px; margin: 8px 0 16px; padding: 8px 12px; border: 1px solid #dce4df; border-radius: 8px; font: inherit; }
+.admin-mentor-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 16px 0; border-bottom: 1px solid #dce4df; }
+.admin-mentor-row > div { display: grid; gap: 6px; overflow-wrap: anywhere; }
+.admin-mentor-row span { font-size: 13px; color: #56665c; }
+[data-admin-return], [data-admin-entry] { margin-bottom: 12px; }
+@media (max-width: 620px) {
+  .admin-view { padding: 14px; }
+  .admin-mentor-row { grid-template-columns: minmax(0, 1fr); }
+  .admin-mentor-row > button { justify-self: start; }
 }
