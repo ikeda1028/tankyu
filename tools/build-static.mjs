@@ -49,6 +49,11 @@ const firebaseJson = parseJsonEnv("FIREBASE_CONFIG_JSON");
 const sourceConfig = await readSourcePublicConfig();
 const sourceFirebase = sourceConfig.firebase || {};
 const config = {
+  worldAccess: {
+    requireLocation: getEnv("WORLD_REQUIRE_LOCATION")
+      ? getEnv("WORLD_REQUIRE_LOCATION") !== "false"
+      : sourceConfig.worldAccess?.requireLocation !== false,
+  },
   googleMapsApiKey: fallbackEnv(sourceConfig.googleMapsApiKey, getEnv("GOOGLE_MAPS_API_KEY", "PUBLIC_GOOGLE_MAPS_API_KEY", "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY")),
   driveApiUrl: fallbackEnv(sourceConfig.driveApiUrl, getEnv("GOOGLE_DRIVE_API_URL", "PUBLIC_GOOGLE_DRIVE_API_URL")),
   adminEmails: (getEnv("ADMIN_EMAILS") || "ikeda@manabinomichi.com")

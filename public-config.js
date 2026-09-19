@@ -3,6 +3,7 @@ window.WAKUWAKU_CONFIG = {
   driveApiUrl: "",
   adminEmails: ["ikeda@manabinomichi.com"],
   posterEmails: [],
+  worldAccess: { requireLocation: false },
   firebase: {
     apiKey: "AIzaSyBBgU_a3GG-5LOIjbcSkMZ93XQuPALZV4A",
     authDomain: "tankyu-723fc.firebaseapp.com",

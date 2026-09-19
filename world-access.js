@@ -2,6 +2,12 @@
   "use strict";
   const radius = 100;
   const maxAge = 60000;
+  function requiresLocation() {
+    return root.WAKUWAKU_CONFIG?.worldAccess?.requireLocation !== false;
+  }
+  function assessWorld(target, fix, now = Date.now()) {
+    return requiresLocation() ? assess(target, fix, now) : { allowed: true, reason: "unrestricted" };
+  }
   function position(value) {
     if (!value || value.lat === null || value.lng === null || value.lat === "" || value.lng === "") return null;
     const lat = Number(value.lat), lng = Number(value.lng);
@@ -31,5 +37,5 @@
       root.navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 });
     });
   }
-  root.WorldAccess = { radius, maxAge, position, assess, message, locate };
+  root.WorldAccess = { radius, maxAge, position, assess, assessWorld, requiresLocation, message, locate };
 })(globalThis);

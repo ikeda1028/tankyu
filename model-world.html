@@ -82,6 +82,7 @@
       <p id="item-text">2階に隠された探究アイテムを見つけました。現地で気づいたことを記録すると、この場所の謎がひとつ開きます。</p>
       <button id="item-close" type="button">地図にもどる前に観察する</button>
     </section>
+    <script src="public-config.js"></script>
     <script src="world-access.js"></script>
     <script>
       const params = new URLSearchParams(location.search);
@@ -140,7 +141,12 @@
         if (!viewer.getAttribute("src")) viewer.src = modelSrc;
         return true;
       }
-      if (modelSrc && gate) {
+      if (modelSrc && gate && !WorldAccess.requiresLocation()) {
+        document.body.classList.remove("entry-locked");
+        gate.hidden = true;
+        viewer.src = modelSrc;
+      }
+      if (modelSrc && gate && WorldAccess.requiresLocation()) {
         if (kids) {
           document.querySelector("#entry-heading").textContent = "げんちで はいれる せかい";
           entryButton.textContent = "いまいる ばしょを たしかめる";
@@ -171,6 +177,12 @@
       }
 
       function getWalkPoints() {
+        if (/Katsuren_Future_Castle\.glb/i.test(rawSrc)) {
+          return {
+            gate: { label: "全体", target: "auto auto auto", orbit: "0deg 65deg auto", fov: "30deg" },
+            front: { label: "正面", target: "auto auto auto", orbit: "0deg 85deg auto", fov: "30deg" },
+          };
+        }
         if (isFudoWorld()) {
           return {
             gate: { label: "入口", target: "0m 2m 0m", orbit: "0deg 68deg 34m", fov: "30deg" },
@@ -202,6 +214,9 @@
       }
 
       walkButtons.forEach((button) => {
+        const point = walkPoints[button.dataset.walkPoint];
+        button.hidden = !point;
+        if (point) button.textContent = point.label;
         button.addEventListener("click", () => moveToWalkPoint(button.dataset.walkPoint));
       });
       function shouldShowDefaultItem() {

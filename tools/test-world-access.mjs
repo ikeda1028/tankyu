@@ -49,7 +49,7 @@ function mockElement() {
     querySelectorAll: () => [],
   };
 }
-async function testViewer(query) {
+async function testViewer(query, requireLocation = true) {
   const elements = new Map();
   const document = { hidden: false, body: mockElement(), events: {}, querySelectorAll: () => [],
     querySelector(selector) { if (!elements.has(selector)) elements.set(selector, mockElement()); return elements.get(selector); },
@@ -57,11 +57,19 @@ async function testViewer(query) {
   };
   let currentFix = fix, watch;
   const sandbox = vm.createContext({ document, URLSearchParams, location: { search: query }, setInterval: () => 1, clearInterval() {},
+    WAKUWAKU_CONFIG: { worldAccess: { requireLocation } },
     navigator: { geolocation: { getCurrentPosition(resolve) { resolve(currentFix); }, watchPosition(fn) { watch = fn; return 1; }, clearWatch() {} } },
   });
   vm.runInContext(source, sandbox);
   for (const script of html.matchAll(/<script>([\s\S]*?)<\/script>/g)) vm.runInContext(script[1], sandbox);
   const viewer = document.querySelector("#world-model"), button = document.querySelector("#entry-check");
+  if (!requireLocation) {
+    assert.equal(viewer.getAttribute("src"), "/assets/fudo.glb", "unrestricted entry loads without GPS");
+    assert.equal(document.querySelector("#entry-gate").hidden, true);
+    assert.equal(watch, undefined, "no location tracking while restriction is disabled");
+    assert.equal(document.events.visibilitychange, undefined);
+    return;
+  }
   assert.equal(viewer.getAttribute("src"), undefined, "no model fetched before location check");
   if (!query.includes("lat=")) { assert.equal(button.disabled, true); return; }
   currentFix = { ...fix, coords: { ...fix.coords, latitude: 36 } };
@@ -79,6 +87,13 @@ async function testViewer(query) {
 }
 await testViewer("?src=/assets/fudo.glb&lat=35&lng=139");
 await testViewer("?src=/assets/fudo.glb");
+await testViewer("?src=/assets/fudo.glb", false);
+assert.equal(access.requiresLocation(), true, "missing configuration fails closed");
+context.WAKUWAKU_CONFIG = { worldAccess: { requireLocation: false } };
+assert.equal(access.assessWorld(null, null).allowed, true);
+assert.equal(access.assess(entrance, null).allowed, false, "mentor encounter still needs location");
+context.WAKUWAKU_CONFIG.worldAccess.requireLocation = true;
+assert.equal(access.assessWorld(entrance, null).allowed, false, "restriction can be restored");
 const preview = mockElement();
 preview.querySelector = () => mockElement();
 const world = { id: "test-world", title: "Visible world name", entrance: "Visible entrance", entrancePosition: entrance, map: { summary: "Hidden world content" }, visualMap: { imageDataUrl: "private-preview" } };

@@ -1,5 +1,12 @@
 # Wakuwaku Quest 公開手順
 
+## ワールドの現地制限
+
+現在は `public-config.js` の `worldAccess.requireLocation: false` で制限を一時解除しています。
+再び100m以内に限定する場合は、Vercelの環境変数 `WORLD_REQUIRE_LOCATION` を `true` に設定し、再デプロイしてください。
+`false` で再解除できます。ローカルでは `public-config.js` の同項目を切り替えます。
+通常ワールド・3Dワールドに共通で適用されます。師匠との出会い判定は現地確認を維持します。
+
 ## 1. GitHubへアップロード
 
 このフォルダをGitHubリポジトリにします。

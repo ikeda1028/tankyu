@@ -4423,7 +4423,7 @@ setInterval(() => {
 }, 5000);
 
 function canViewWorldHere(world) {
-  return WorldAccess.assess(getWorldAccessPosition(world), worldEntryFixes.get(world.id)).allowed;
+  return WorldAccess.assessWorld(getWorldAccessPosition(world), worldEntryFixes.get(world.id)).allowed;
 }
 
 function getMapVisibleWorlds() {
@@ -5299,7 +5299,7 @@ function renderCharacterCard(encounter) {
     : "";
   const model3dMarkup = model3d
     ? `<div class="character-card-actions">
-          <a class="secondary-button mini-action" href="${escapeHtml(getModelWorldUrl(model3d, encounter?.title, encounter?.position))}">${escapeHtml(model3d.title || "3Dモデル")}に入る（現地限定）</a>
+          <a class="secondary-button mini-action" href="${escapeHtml(getModelWorldUrl(model3d, encounter?.title, encounter?.position))}">${escapeHtml(model3d.title || "3Dモデル")}に入る${WorldAccess.requiresLocation() ? "（現地限定）" : ""}</a>
         </div>`
     : "";
   if (!character) {
