@@ -6,7 +6,7 @@ const root = new URL("..", import.meta.url).pathname;
 const dist = join(root, "dist");
 
 const publicFiles = ["index.html", "styles.css", "app.js", "database.js", "firebase-sync.js", "ar-dragon.html", "model-world.html", "world-access.js", "mentor-progression.js", "mentor-models.js"];
-const assetFiles = ["opening-kids.mp4", "fudozaka-dragon.glb", "fudo.glb", "fudozaka-dragon-poster.png", "MANABI_Shibuya_3F.glb", "account.svg", "close.svg", "lucide-LICENSE"];
+const assetFiles = ["opening-kids.mp4", "fudozaka-dragon.glb", "fudo.glb", "fudozaka-dragon-poster.png", "MANABI_Shibuya_3F.glb", "Katsuren_Future_Castle.glb", "account.svg", "close.svg", "lucide-LICENSE"];
 
 await mkdir(dist, { recursive: true });
 await mkdir(join(dist, "assets"), { recursive: true });
