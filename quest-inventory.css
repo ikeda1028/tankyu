@@ -1,0 +1,30 @@
+.quest-dialog { box-sizing: border-box; width: min(680px, calc(100% - 24px)); max-height: min(850px, calc(100dvh - 32px)); padding: 32px 24px 24px; border: 1px solid #c9d8d0; border-radius: 8px; background: #fcfffd; color: #17251f; font: 16px/1.5 system-ui, sans-serif; letter-spacing: 0; overflow-y: auto; overscroll-behavior: contain; }
+.quest-dialog::backdrop { background: #081b28a6; }
+.quest-dialog h2 { margin: 12px 0; font-size: 24px; }
+.quest-dialog h3 { margin: 16px 0; font-size: 20px; }
+.quest-close { position: sticky; top: 0; float: right; z-index: 2; display: grid; place-items: center; width: 44px; height: 44px; border: 1px solid #cbd9d2; border-radius: 8px; background: white; cursor: pointer; }
+.quest-dialog button:focus-visible, .quest-hotspot:focus-visible { outline: 3px solid #2470c5; outline-offset: 3px; }
+.quest-choice { display: block; width: 100%; padding: 14px 16px; margin: 10px 0; border: 1px solid #a5beb4; border-radius: 8px; color: #17251f; background: white; font: inherit; text-align: left; cursor: pointer; overflow-wrap: anywhere; }
+.quest-choice:hover { background: #e1f4ed; border-color: #208263; }
+.quest-choice:disabled { opacity: .6; cursor: wait; }
+.quest-answer-status { min-height: 24px; color: #9a392d; }
+.quest-grade, .quest-status { font-size: 14px; color: #53665e; }
+.quest-reward { display: grid; grid-template-columns: 104px minmax(0, 1fr); gap: 4px 16px; align-items: center; padding: 12px 0 20px; border-bottom: 1px solid #cbd9d2; }
+.quest-reward h2, .quest-reward p { margin: 0; }
+.quest-reward img { grid-row: span 2; width: 104px; height: 104px; animation: quest-arrive .6s ease-out both; }
+.quest-totals { display: flex; flex-wrap: wrap; gap: 8px 20px; font-weight: 700; }
+.quest-table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 14px; }
+.quest-table th, .quest-table td { text-align: left; border-bottom: 1px solid #dbe4df; padding: 12px 6px; overflow-wrap: anywhere; vertical-align: middle; }
+.quest-table th:first-child { width: 42%; }
+.quest-table td img { display: block; margin-bottom: 4px; }
+.quest-new { background: #ddf7e7; animation: quest-row .7s ease-out both; }
+.quest-new-label { display: block; color: #096541; font-size: 12px; }
+.quest-hotspot { display: grid; place-items: center; width: 60px; height: 60px; padding: 4px; border: 2px solid #f8fffe; border-radius: 8px; background: #fffef2ee; box-shadow: 0 4px 12px #072a3755; cursor: pointer; transform: translate(-50%, -50%); }
+.quest-hotspot.quest-owned { border-color: #248460; background: #d4f6df; }
+.quest-hotspot.quest-owned::after { content: "✓"; position: absolute; right: -5px; top: -7px; color: white; background: #16734e; width: 22px; height: 22px; border-radius: 50%; }
+.world-inventory { position: fixed; top: 76px; right: 16px; z-index: 4; display: grid; place-items: center; width: 48px; height: 48px; border: 1px solid #b9cfc5; border-radius: 8px; background: white; cursor: pointer; }
+.quest-inventory-entry { display: flex; align-items: center; justify-content: center; gap: 8px; }
+@keyframes quest-arrive { from { opacity: 0; transform: translateY(-24px) scale(.65) rotate(-10deg); } to { opacity: 1; transform: none; } }
+@keyframes quest-row { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: none; } }
+@media (max-width: 600px) { .quest-dialog { padding: 20px 14px; } .quest-dialog h3 { font-size: 18px; } .quest-hotspot { width: 48px; height: 48px; } .quest-hotspot img { width: 38px; height: 38px; } }
+@media (prefers-reduced-motion: reduce) { .quest-reward img, .quest-new { animation: none; } }

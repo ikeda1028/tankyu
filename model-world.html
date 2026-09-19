@@ -6,6 +6,7 @@
     <meta name="theme-color" content="#071d1b" />
     <title>3Dワールド | Wakuwaku Quest</title>
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.1.0/model-viewer.min.js"></script>
+    <link rel="stylesheet" href="quest-inventory.css" />
     <style>
       :root { color-scheme: dark; font-family: system-ui, -apple-system, "Hiragino Sans", sans-serif; }
       * { box-sizing: border-box; }
@@ -82,7 +83,9 @@
       <p id="item-text">2階に隠された探究アイテムを見つけました。現地で気づいたことを記録すると、この場所の謎がひとつ開きます。</p>
       <button id="item-close" type="button">地図にもどる前に観察する</button>
     </section>
+    <button class="world-inventory" type="button" data-quest-inventory aria-label="もちもの" title="もちもの"><img src="assets/account.svg" width="24" height="24" alt="" /></button>
     <script src="public-config.js"></script>
+    <script src="firebase-sync.js"></script>
     <script src="world-access.js"></script>
     <script>
       const params = new URLSearchParams(location.search);
@@ -249,8 +252,10 @@
       }
 
       viewer?.addEventListener("progress", (event) => { bar.style.width = `${event.detail.totalProgress * 100}%`; });
-      viewer?.addEventListener("load", () => { bar.parentElement.hidden = true; moveToWalkPoint("gate", true); addWorldItemHotspot(); });
+      viewer?.addEventListener("load", () => { bar.parentElement.hidden = true; moveToWalkPoint("gate", true); });
       itemClose?.addEventListener("click", () => itemPanel.classList.remove("visible"));
     </script>
+    <script src="quest-items.js"></script>
+    <script src="quest-inventory.js"></script>
   </body>
 </html>

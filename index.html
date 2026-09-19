@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Wakuwaku Quest</title>
     <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="quest-inventory.css" />
   </head>
   <body>
     <div class="portrait-lock-overlay" aria-live="polite">
@@ -170,6 +171,7 @@
           </div>
           <div id="member-party-summary" class="party-summary"></div>
           <p id="member-summary-status" class="member-save-status" aria-live="polite"></p>
+          <button class="secondary-button quest-inventory-entry" type="button" data-quest-inventory><img src="assets/quest-lens.svg" width="32" height="32" alt="" />もちもの</button>
           <button id="logout-button" class="secondary-button db-button" type="button">ログアウト</button>
         </section>
 
@@ -942,6 +944,7 @@
         <section id="kids-avatar-profile" class="kids-avatar-profile hidden" aria-label="じぶん">
           <button id="kids-avatar-profile-close" class="kids-avatar-profile-close" type="button">とじる</button>
           <div class="kids-avatar-profile-card">
+            <button class="secondary-button quest-inventory-entry" type="button" data-quest-inventory>もちもの</button>
             <div id="kids-profile-avatar" class="kids-profile-avatar">?</div>
             <div class="kids-profile-main">
               <span id="kids-profile-stage">ひとりたんけん</span>
@@ -1330,5 +1333,7 @@
     <script src="mentor-progression.js"></script>
     <script src="mentor-models.js"></script>
     <script src="app.js"></script>
+    <script src="quest-items.js"></script>
+    <script src="quest-inventory.js"></script>
   </body>
 </html>
