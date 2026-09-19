@@ -37,6 +37,8 @@
     return null;
   }
   function question(id, grade) {
+    const castleItem = definitions.find((item) => item.id === id && item.castle);
+    if (castleItem) return window.CastleQuests.question(castleItem, grade);
     const level = band(grade);
     if (level === null || !questions[id]) return null;
     // Kids through grade 4 use the hiragana question set.
@@ -54,10 +56,14 @@
     if (!item || !quiz || answer !== quiz.answer) throw new Error("もういちど かんがえてみよう。");
     const key = `${world}::${id}`;
     if (records.some((entry) => entry.key === key)) return { records, added: false, key };
+    if (item.castle && !window.CastleQuests.unlocked(records, world, item)) throw new Error("まえの だんかいを さがしてね。");
     return { records: [...records, { key, world, worldTitle: title, itemId: id, grade, acquiredAt: now }], added: true, key };
   }
   function totals(records) {
-    return Object.fromEntries(definitions.map((item) => [item.id, records.filter((record) => record.itemId === item.id).length * item.value]));
+    return Object.fromEntries(definitions.filter((item) => !item.castle).map((track) => [track.id, records.reduce((sum, record) => {
+      const item = definitions.find((entry) => entry.id === record.itemId);
+      return sum + (item && (item.track || item.id) === track.id ? item.value : 0);
+    }, 0)]));
   }
   async function saveAward(session, world, title, id, grade, answer) {
     return session.firestore.runTransaction(session.db, async (transaction) => {
@@ -70,5 +76,5 @@
       return result;
     });
   }
-  root.QuestItems = { definitions, band, question, worldKey, award, totals, saveAward };
+  root.QuestItems = { definitions, tracks: definitions.slice(), band, question, worldKey, award, totals, saveAward };
 })(window);

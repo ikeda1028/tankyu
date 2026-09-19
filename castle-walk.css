@@ -1,0 +1,23 @@
+.castle-enter { position: fixed; z-index: 4; bottom: 18px; left: 50%; transform: translateX(-50%); border: 1px solid #d4e3df; border-radius: 6px; padding: 12px 24px; background: #f1f5ef; color: #213d39; font: 600 16px system-ui; cursor: pointer; }
+.entry-locked .castle-enter, .castle-walking .castle-enter, .castle-walking .walk-controls, .castle-walking .hint { display: none; }
+.castle-walking > model-viewer { visibility: hidden; }
+.castle-interior { position: fixed; inset: 0; z-index: 1; background: #c9e0e5; }
+.castle-interior[hidden] { display: none; }
+.castle-interior canvas { display: block; width: 100%; height: 100%; touch-action: none; outline-offset: -3px; }
+.castle-floor { position: absolute; left: 16px; top: 100px; color: #fff; text-shadow: 0 1px 5px #000; font: 600 14px system-ui; pointer-events: none; }
+.castle-reticle { position: absolute; left: calc(50% - 2px); top: calc(50% - 2px); width: 4px; height: 4px; border: 1px solid #fff9; border-radius: 50%; pointer-events: none; }
+.castle-move { position: absolute; left: 20px; bottom: max(24px, env(safe-area-inset-bottom)); display: grid; grid-template-columns: repeat(3, 46px); grid-template-rows: repeat(2, 46px); gap: 4px; }
+.castle-move [data-move="forward"] { grid-column: 2; }
+.castle-move [data-move="left"] { grid-row: 2; grid-column: 1; }
+.castle-move [data-move="back"] { grid-row: 2; grid-column: 2; }
+.castle-move [data-move="right"] { grid-row: 2; grid-column: 3; }
+.castle-interior button { border: 1px solid #e0e8df88; border-radius: 6px; background: #edf3ead9; color: #223c36; display: grid; place-items: center; min-width: 46px; min-height: 46px; cursor: pointer; touch-action: none; }
+.castle-interior button:active { background: #b8d4c5; }
+.castle-interior button:disabled { opacity: .35; }
+.castle-interior button:focus-visible { outline: 3px solid #486f96; outline-offset: 2px; }
+.castle-actions { position: absolute; right: 20px; bottom: max(24px, env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 6px; }
+.castle-interior .castle-inspect { position: absolute; left: 50%; bottom: 145px; transform: translateX(-50%); display: flex; gap: 8px; padding: 8px 14px; font: 600 14px system-ui; }
+.castle-interior .castle-inspect[hidden] { display: none; }
+.castle-walking .title small { display: none; }
+.castle-walking .title strong { font-size: 22px; }
+.quest-table small { display: block; margin-top: 4px; }

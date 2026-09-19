@@ -7,6 +7,8 @@
     <title>3Dワールド | Wakuwaku Quest</title>
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.1.0/model-viewer.min.js"></script>
     <link rel="stylesheet" href="quest-inventory.css" />
+    <link rel="stylesheet" href="castle-walk.css" />
+    <script type="importmap">{"imports":{"three":"./assets/vendor/three/three.module.js"}}</script>
     <style>
       :root { color-scheme: dark; font-family: system-ui, -apple-system, "Hiragino Sans", sans-serif; }
       * { box-sizing: border-box; }
@@ -256,6 +258,17 @@
       itemClose?.addEventListener("click", () => itemPanel.classList.remove("visible"));
     </script>
     <script src="quest-items.js"></script>
+    <script src="castle-quests.js"></script>
     <script src="quest-inventory.js"></script>
+    <script>
+      if (/Katsuren_Future_Castle\.glb/i.test(rawSrc)) {
+        import("./castle-walk.js").catch(() => {
+          const note = document.createElement("p");
+          note.className = "hint";
+          note.textContent = "しろの よみこみに しっぱいしました。もういちど ひらいてね。";
+          document.body.append(note);
+        });
+      }
+    </script>
   </body>
 </html>

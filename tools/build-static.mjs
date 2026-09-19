@@ -1,4 +1,4 @@
-import { mkdir, copyFile, readFile, writeFile } from "node:fs/promises";
+import { mkdir, copyFile, readFile, writeFile, cp } from "node:fs/promises";
 import { join } from "node:path";
 import vm from "node:vm";
 
@@ -7,12 +7,15 @@ const dist = join(root, "dist");
 
 const publicFiles = ["index.html", "styles.css", "app.js", "database.js", "firebase-sync.js", "ar-dragon.html", "model-world.html", "world-access.js", "mentor-progression.js", "mentor-models.js", "quest-items.js", "quest-inventory.js", "quest-inventory.css"];
 const assetFiles = ["opening-kids.mp4", "fudozaka-dragon.glb", "fudo.glb", "fudozaka-dragon-poster.png", "MANABI_Shibuya_3F.glb", "Katsuren_Future_Castle.glb", "account.svg", "close.svg", "lucide-LICENSE", "quest-lens.svg", "quest-scroll.svg", "quest-prism.svg"];
+publicFiles.push("castle-quests.js", "castle-walk.js", "castle-walk.css");
+assetFiles.push("quest-stone.svg", "quest-ceramic.svg", "quest-brass.svg", ...["up", "down", "left", "right", "exit", "hand"].map((name) => `walk-${name}.svg`));
 
 await mkdir(dist, { recursive: true });
 await mkdir(join(dist, "assets"), { recursive: true });
 
 for (const file of publicFiles) await copyFile(join(root, file), join(dist, file));
 for (const file of assetFiles) await copyFile(join(root, "assets", file), join(dist, "assets", file));
+await cp(join(root, "assets/vendor/three"), join(dist, "assets/vendor/three"), { recursive: true });
 
 function getEnv(...names) {
   for (const name of names) {

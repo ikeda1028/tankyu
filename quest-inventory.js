@@ -22,7 +22,7 @@
   }
   function art(item, size = 48) {
     const img = document.createElement("img");
-    img.src = `assets/quest-${item.id}.svg`;
+    img.src = `assets/quest-${item.artId || item.id}.svg`;
     img.alt = item.name;
     img.width = img.height = size;
     return img;
@@ -41,7 +41,12 @@
     content.append(element("h2", `もちもの ${records.length}こ`));
     const scores = element("div", null, "quest-totals");
     const totals = QuestItems.totals(records);
-    QuestItems.definitions.forEach((item) => scores.append(element("span", `${label(item)} ${totals[item.id]}`)));
+    QuestItems.tracks.forEach((item) => {
+      const levels = records.filter((record) => !world || record.world === world).map((record) => QuestItems.definitions.find((entry) => entry.id === record.itemId && entry.castle && entry.track === item.id)?.level || 0);
+      const level = Math.max(0, ...levels);
+      const progress = level || /Katsuren_Future_Castle/i.test(source) ? ` / ${level}/10` : "";
+      scores.append(element("span", `${label(item)} ${totals[item.id]}${progress}`));
+    });
     content.append(scores);
     content.append(element("p", status, "quest-status"));
     const table = element("table", null, "quest-table");
@@ -54,6 +59,7 @@
       if (!item) return;
       const row = element("tr", null, record.key === highlight ? "quest-new" : "");
       const cell = element("td"); cell.append(art(item), element("span", item.name));
+      if (item.level) cell.append(element("small", `Lv.${item.level} / ${isKids() ? item.kidsObjective : item.objective}`));
       if (record.key === highlight) cell.append(element("strong", isKids() ? "ふえた！ +1" : "NEW +1", "quest-new-label"));
       row.append(cell, element("td", record.worldTitle), element("td", `${label(item)} +${item.value}`));
       body.append(row);
@@ -63,6 +69,7 @@
   }
   function openInventory() { activeItem = null; inventory(); if (!dialog.open) dialog.showModal(); }
   function updateButtons() {
+    window.dispatchEvent(new CustomEvent("quest-inventory-updated"));
     document.querySelectorAll("[data-quest-inventory]").forEach((button) => button.setAttribute("aria-label", `もちもの ${records.length}こ`));
     model?.querySelectorAll("[data-quest-item]").forEach((button) => {
       const owned = records.some((record) => record.key === `${world}::${button.dataset.questItem}`);
@@ -72,6 +79,7 @@
   }
   async function claim(item, answer) {
     if (!backend || busy || document.body.classList.contains("entry-locked")) return;
+    if (item.castle && !window.CastleWalk?.canCollect(item)) return;
     const session = backend, epoch = generation;
     busy = true;
     const message = content.querySelector(".quest-answer-status");
@@ -93,6 +101,7 @@
   }
   function openQuiz(item) {
     if (document.body.classList.contains("entry-locked")) return;
+    if (item.castle && !window.CastleWalk?.canCollect(item)) return;
     if (records.some((record) => record.key === `${world}::${item.id}`)) { highlight = ""; openInventory(); return; }
     activeItem = item;
     content.replaceChildren(art(item, 96), element("h2", item.name), element("p", `${label(item)} +${item.value}`));
@@ -101,7 +110,7 @@
       content.append(element("p", backend ? "アカウントで がくねんを せっていしてね。" : status));
       const back = element("a", "ちずに もどる"); back.href = "/?return=map"; content.append(back);
     } else {
-      content.append(element("p", isKids() ? "もんだい" : `${grade}のクエスト`, "quest-grade"), element("h3", quiz.text));
+      content.append(element("p", `${isKids() ? "もんだい" : `${grade}のクエスト`}${item.level ? ` / Lv.${item.level}` : ""}`, "quest-grade"), element("h3", quiz.text));
       const message = element("p", "", "quest-answer-status"); message.setAttribute("role", "status");
       quiz.choices.forEach((choice, index) => {
         const button = element("button", choice, "quest-choice");
@@ -118,9 +127,10 @@
   }
   function addHotspots() {
     if (!model?.loaded || !world || document.body.classList.contains("entry-locked")) return;
+    if (/Katsuren_Future_Castle\.glb/i.test(source)) return;
     model.querySelectorAll("[data-quest-item]").forEach((el) => el.remove());
     const dimensions = model.getDimensions(), center = model.getBoundingBoxCenter();
-    QuestItems.definitions.forEach((item) => {
+    QuestItems.tracks.forEach((item) => {
       const button = element("button", null, "quest-hotspot");
       button.type = "button"; button.slot = `hotspot-quest-${item.id}`;
       button.dataset.questItem = item.id;
@@ -131,6 +141,10 @@
     });
     updateButtons();
   }
+  window.QuestInventory = { getRecords: () => structuredClone(records), openItem: (id) => {
+    const item = QuestItems.definitions.find((entry) => entry.id === id);
+    if (item) openQuiz(item);
+  } };
   document.querySelectorAll("[data-quest-inventory]").forEach((button) => button.addEventListener("click", openInventory));
   if (model) {
     model.addEventListener("load", addHotspots);

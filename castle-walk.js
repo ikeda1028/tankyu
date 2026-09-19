@@ -1,0 +1,234 @@
+import * as THREE from "three";
+import { GLTFLoader } from "./assets/vendor/three/addons/loaders/GLTFLoader.js";
+import { Octree } from "./assets/vendor/three/addons/math/Octree.js";
+import { Capsule } from "./assets/vendor/three/addons/math/Capsule.js";
+
+const params = new URLSearchParams(location.search);
+const source = params.get("src");
+const world = QuestItems.worldKey(source);
+const viewer = document.querySelector("#world-model");
+const floors = [
+  { name: "こうりゅうのま", height: 9.95, spawn: [-11.7, 4.2], match: "Future layer 6" },
+  { name: "じっけんのま", height: 18.58, spawn: [-5.7, -16.4], match: "Future layer 7" },
+  { name: "てんぼうのま", height: 26.33, spawn: [-4.7, -36.4], match: "Future layer 8" },
+];
+const enter = document.createElement("button");
+enter.type = "button"; enter.className = "castle-enter"; enter.textContent = "しろにはいる";
+document.body.append(enter);
+const surface = document.createElement("section");
+surface.className = "castle-interior"; surface.hidden = true;
+surface.setAttribute("aria-label", "かつれんじょうの なか");
+surface.innerHTML = `<div class="castle-floor" role="status"></div><div class="castle-reticle" aria-hidden="true"></div>
+<div class="castle-move" aria-label="あるく">
+${[["forward", "up", "まえへ"], ["left", "left", "ひだりへ"], ["back", "down", "うしろへ"], ["right", "right", "みぎへ"]].map(([direction, icon, text]) => `<button type="button" data-move="${direction}" aria-label="${text}" title="${text}"><img src="assets/walk-${icon}.svg" alt="" width="24" height="24"></button>`).join("")}</div>
+<div class="castle-actions"><button type="button" data-floor="up" aria-label="うえのかい" title="うえのかい"><img src="assets/walk-up.svg" alt="" width="24" height="24"></button><button type="button" data-floor="down" aria-label="したのかい" title="したのかい"><img src="assets/walk-down.svg" alt="" width="24" height="24"></button><button type="button" class="castle-leave" aria-label="ぜんけいにもどる" title="ぜんけいにもどる"><img src="assets/walk-exit.svg" alt="" width="24" height="24"></button></div>
+<button type="button" class="castle-inspect" hidden><img src="assets/walk-hand.svg" alt="" width="20" height="20">しらべる</button>`;
+document.body.append(surface);
+const status = surface.querySelector(".castle-floor");
+const inspect = surface.querySelector(".castle-inspect");
+let renderer, scene, camera, castle, collisions, floor = 0, active = false, loading = false;
+let items = [], target = null, yaw = 0, pitch = -.32, lastTime = 0;
+let stepPulse = null;
+const keys = new Set(), held = new Set();
+const player = new Capsule(new THREE.Vector3(), new THREE.Vector3(), .22);
+const velocity = new THREE.Vector3();
+const ray = new THREE.Raycaster(), opaque = [], floorMeshes = [];
+const materials = {
+  stone: new THREE.MeshStandardMaterial({ color: 0xa9aea0, roughness: .98, metalness: 0 }),
+  ceramic: new THREE.MeshStandardMaterial({ color: 0x73958a, roughness: .38, metalness: .05 }),
+  brass: new THREE.MeshStandardMaterial({ color: 0xa29564, roughness: .5, metalness: .55 }),
+  etching: new THREE.MeshStandardMaterial({ color: 0x52685d, roughness: .8 }),
+};
+
+function makeRelic(item) {
+  const relic = new THREE.Group();
+  const shape = new THREE.Shape();
+  [[-.1, -.075], [.025, -.1], [.12, -.015], [.065, .095], [-.085, .08]].forEach(([x, y], i) => i ? shape.lineTo(x, y) : shape.moveTo(x, y));
+  shape.closePath();
+  const body = new THREE.Mesh(new THREE.ExtrudeGeometry(shape, { depth: .025, bevelEnabled: true, bevelSegments: 1, steps: 1, bevelSize: .009, bevelThickness: .005 }), materials[item.material]);
+  body.rotation.x = -Math.PI / 2; relic.add(body);
+  const engraving = new THREE.Mesh(new THREE.TorusGeometry(.037, .0028, 4, item.track === "lens" ? 4 : 20), materials.etching);
+  engraving.rotation.x = -Math.PI / 2; engraving.position.y = .036; relic.add(engraving);
+  if (item.track === "prism") engraving.scale.set(1, .6, 1);
+  relic.rotation.y = item.level * .72;
+  relic.userData.item = item;
+  return relic;
+}
+function placeItems() {
+  if (!castle) return;
+  for (const object of items) {
+    scene.remove(object);
+    object.traverse((child) => child.geometry?.dispose());
+  }
+  items = CastleQuests.next(QuestInventory.getRecords(), world).map((item) => {
+    const object = makeRelic(item), room = floors[item.floor];
+    const [x, z] = item.ground;
+    ray.set(new THREE.Vector3(x, room.height + .8, z), new THREE.Vector3(0, -1, 0));
+    const hits = ray.intersectObjects(floorMeshes.filter((mesh) => mesh.userData.castleFloor === item.floor));
+    const hit = hits.find((entry) => Math.abs(entry.point.y - room.height) < .4);
+    // Place on the visible bench/display surface when furniture covers the floor.
+    ray.set(new THREE.Vector3(x, room.height + 1.1, z), new THREE.Vector3(0, -1, 0));
+    const support = ray.intersectObjects(opaque, false).find((entry) => entry.point.y >= room.height - .2 && entry.point.y <= room.height + 1.05);
+    object.position.set(x, (support?.point.y ?? hit?.point.y ?? room.height) + .012, z);
+    object.visible = Boolean(hit); // Never suspend an item over a gap in the supplied GLB.
+    scene.add(object);
+    return object;
+  });
+}
+function verifyPlacements() {
+  return CastleQuests.items.map((item) => {
+    const room = floors[item.floor], [x, z] = item.ground;
+    ray.set(new THREE.Vector3(x, room.height + .8, z), new THREE.Vector3(0, -1, 0));
+    const hit = ray.intersectObjects(floorMeshes.filter((mesh) => mesh.userData.castleFloor === item.floor)).find((entry) => Math.abs(entry.point.y - room.height) < .4);
+    return { id: item.id, supported: Boolean(hit) };
+  });
+}
+function resize() {
+  if (!renderer) return;
+  renderer.setSize(innerWidth, innerHeight);
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+}
+function respawn(index) {
+  floor = Math.max(0, Math.min(2, index));
+  const room = floors[floor], [x, z] = room.spawn;
+  player.start.set(x, room.height + .3, z);
+  player.end.set(x, room.height + 1.5, z);
+  velocity.set(0, 0, 0); yaw = 0; pitch = -.32;
+  status.textContent = `${floor + 1} / 3　${room.name}`;
+  surface.querySelector('[data-floor="up"]').disabled = floor === 2;
+  surface.querySelector('[data-floor="down"]').disabled = floor === 0;
+}
+function visibleItem(object) {
+  if (!active || !object.visible || object.userData.item.floor !== floor) return false;
+  const point = object.position.clone().add(new THREE.Vector3(0, .04, 0));
+  const screen = point.clone().project(camera);
+  if (Math.abs(screen.x) > .96 || Math.abs(screen.y) > .96 || screen.z < -1 || screen.z > 1) return false;
+  const direction = point.sub(camera.position), distance = direction.length();
+  if (distance > 2.4) return false;
+  direction.normalize();
+  if (camera.getWorldDirection(new THREE.Vector3()).dot(direction) < .55) return false;
+  ray.set(camera.position, direction);
+  ray.far = distance - .06;
+  const blocked = ray.intersectObjects(opaque, false).length > 0;
+  ray.far = Infinity;
+  return !blocked;
+}
+function findTarget() {
+  target = items.filter(visibleItem).sort((a, b) => a.position.distanceTo(camera.position) - b.position.distanceTo(camera.position))[0] || null;
+  inspect.hidden = !target;
+  inspect.setAttribute("aria-label", target ? `ちいさなかけらを しらべる` : "しらべる");
+}
+function clearInput() { held.clear(); keys.clear(); stepPulse = null; velocity.x = velocity.z = 0; }
+function leave() {
+  active = false; clearInput(); surface.hidden = true;
+  if (document.body.classList.contains("castle-walking")) document.body.classList.remove("castle-walking");
+  if (renderer) renderer.setAnimationLoop(null);
+}
+function frame(time) {
+  if (!active) return;
+  const dt = Math.min((time - lastTime) / 1000 || .016, .045); lastTime = time;
+  if (!document.querySelector("dialog[open]") && !document.hidden) {
+    const pressed = (direction) => held.has(direction) || (stepPulse?.direction === direction && time < stepPulse.until);
+    const forward = (pressed("forward") || keys.has("KeyW") || keys.has("ArrowUp") ? 1 : 0) - (pressed("back") || keys.has("KeyS") || keys.has("ArrowDown") ? 1 : 0);
+    const side = (pressed("right") || keys.has("KeyD") || keys.has("ArrowRight") ? 1 : 0) - (pressed("left") || keys.has("KeyA") || keys.has("ArrowLeft") ? 1 : 0);
+    const move = new THREE.Vector3(side * Math.cos(yaw) - forward * Math.sin(yaw), 0, -side * Math.sin(yaw) - forward * Math.cos(yaw));
+    if (move.lengthSq()) move.normalize().multiplyScalar(2.1);
+    velocity.x = move.x; velocity.z = move.z;
+    // Three.js's capsule/Octree resolves walls and floors; small substeps prevent tunnelling.
+    for (let step = 0; step < 3; step++) {
+      velocity.y -= 14 * dt / 3;
+      player.translate(velocity.clone().multiplyScalar(dt / 3));
+      const hit = collisions.capsuleIntersect(player);
+      if (hit) {
+        player.translate(hit.normal.multiplyScalar(hit.depth));
+        if (hit.normal.y > 0) velocity.y = 0;
+      }
+    }
+    if (player.start.y < floors[floor].height - 2) respawn(floor);
+  } else clearInput();
+  camera.position.copy(player.end); camera.rotation.set(pitch, yaw, 0, "YXZ");
+  camera.updateMatrixWorld();
+  findTarget(); renderer.render(scene, camera);
+  if (params.get("qa") === "1") surface.dataset.qa = JSON.stringify({ position: camera.position.toArray(), floor, items: items.map((item) => ({id:item.userData.item.id,position:item.position.toArray(),visible:item.visible})), target: target?.userData.item.id || null });
+}
+async function enterCastle() {
+  if (loading || document.body.classList.contains("entry-locked")) return;
+  loading = true; enter.disabled = true; enter.textContent = "よみこみちゅう…";
+  try {
+    if (!renderer) {
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, preserveDrawingBuffer: params.get("qa") === "1" });
+      renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+      renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.18;
+      renderer.domElement.setAttribute("aria-label", "しろのなかを みまわす");
+      renderer.domElement.tabIndex = 0; surface.prepend(renderer.domElement);
+      scene = new THREE.Scene(); scene.background = new THREE.Color(0xc9e0e5); scene.fog = new THREE.Fog(0xc9e0e5, 110, 260);
+      camera = new THREE.PerspectiveCamera(65, 1, .04, 400);
+      scene.add(new THREE.HemisphereLight(0xebfaff, 0x81877b, 2.6));
+      const sun = new THREE.DirectionalLight(0xffefcf, 3.2); sun.position.set(-35, 80, 30); scene.add(sun);
+      const gltf = await new GLTFLoader().loadAsync(source);
+      castle = gltf.scene; scene.add(castle); castle.updateMatrixWorld(true);
+      const collider = new THREE.Group();
+      castle.traverse((mesh) => {
+        if (!mesh.isMesh) return;
+        const readable = mesh.name.replaceAll("_", " ");
+        const room = floors.findIndex((entry) => readable.includes(entry.match));
+        if (!mesh.material.transparent || mesh.material.opacity > .8) opaque.push(mesh);
+        if (room >= 0) {
+          const copy = new THREE.Mesh(mesh.geometry); copy.applyMatrix4(mesh.matrixWorld); collider.add(copy);
+          if (/timber deck|terrazzo/i.test(readable)) { mesh.userData.castleFloor = room; floorMeshes.push(mesh); }
+        }
+      });
+      collisions = new Octree().fromGraphNode(collider);
+      if (params.get("qa") === "1") surface.dataset.placements = JSON.stringify(verifyPlacements());
+      placeItems();
+      let drag = null;
+      renderer.domElement.addEventListener("pointerdown", (event) => { drag = { id: event.pointerId, x: event.clientX, y: event.clientY, distance: 0 }; renderer.domElement.setPointerCapture(event.pointerId); });
+      renderer.domElement.addEventListener("pointermove", (event) => {
+        if (!drag || drag.id !== event.pointerId) return;
+        drag.distance += Math.abs(event.clientX - drag.x) + Math.abs(event.clientY - drag.y);
+        yaw -= (event.clientX - drag.x) * .004;
+        pitch = THREE.MathUtils.clamp(pitch - (event.clientY - drag.y) * .004, -1.3, 1.1);
+        drag.x = event.clientX; drag.y = event.clientY;
+      });
+      const release = (event) => {
+        if (event.type === "pointerup" && drag && drag.distance < 6) {
+          const rect = renderer.domElement.getBoundingClientRect();
+          ray.setFromCamera(new THREE.Vector2((event.clientX - rect.left) / rect.width * 2 - 1, -(event.clientY - rect.top) / rect.height * 2 + 1), camera);
+          const hit = ray.intersectObjects(items, true)[0];
+          const object = hit?.object.parent;
+          if (object?.userData.item && visibleItem(object)) QuestInventory.openItem(object.userData.item.id);
+        }
+        drag = null;
+      };
+      renderer.domElement.addEventListener("pointerup", release); renderer.domElement.addEventListener("pointercancel", release);
+      renderer.domElement.addEventListener("webglcontextlost", (event) => { event.preventDefault(); leave(); enter.disabled = true; enter.textContent = "がめんを ひらきなおしてね"; });
+    }
+    if (document.body.classList.contains("entry-locked")) return;
+    active = true; surface.hidden = false; document.body.classList.add("castle-walking");
+    respawn(floor); resize(); lastTime = performance.now(); renderer.setAnimationLoop(frame);
+    renderer.domElement.focus();
+  } catch (error) {
+    console.warn("Castle interior unavailable", error);
+    leave(); renderer?.dispose(); renderer?.domElement.remove(); renderer = null; castle = null;
+    opaque.length = floorMeshes.length = 0;
+    enter.textContent = "もういちど はいる";
+  } finally { loading = false; enter.disabled = false; if (castle) enter.textContent = "しろにはいる"; }
+}
+enter.onclick = enterCastle;
+surface.querySelector(".castle-leave").onclick = leave;
+surface.querySelectorAll("[data-floor]").forEach((button) => button.onclick = () => { clearInput(); respawn(floor + (button.dataset.floor === "up" ? 1 : -1)); });
+surface.querySelectorAll("[data-move]").forEach((button) => {
+  button.addEventListener("click", () => { stepPulse = { direction: button.dataset.move, until: performance.now() + 160 }; });
+  button.addEventListener("pointerdown", (event) => { event.preventDefault(); held.add(button.dataset.move); button.setPointerCapture(event.pointerId); });
+  for (const event of ["pointerup", "pointercancel", "lostpointercapture"]) button.addEventListener(event, () => held.delete(button.dataset.move));
+});
+inspect.onclick = () => { if (target && visibleItem(target)) { clearInput(); QuestInventory.openItem(target.userData.item.id); } };
+window.addEventListener("keydown", (event) => { if (active && !document.querySelector("dialog[open]") && /^(Key[WASD]|Arrow)/.test(event.code)) { event.preventDefault(); keys.add(event.code); } });
+window.addEventListener("keyup", (event) => keys.delete(event.code));
+window.addEventListener("blur", clearInput);
+document.addEventListener("visibilitychange", clearInput);
+window.addEventListener("resize", resize);
+window.addEventListener("quest-inventory-updated", placeItems);
+new MutationObserver(() => { if (document.body.classList.contains("entry-locked")) leave(); }).observe(document.body, { attributes: true, attributeFilter: ["class"] });
+window.CastleWalk = { canCollect: (item) => Boolean(items.find((object) => object.userData.item.id === item.id && visibleItem(object))) };

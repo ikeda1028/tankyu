@@ -61,4 +61,5 @@ setInterval(()=>{try{const canvas=document.querySelector('model-viewer').shadowR
 for (const match of html.matchAll(/<script>([\s\S]*?)<\/script>/g)) new vm.Script(match[1]);
 await mkdir(new URL("outputs/", root), { recursive: true });
 await writeFile(new URL("outputs/quest-preview.html", root), html);
+export const previewHtml = html;
 console.log("Quest item grade, reward, duplicate and build fixture checks passed");
