@@ -410,7 +410,7 @@ function createPublicExploration(snapshot) {
     && Math.abs(Number(value.lat)) <= 90 && Math.abs(Number(value.lng)) <= 180
     ? { lat: Number(value.lat), lng: Number(value.lng) } : null;
   const points = (snapshot.customEvents || []).map((point) => ({
-    ...pickPublicFields(point, ["id", "title", "description", "impact", "locationName", "tags", "keywords", "index", "color", "eventType", "startDate", "endDate", "questionPath", "createdAt", "updatedAt"]),
+    ...pickPublicFields(point, ["id", "title", "description", "impact", "locationName", "tags", "keywords", "index", "color", "eventType", "startDate", "endDate", "questionPath", "createdAt", "updatedAt", "aiGenerated", "sourceUrl", "sourceTitle", "sourceType", "verificationNote", "verificationLevel", "verifiedAt"]),
     position: position(point.position),
     boost: pickPublicFields(point.boost, ["joy", "distance", "reflection"]),
     character: point.character ? { ...pickPublicFields(point.character, ["name", "role", "message", "symbol", "color", "localOnly", "radius", "mentorEnabled", "mentorLevel", "imageDataUrl", "downloadUrl"]), model3d: model(point.character.model3d) } : null,

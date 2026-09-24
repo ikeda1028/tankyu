@@ -7,78 +7,7 @@ const PUBLIC_API_BASE = location.hostname.endsWith("vercel.app")
 const depthLabels = ["事実まで", "背景まで", "構造まで", "越境まで", "実装まで"];
 const DEFAULT_ADMIN_EMAILS = ["ikeda@manabinomichi.com"];
 
-const seedEncounters = [
-  {
-    id: "sea-plastic-fieldwork",
-    title: "海洋ごみフィールドワーク",
-    index: 86,
-    description:
-      "海岸でごみを拾い、種類、発生源、生活とのつながりを調べる中高生向けイベント。身近な事象から、消費、流通、行政、デザインまで問いを広げます。",
-    tags: ["フィールドワーク", "海洋環境", "生活"],
-    keywords: ["海", "海洋", "ごみ", "教育", "子ども", "地域", "学び"],
-    impact: "海洋ごみ・探究学習",
-    questionPath: ["何が落ちていたか", "なぜそこに集まるか", "誰の行動や仕組みが関係するか", "他地域や産業ではどうか", "学校からどんな解決を試せるか"],
-    color: "#2f6fb3",
-    position: { x: 22, y: 28, lat: 35.308, lng: 139.545 },
-    boost: { joy: 5, distance: 4, reflection: 2 },
-  },
-  {
-    id: "vacant-house-townwalk",
-    title: "空き家とまちの居場所ツアー",
-    index: 74,
-    description:
-      "商店街や住宅地を歩き、空き家が増える理由と、若者が関われる居場所づくりを考えるイベント。建物から人口、福祉、地域経済へ探究を伸ばします。",
-    tags: ["まち歩き", "居場所", "地域"],
-    keywords: ["古民家", "空き家", "まち", "居場所", "観光", "地域"],
-    impact: "空き家活用・地域孤立",
-    questionPath: ["どんな空き家があるか", "なぜ使われなくなったか", "人口や福祉とどうつながるか", "他のまちでは何をしているか", "中高生が関われる企画は何か"],
-    color: "#d49b2a",
-    position: { x: 47, y: 43, lat: 35.011, lng: 135.768 },
-    boost: { joy: 4, distance: 5, reflection: 2 },
-  },
-  {
-    id: "ai-learning-hackday",
-    title: "AI学習支援ハッカソン",
-    index: 91,
-    description:
-      "AIを使って、学びに困っている生徒を支えるアイデアを試作するイベント。技術の面白さから、教育格差、倫理、学校制度まで問いを広げます。",
-    tags: ["AI", "学習支援", "ハッカソン"],
-    keywords: ["AI", "学習", "不登校", "教育", "支援", "メンター"],
-    impact: "教育格差・個別最適化",
-    questionPath: ["どんな学びの困りごとがあるか", "なぜ一人で解決しづらいか", "学校制度や家庭環境とどう関係するか", "医療や福祉の支援と比べると何が見えるか", "誰に試してもらい改善できるか"],
-    color: "#2f8f63",
-    position: { x: 68, y: 24, lat: 35.681, lng: 139.767 },
-    boost: { joy: 6, distance: 5, reflection: 3 },
-  },
-  {
-    id: "food-loss-market-lab",
-    title: "フードロス商店街ラボ",
-    index: 69,
-    description:
-      "商店街で売れ残りや廃棄の理由を聞き、食の循環を考えるイベント。食べ物から、流通、価格、貧困、地域の助け合いへ接続します。",
-    tags: ["フードロス", "商店街", "聞き取り"],
-    keywords: ["食", "フード", "商店街", "循環", "地域", "ボランティア"],
-    impact: "フードロス・地域経済",
-    questionPath: ["何が余っているか", "なぜ余るのか", "価格や流通とどう関係するか", "福祉や地域通貨とつなぐと何が変わるか", "学校で循環の仕組みを試せるか"],
-    color: "#c85d72",
-    position: { x: 78, y: 66, lat: 34.693, lng: 135.502 },
-    boost: { joy: 3, distance: 4, reflection: 4 },
-  },
-  {
-    id: "forest-data-camp",
-    title: "森とデータの探究キャンプ",
-    index: 82,
-    description:
-      "森でセンサーや観察記録を使い、環境変化を読み解くイベント。自然体験から、データ、観光、防災、気候変動まで探究を広げます。",
-    tags: ["自然観察", "データ", "キャンプ"],
-    keywords: ["森", "自然", "観光", "データ", "環境", "センサー"],
-    impact: "自然資本・環境回復",
-    questionPath: ["森で何が観察できるか", "なぜその変化が起きるか", "気候や人の利用とどう関係するか", "観光や防災の視点ではどう見えるか", "データで地域に何を提案できるか"],
-    color: "#246a55",
-    position: { x: 36, y: 72, lat: 35.232, lng: 138.638 },
-    boost: { joy: 5, distance: 4, reflection: 3 },
-  },
-];
+const seedEncounters = [];
 
 const kidsExplorationPoints = [
   {
@@ -259,7 +188,7 @@ const defaultState = {
   joy: 84,
   drive: 36,
   thanks: 22,
-  selected: "sea-plastic-fieldwork",
+  selected: "",
   sparks: [],
   interests: ["教育", "地域", "AI"],
   activity: [],
@@ -1096,10 +1025,16 @@ function useFudoModelForEvent() {
 function getEncounters() {
   const shared = publicExploration.points.map((event) => ({ ...event, publicReadOnly: true }));
   const events = new Map([...seedEncounters, ...shared, ...state.customEvents].map((event) => [event.id, event]));
-  return [...events.values()].map((event) => {
+  return [...events.values()].filter(isPublishableEncounter).map((event) => {
     const withCharacter = ensureEventCharacter(event);
     return { ...withCharacter, model3d: normalizeEventModel3d(withCharacter?.model3d) };
   });
+}
+
+function isPublishableEncounter(event) {
+  if (["sea-plastic-fieldwork", "vacant-house-townwalk", "ai-learning-hackday", "food-loss-market-lab", "forest-data-camp"].includes(event.id)) return false;
+  if (event.aiGenerated || event.eventType === "limited") return isVerifiedAiSuggestion(event);
+  return true;
 }
 
 function getKidsExplorationPoints(scope = "") {
@@ -3725,7 +3660,10 @@ function rankedEncounters() {
 }
 
 function getSelectedEncounter() {
-  return getEncounters().find((encounter) => encounter.id === state.selected) || getKidsPointById(state.selected) || getEncounters()[0];
+  return getEncounters().find((encounter) => encounter.id === state.selected) || getKidsPointById(state.selected) || getEncounters()[0] || {
+    id: "", title: "イベント未選択", description: "", impact: "", tags: [], keywords: [],
+    questionPath: [], index: 0, position: null, boost: { joy: 0, distance: 0, reflection: 0 },
+  };
 }
 
 function renderStats(delta = 0) {
@@ -3785,6 +3723,10 @@ function renderEventList() {
   const themeActive = Boolean(state.themeSearch?.query);
   renderEventDrawer();
   renderEncounterPanelState();
+  if (!ranked.length) {
+    els.eventList.innerHTML = '<p class="empty-note">確認済みのイベントはまだありません。</p>';
+    return;
+  }
   els.eventList.innerHTML = ranked
     .map((encounter, index) => {
       const active = encounter.id === state.selected ? " active" : "";
@@ -5153,13 +5095,28 @@ window.toggleCollapseEvents = toggleCollapseEvents;
 
 function renderEncounter() {
   const encounter = getSelectedEncounter();
+  els.encounterPanel?.classList.toggle("no-encounter", !encounter.id);
+  if (!encounter.id) return;
   const keywords = getEncounterKeywords(encounter);
   const tags = getEncounterTags(encounter);
   const questions = getEncounterQuestions(encounter);
   const overlap = keywords.filter((keyword) =>
     state.interests.some((interest) => interest.toLowerCase().includes(keyword.toLowerCase()))
   );
-  els.title.textContent = encounter.title;
+  const sourceUrl = normalizeExternalUrl(encounter.sourceUrl);
+  els.title.replaceChildren();
+  if (sourceUrl) {
+    const link = document.createElement("a");
+    link.href = sourceUrl;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.textContent = encounter.title;
+    link.className = "encounter-source-link";
+    link.setAttribute("aria-label", `${encounter.title}（イベントページを新しいタブで開く）`);
+    els.title.append(link);
+  } else {
+    els.title.textContent = encounter.title;
+  }
   els.index.textContent = encounter.index;
   els.index.style.background = encounter.color || "#2f6fb3";
   els.description.textContent = encounter.description;
@@ -5179,12 +5136,7 @@ function renderEncounter() {
   renderKidsEncounterCard(encounter, questions);
   renderEncounterCharacterHero(encounter);
   els.encounterPanel?.classList.toggle("kids-detail", Boolean(state.ui?.kidsMapActive));
-  els.media.style.setProperty(
-    "--media",
-    `radial-gradient(circle at 28% 26%, ${encounter.color || "#2f6fb3"} 0 10%, transparent 11%),
-     linear-gradient(140deg, rgba(255,255,255,.28), rgba(255,255,255,0)),
-     repeating-linear-gradient(35deg, ${encounter.color || "#2f6fb3"} 0 12px, #f7fbf6 12px 24px)`
-  );
+  els.media.style.setProperty("--encounter-accent", /^#[0-9a-f]{6}$/i.test(encounter.color) ? encounter.color : "#2f6fb3");
 }
 
 function renderKidsEncounterCard(encounter, questions = getEncounterQuestions(encounter)) {
@@ -5531,6 +5483,10 @@ function selectKidsStamp(stamp) {
 
 function saveFieldPost() {
   const encounter = getSelectedEncounter();
+  if (!encounter.id) {
+    setFieldPostStatus("投稿先のポイントを選んでください", true);
+    return;
+  }
   const text = els.fieldPostText.value.trim();
   const kidsMode = Boolean(state.ui?.kidsMapActive);
   if (!text && !pendingFieldPostImage?.dataUrl && !pendingKidsStamp) {
@@ -5708,7 +5664,9 @@ function renderMentorSuggestions(reflection) {
 function renderInterests() {
   els.interestPills.innerHTML = state.interests.map((interest) => `<span>${interest}</span>`).join("");
   const selected = getSelectedEncounter();
-  els.dailyMission.textContent = `${selected.title}で出会った事象から「${getEncounterQuestions(selected)[getDepth() - 1]}」まで問いを伸ばす。`;
+  els.dailyMission.textContent = selected.id
+    ? `${selected.title}で出会った事象から「${getEncounterQuestions(selected)[getDepth() - 1]}」まで問いを伸ばす。`
+    : "探究したいポイントを選んでください。";
 }
 
 function renderActivity() {
@@ -8090,6 +8048,7 @@ async function searchThemeOnMap(query) {
 
 async function startAdventure() {
   const encounter = getSelectedEncounter();
+  if (!encounter.id) return;
   const unlocked = await unlockLocalCharacter(encounter);
   if (!unlocked) {
     saveState();
@@ -8113,6 +8072,7 @@ async function startAdventure() {
 
 function receiveThanks() {
   const encounter = getSelectedEncounter();
+  if (!encounter.id) return;
   const depth = getDepth();
   const reflection = els.reflectionInput.value.trim();
   const hypothesis = els.hypothesisInput.value.trim();
@@ -8489,6 +8449,8 @@ function suggestionToEventData(suggestion, index = 0) {
     sourceTitle: suggestion.sourceTitle || "",
     sourceType: suggestion.sourceType || "",
     verificationNote: suggestion.verificationNote || "",
+    verificationLevel: suggestion.verificationLevel || "",
+    verifiedAt: suggestion.verifiedAt || "",
     createdAt: new Date().toISOString(),
   };
 }
