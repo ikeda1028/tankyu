@@ -273,7 +273,7 @@
     <script src="castle-quests.js"></script>
     <script src="quest-inventory.js"></script>
     <script>
-      if (/\/(?:Katsuren_Future_Castle|fudo)\.glb$/i.test(new URL(modelSrc || ".", location.href).pathname)) {
+      if (/\/(?:Katsuren_Future_Castle|fudo|MANABI_Shibuya_3F)\.glb$/i.test(new URL(modelSrc || ".", location.href).pathname)) {
         import("./castle-walk.js").catch(() => {
           const note = document.createElement("p");
           note.className = "hint";

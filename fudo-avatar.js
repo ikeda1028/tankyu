@@ -75,7 +75,7 @@ export function createFudoAvatar() {
       }
     }, undefined, () => { group.userData.modelError = true; });
   }
-  const imageSrc = preset ? `assets/avatar-presets/${preset}${["rin", "robot", "sprite"].includes(preset) ? ".png" : "-preview.jpg"}` : profile.imageDataUrl || profile.downloadUrl || "";
+  const imageSrc = preset ? `assets/avatar-presets/${preset}-transparent.png` : profile.imageDataUrl || profile.downloadUrl || "";
   if (imageSrc && /^(assets\/|data:image\/|https?:\/\/)/i.test(imageSrc)) {
     const image = new Image(); image.crossOrigin = "anonymous";
     image.onload = () => draw(image); image.src = imageSrc;

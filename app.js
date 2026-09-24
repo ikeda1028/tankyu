@@ -2,7 +2,7 @@ const STORAGE_KEY = "wakuwaku-quest-state-v3";
 const memberAvatarPresets = [
   ["coral", "珊瑚の精霊"], ["miu", "美海（みう）"], ["shisa", "シーサー"], ["sora", "星の旅人"],
   ["rin", "リン"], ["professor", "ハカセ"], ["robot", "ピコ"], ["explorer", "ワクワク冒険家"], ["manta", "海の精"], ["sprite", "キジムナー"],
-].map(([id, name]) => ({ id, name, image: `assets/avatar-presets/${["rin", "robot", "sprite"].includes(id) ? `${id}.png` : `${id}-preview.jpg`}` }));
+].map(([id, name]) => ({ id, name, image: `assets/avatar-presets/${id}-transparent.png` }));
 let publicExploration = { points: [], worlds: [] };
 const PUBLIC_API_BASE = location.hostname.endsWith("vercel.app")
   ? location.origin

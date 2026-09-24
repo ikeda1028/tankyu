@@ -7,21 +7,27 @@ import { isFudoModel, createFudoAvatar } from "./fudo-avatar.js";
 const params = new URLSearchParams(location.search);
 const source = params.get("src");
 const fudo = isFudoModel(source);
+const manabi = /\/MANABI_Shibuya_3F\.glb$/i.test(new URL(source || ".", location.href).pathname);
+const avatarWorld = fudo || manabi;
 const world = QuestItems.worldKey(source);
 const viewer = document.querySelector("#world-model");
-const floors = fudo ? [{ name: "不動尊・堂内", height: .65, spawn: [0, 10] }] : [
+const floors = fudo ? [{ name: "不動尊・堂内", height: .65, spawn: [0, 10] }] : manabi ? [
+  { name: "1階・交流と対話", height: .32, spawn: [0, 10] },
+  { name: "2階・実験ラボ", height: 4.32, spawn: [0, 10] },
+  { name: "3階・相談と探究", height: 8.32, spawn: [0, 10] },
+] : [
   { name: "こうりゅうのま", height: 9.95, spawn: [-11.7, 4.2], match: "Future layer 6" },
   { name: "じっけんのま", height: 18.58, spawn: [-5.7, -16.4], match: "Future layer 7" },
   { name: "てんぼうのま", height: 26.33, spawn: [-4.7, -36.4], match: "Future layer 8" },
 ];
 const enter = document.createElement("button");
-const enterLabel = fudo ? "アバターで入る" : "しろにはいる";
+const enterLabel = avatarWorld ? "アバターで入る" : "しろにはいる";
 enter.type = "button"; enter.className = "castle-enter"; enter.textContent = enterLabel;
 document.body.append(enter);
 const surface = document.createElement("section");
 surface.className = "castle-interior"; surface.hidden = true;
-surface.setAttribute("aria-label", fudo ? "不動尊を歩く" : "かつれんじょうの なか");
-surface.classList.toggle("fudo-interior", fudo);
+surface.setAttribute("aria-label", avatarWorld ? `${params.get("title") || "ワールド"}を歩く` : "かつれんじょうの なか");
+surface.classList.toggle("fudo-interior", avatarWorld);
 surface.innerHTML = `<div class="castle-floor" role="status"></div><div class="castle-reticle" aria-hidden="true"></div>
 <div class="castle-move" aria-label="あるく">
 ${[["forward", "up", "まえへ"], ["left", "left", "ひだりへ"], ["back", "down", "うしろへ"], ["right", "right", "みぎへ"]].map(([direction, icon, text]) => `<button type="button" data-move="${direction}" aria-label="${text}" title="${text}"><img src="assets/walk-${icon}.svg" alt="" width="24" height="24"></button>`).join("")}</div>
@@ -60,7 +66,7 @@ function makeRelic(item) {
   return relic;
 }
 function placeItems() {
-  if (!castle || fudo) return;
+  if (!castle || avatarWorld) return;
   for (const object of items) {
     scene.remove(object);
     object.traverse((child) => child.geometry?.dispose());
@@ -150,7 +156,7 @@ function frame(time) {
         if (hit.normal.y > 0) velocity.y = 0;
       }
     }
-    if (fudo) {
+    if (avatarWorld) {
       // Step onto the model's low platforms; never allow a capsule to sink into them.
       const foot = player.start.y - player.radius;
       ray.set(new THREE.Vector3(player.start.x, foot + .36, player.start.z), new THREE.Vector3(0, -1, 0));
@@ -166,12 +172,12 @@ function frame(time) {
     }
     if (player.start.y < floors[floor].height - 2) respawn(floor);
   } else clearInput();
-  if (fudo) {
+  if (avatarWorld) {
     avatar.group.position.set(player.start.x, player.start.y - player.radius, player.start.z);
     avatar.animate(time, Math.hypot(velocity.x, velocity.z));
     const target = player.start.clone().add(new THREE.Vector3(0, 1.1, 0));
     const elevation = THREE.MathUtils.clamp(-pitch + .18, .12, 1.1);
-    const offset = new THREE.Vector3(Math.sin(yaw) * Math.cos(elevation), Math.sin(elevation), Math.cos(yaw) * Math.cos(elevation)).multiplyScalar(4.5);
+    const offset = new THREE.Vector3(Math.sin(yaw) * Math.cos(elevation), Math.sin(elevation), Math.cos(yaw) * Math.cos(elevation)).multiplyScalar(manabi ? 2.8 : 4.5);
     ray.set(target, offset.clone().normalize()); ray.far = offset.length();
     const obstruction = ray.intersectObjects(opaque, false)[0]; ray.far = Infinity;
     if (obstruction) offset.setLength(Math.max(.5, obstruction.distance - .15));
@@ -190,7 +196,7 @@ async function enterCastle() {
       renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
       renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping;
       renderer.toneMappingExposure = 1.18;
-      renderer.domElement.setAttribute("aria-label", fudo ? "不動尊を見回す" : "しろのなかを みまわす");
+      renderer.domElement.setAttribute("aria-label", avatarWorld ? "ワールドを見回す" : "しろのなかを みまわす");
       renderer.domElement.tabIndex = 0; surface.prepend(renderer.domElement);
       scene = new THREE.Scene(); scene.background = new THREE.Color(0xc9e0e5); scene.fog = new THREE.Fog(0xc9e0e5, 110, 260);
       camera = new THREE.PerspectiveCamera(65, 1, .04, 400);
@@ -202,6 +208,16 @@ async function enterCastle() {
       castle.traverse((mesh) => {
         if (!mesh.isMesh) return;
         const readable = mesh.name.replaceAll("_", " ");
+        if (manabi) {
+          // Keep tiny display objects and foliage out of the walking collision tree.
+          if (!/Foliage|Stem|Soil|luminous|light|Book\d*$|Cup|Microscope|Robot link|Robot joint|Prototype|Question tree|Inquiry branch/i.test(readable)) {
+            const copy = new THREE.Mesh(mesh.geometry); copy.applyMatrix4(mesh.matrixWorld); collider.add(copy);
+          }
+          const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+          if (mats.some(material => !material.transparent || material.opacity > .8)) opaque.push(mesh);
+          if (/oak finish|Arrival plaza|Arrival walk|Stair tread|Lift landing|pod floor/i.test(readable)) floorMeshes.push(mesh);
+          return;
+        }
         if (fudo) {
           // Detailed statue/water meshes stay visual-only; architecture provides collision.
           if (/hall foundation|arrival bridge|entrance step|dry central causeway|meditation timber deck|purification stepping terrace|slender bronze support|curved glass edge|curved meditation bench|Fudo altar|cleansing basin|Swept oculus/i.test(readable)) {
@@ -219,8 +235,8 @@ async function enterCastle() {
         }
       });
       collisions = new Octree().fromGraphNode(collider);
-      if (fudo) { avatar = createFudoAvatar(); scene.add(avatar.group); }
-      if (!fudo && params.get("qa") === "1") surface.dataset.placements = JSON.stringify(verifyPlacements());
+      if (avatarWorld) { avatar = createFudoAvatar(); scene.add(avatar.group); }
+      if (!avatarWorld && params.get("qa") === "1") surface.dataset.placements = JSON.stringify(verifyPlacements());
       placeItems();
       let drag = null;
       renderer.domElement.addEventListener("pointerdown", (event) => { drag = { id: event.pointerId, x: event.clientX, y: event.clientY, distance: 0 }; renderer.domElement.setPointerCapture(event.pointerId); });
@@ -258,8 +274,8 @@ async function enterCastle() {
 enter.onclick = enterCastle;
 surface.querySelector(".castle-leave").onclick = leave;
 surface.querySelectorAll("[data-floor]").forEach((button) => button.onclick = () => { clearInput(); respawn(floor + (button.dataset.floor === "up" ? 1 : -1)); });
-if (fudo) {
-  surface.querySelectorAll("[data-floor]").forEach(button => { button.hidden = true; });
+if (avatarWorld) {
+  if (fudo) surface.querySelectorAll("[data-floor]").forEach(button => { button.hidden = true; });
   const reset = document.createElement("button");
   reset.type = "button"; reset.textContent = "入口"; reset.title = "入口に戻る"; reset.setAttribute("aria-label", "入口に戻る");
   reset.onclick = () => { clearInput(); respawn(0); };

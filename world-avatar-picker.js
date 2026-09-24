@@ -14,7 +14,7 @@ function choose(id) {
 }
 for (const [id, name] of entries) {
   const button = document.createElement("button"); button.dataset.id = id; button.type = "button";
-  const image = new Image(); image.src = `assets/avatar-presets/${id}${["rin","robot","sprite"].includes(id) ? ".png" : "-preview.jpg"}`; image.alt = "";
+  const image = new Image(); image.src = `assets/avatar-presets/${id}-transparent.png`; image.alt = "";
   const label = document.createElement("span"); label.textContent = name; button.append(image, label); button.onclick = () => choose(id); $("choices").append(button);
 }
 try { choose(JSON.parse(localStorage.getItem("wakuwaku-quest-state-v3"))?.member?.avatar?.presetId || "coral"); } catch { choose("coral"); }
