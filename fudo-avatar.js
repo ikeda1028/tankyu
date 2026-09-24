@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { GLTFLoader } from "./assets/vendor/three/addons/loaders/GLTFLoader.js";
 
 export function isFudoModel(source) {
   try {
@@ -51,7 +52,29 @@ export function createFudoAvatar() {
   const badge = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, depthTest: true }));
   badge.position.y = 2.05; badge.scale.set(.52, .52, 1); group.add(badge);
   const presets = ["coral", "miu", "shisa", "sora", "rin", "professor", "robot", "explorer", "manta", "sprite"];
-  const preset = presets.includes(profile.presetId) ? profile.presetId : "";
+  const incoming = new URLSearchParams(location.search).get("avatar");
+  const preset = presets.includes(incoming) ? incoming : presets.includes(profile.presetId) ? profile.presetId : "";
+  let mixer, action, lastTime;
+  if (preset) {
+    group.userData.avatarId = preset;
+    new GLTFLoader().load(`assets/world-avatars/${preset}.glb`, gltf => {
+      const model = gltf.scene;
+      const box = new THREE.Box3().setFromObject(model);
+      const height = box.max.y - box.min.y;
+      if (!Number.isFinite(height) || height <= 0) return;
+      const scale = 1.65 / height;
+      model.scale.multiplyScalar(scale);
+      model.position.set(-(box.min.x + box.max.x) * scale / 2, -box.min.y * scale, -(box.min.z + box.max.z) * scale / 2);
+      const visual = new THREE.Group(); visual.add(model); visual.rotation.y = Math.PI;
+      for (const child of group.children) child.visible = false;
+      group.add(visual); group.userData.modelLoaded = true;
+      if (gltf.animations.length) {
+        mixer = new THREE.AnimationMixer(model);
+        action = mixer.clipAction(gltf.animations.find(clip => /walk/i.test(clip.name)) || gltf.animations[0]);
+        action.play();
+      }
+    }, undefined, () => { group.userData.modelError = true; });
+  }
   const imageSrc = preset ? `assets/avatar-presets/${preset}${["rin", "robot", "sprite"].includes(preset) ? ".png" : "-preview.jpg"}` : profile.imageDataUrl || profile.downloadUrl || "";
   if (imageSrc && /^(assets\/|data:image\/|https?:\/\/)/i.test(imageSrc)) {
     const image = new Image(); image.crossOrigin = "anonymous";
@@ -60,6 +83,8 @@ export function createFudoAvatar() {
   return {
     group,
     animate(time, speed) {
+      const dt = lastTime === undefined ? 0 : Math.min((time - lastTime) / 1000, .1); lastTime = time;
+      if (action) { action.enabled = speed > .05; action.timeScale = Math.min(speed / 1.8, 2); mixer.update(dt); }
       for (const { pivot, sign } of limbs) pivot.rotation.x = Math.sin(time * .009) * .48 * sign * Math.min(speed / 2.1, 1);
     },
   };

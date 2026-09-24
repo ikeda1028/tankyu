@@ -466,7 +466,24 @@ async function publishExploration(config, state, snapshot) {
   return content;
 }
 
+async function worldAvatar(config, presetId) {
+  const user = await getAuthenticatedUser(config);
+  await requireAuthenticatedUser(config, { auth: { email: user?.email } });
+  const { firestore, db } = await connectFirebase(config);
+  const userId = getFirebaseUserId({ auth: { email: user.email } });
+  const ref = firestore.doc(db, FIREBASE_COLLECTION, userId);
+  if (presetId === undefined) return (await firestore.getDoc(ref)).data()?.worldAvatar || null;
+  if (!["", "coral", "miu", "shisa", "sora", "rin", "professor", "robot", "explorer", "manta", "sprite"].includes(presetId)) throw new Error("Unknown avatar");
+  return firestore.runTransaction(db, async transaction => {
+    const doc = await transaction.get(ref);
+    const value = { presetId, revision: (doc.data()?.worldAvatar?.revision || 0) + 1 };
+    transaction.set(ref, { userId, email: user.email, emailLower: user.email.toLowerCase(), worldAvatar: value }, { merge: true });
+    return value;
+  });
+}
+
 window.WakuwakuFirebase = {
+  worldAvatar,
   isAuthenticated,
   getAuthenticatedUser,
   signInGoogle,

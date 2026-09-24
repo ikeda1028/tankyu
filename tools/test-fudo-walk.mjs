@@ -25,10 +25,12 @@ try {
     page.on("pageerror", e=> errors.push(e.message));
     page.on("console", msg => { if(msg.type()==="warning") console.log("WARN",msg.text().slice(0,200)); });
     await page.route("https://**/*",route=>route.abort());
-    await page.goto(origin + "/model-world.html?src=assets/fudo.glb&title=不動尊&qa=1");
+    await page.goto(origin + "/model-world.html?src=assets/fudo.glb&title=不動尊&qa=1&avatar=shisa");
     await page.locator(".castle-enter").click();
     await page.waitForFunction(()=>document.querySelector(".castle-interior")?.dataset.qa,{},{timeout:60000});
+    await page.waitForFunction(()=>JSON.parse(document.querySelector(".castle-interior").dataset.qa).avatarLoaded,{},{timeout:60000});
     const before=JSON.parse(await page.locator(".castle-interior").getAttribute("data-qa"));
+    assert.equal(before.avatarId,"shisa");
     if(mobile) {
       const b=await page.locator('[data-move="forward"]').boundingBox();
       await page.mouse.move(b.x+b.width/2,b.y+b.height/2);await page.mouse.down();await page.waitForTimeout(1300);await page.mouse.up();

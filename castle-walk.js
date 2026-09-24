@@ -179,7 +179,7 @@ function frame(time) {
   } else { camera.position.copy(player.end); camera.rotation.set(pitch, yaw, 0, "YXZ"); }
   camera.updateMatrixWorld();
   findTarget(); renderer.render(scene, camera);
-  if (params.get("qa") === "1") surface.dataset.qa = JSON.stringify({ position: camera.position.toArray(), avatar: avatar?.group.position.toArray(), floor, items: items.map((item) => ({id:item.userData.item.id,position:item.position.toArray(),visible:item.visible})), target: target?.userData.item.id || null });
+  if (params.get("qa") === "1") surface.dataset.qa = JSON.stringify({ position: camera.position.toArray(), avatar: avatar?.group.position.toArray(), avatarId: avatar?.group.userData.avatarId, avatarLoaded: avatar?.group.userData.modelLoaded, floor, items: items.map((item) => ({id:item.userData.item.id,position:item.position.toArray(),visible:item.visible})), target: target?.userData.item.id || null });
 }
 async function enterCastle() {
   if (loading || document.body.classList.contains("entry-locked")) return;

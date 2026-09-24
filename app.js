@@ -1009,8 +1009,10 @@ function getModelWorldUrl(model3d, title = "3Dワールド", entrance = null) {
   const model = normalizeEventModel3d(model3d);
   if (!model) return "";
   const hosted = window.WorldDestinations?.hostedUrl(model.modelUrl);
-  if (hosted && !WorldAccess.requiresLocation()) return hosted;
+  const presetId = normalizeAvatar(state.member.avatar).presetId;
+  if (hosted && !WorldAccess.requiresLocation()) return `${hosted}#avatar=${encodeURIComponent(presetId || "coral")}`;
   const params = new URLSearchParams({ src: model.modelUrl, title: model.title || title });
+  if (presetId) params.set("avatar", presetId);
   const point = WorldAccess.position(entrance);
   if (point) { params.set("lat", point.lat); params.set("lng", point.lng); }
   if (getModeForUserAge() === "kids") params.set("kids", "1");
@@ -1809,7 +1811,7 @@ async function loadFirebaseSnapshot(options = {}) {
     const result = await window.WakuwakuFirebase.loadSnapshot(config, state);
     if (!state.auth.loggedIn || state.auth.email.toLowerCase() !== requestedAuthEmail.toLowerCase()) return false;
     firebaseLoadFailed = false;
-    if (!result?.snapshot && !result?.stats && !result?.memberProfile) {
+    if (!result?.snapshot && !result?.stats && !result?.memberProfile && !result?.worldAvatar) {
       if (!options.silent) setFirebaseStatus("Firebaseに保存データまたは数値がありません", true);
       return false;
     }
@@ -1836,6 +1838,7 @@ async function loadFirebaseSnapshot(options = {}) {
       applyCloudMemberProfile(loadedSnapshot, profile);
       memberProfileRevision = profile.revision;
     }
+    if (result.worldAvatar) loadedSnapshot.member.avatar = normalizeAvatar({ ...loadedSnapshot.member.avatar, presetId: result.worldAvatar.presetId });
     const appliedNumericFields = applyFirebaseNumericFields(loadedSnapshot, result);
     if (result.snapshot && !hasPortableUserData(loadedSnapshot) && !appliedNumericFields.length) {
       if (!options.silent) setFirebaseStatus("Firebaseに引き継げるデータがまだありません", true);
@@ -1940,6 +1943,7 @@ async function syncMemberProfile() {
   let saved = false;
   try {
     const profile = await window.WakuwakuFirebase.saveMemberProfile(getFirebaseConfig(), state, state, memberProfileRevision);
+    await window.WakuwakuFirebase.worldAvatar(getFirebaseConfig(), normalizeAvatar(state.member.avatar).presetId);
     if (!state.auth.loggedIn || state.auth.email !== email) return false;
     memberProfileRevision = profile.revision;
     saveState({ localOnly: true });
@@ -9393,6 +9397,10 @@ els.memberAvatarPhoto?.addEventListener("change", handleAvatarPhotoChange);
 els.memberBirthdate?.addEventListener("change", () => updateMemberGradeFromBirthdate({ applyGrade: true }));
 els.generateMemberAvatarButton?.addEventListener("click", generateMemberAvatar);
 const avatarModeTabs = [document.querySelector("#avatar-preset-tab"), document.querySelector("#avatar-image-tab")];
+const commonAvatarLink = document.createElement("a");
+commonAvatarLink.href = "/world-avatar.html";
+commonAvatarLink.textContent = "全ワールド共通アバター";
+document.querySelector("#avatar-preset-grid").after(commonAvatarLink);
 document.querySelector("#avatar-use-original").addEventListener("click", () => {
   state.member.avatar = normalizeAvatar({ ...getAvatarFromEditor(), presetId: "" });
   renderAvatarEditor(); renderMemberSummary();
