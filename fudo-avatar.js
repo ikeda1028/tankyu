@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { GLTFLoader } from "./assets/vendor/three/addons/loaders/GLTFLoader.js";
+import { animatedAvatars, loadAvatarMotion } from "./avatar-motion.js";
 
 export function isFudoModel(source) {
   try {
@@ -54,10 +55,16 @@ export function createFudoAvatar() {
   const presets = ["coral", "miu", "shisa", "sora", "rin", "professor", "robot", "explorer", "manta", "sprite"];
   const incoming = new URLSearchParams(location.search).get("avatar");
   const preset = presets.includes(incoming) ? incoming : presets.includes(profile.presetId) ? profile.presetId : "";
-  let mixer, action, lastTime;
+  let mixer, action, lastTime, motion;
+  const ready = preset && animatedAvatars.includes(preset) ? loadAvatarMotion(preset).then(result => {
+    motion = result;
+    for (const child of group.children) child.visible = false;
+    group.add(motion.mesh); group.userData.modelLoaded = true;
+    return result;
+  }).catch(() => { group.userData.motionError = true; return null; }) : Promise.resolve(null);
   if (preset) {
     group.userData.avatarId = preset;
-    new GLTFLoader().load(`assets/world-avatars/${preset}.glb`, gltf => {
+    ready.then(result => { if (result) return; new GLTFLoader().load(`assets/world-avatars/${preset}.glb`, gltf => {
       const model = gltf.scene;
       const box = new THREE.Box3().setFromObject(model);
       const height = box.max.y - box.min.y;
@@ -73,7 +80,7 @@ export function createFudoAvatar() {
         action = mixer.clipAction(gltf.animations.find(clip => /walk/i.test(clip.name)) || gltf.animations[0]);
         action.play();
       }
-    }, undefined, () => { group.userData.modelError = true; });
+    }, undefined, () => { group.userData.modelError = true; }); });
   }
   const imageSrc = preset ? `assets/avatar-presets/${preset}-transparent.png` : profile.imageDataUrl || profile.downloadUrl || "";
   if (imageSrc && /^(assets\/|data:image\/|https?:\/\/)/i.test(imageSrc)) {
@@ -82,7 +89,14 @@ export function createFudoAvatar() {
   }
   return {
     group,
+    ready,
     animate(time, speed) {
+      if (motion) {
+        motion.animate(time, speed);
+        group.userData.motion = motion.mesh.userData.motion;
+        group.userData.blink = motion.mesh.userData.blink;
+        return;
+      }
       const dt = lastTime === undefined ? 0 : Math.min((time - lastTime) / 1000, .1); lastTime = time;
       if (action) { action.enabled = speed > .05; action.timeScale = Math.min(speed / 1.8, 2); mixer.update(dt); }
       for (const { pivot, sign } of limbs) pivot.rotation.x = Math.sin(time * .009) * .48 * sign * Math.min(speed / 2.1, 1);

@@ -22,3 +22,8 @@
 .castle-walking .title strong { font-size: 22px; }
 .quest-table small { display: block; margin-top: 4px; }
 .fudo-interior [data-floor][hidden], .fudo-interior .castle-reticle { display: none; }
+.avatar-motion-controls { position: absolute; top: 138px; left: 16px; width: 180px; max-width: calc(100vw - 96px); padding: 10px; border-radius: 6px; background: #f7faf9ed; color: #243d43; font: 14px system-ui; }
+.avatar-motion-controls summary { cursor: pointer; font-weight: 600; }
+.avatar-motion-controls label { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 10px; white-space: nowrap; }
+.avatar-motion-controls input[type="range"] { width: 90px; min-width: 0; }
+.avatar-motion-controls select { max-width: 115px; padding: 5px; }

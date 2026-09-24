@@ -129,6 +129,33 @@ function findTarget() {
   inspect.hidden = !target;
   inspect.setAttribute("aria-label", target ? `ちいさなかけらを しらべる` : "しらべる");
 }
+let runMode = false;
+function addAvatarControls() {
+  const panel = document.createElement("details");
+  panel.className = "avatar-motion-controls";
+  panel.innerHTML = `<summary>動作・表情</summary><label><input type="checkbox" data-run>走る</label>
+    <label>待機<select data-idle><option value="auto">自動</option><option value="still">静止</option></select></label>
+    <label><input type="checkbox" data-blink checked disabled>まばたき</label>
+    <label>笑顔<input type="range" data-smile min="0" max="1" step=".05" value="0" disabled></label>
+    <label>口の開き<input type="range" data-mouth min="0" max="1" step=".05" value="0" disabled></label>`;
+  surface.append(panel);
+  panel.querySelector('[data-run]').onchange = event => { runMode = event.target.checked; };
+  panel.querySelector('[data-idle]').disabled = true;
+  avatar.ready.then(motion => {
+    if (!motion) return;
+    const select = panel.querySelector('[data-idle]'); select.disabled = false;
+    for (const name of motion.capabilities.idles) {
+      const option = document.createElement('option'); option.value = name;
+      option.textContent = name === 'dance' ? 'ダンス' : name === 'idle_02' ? '待機 02' : '待機 03'; select.append(option);
+    }
+    select.onchange = () => { motion.settings.idle = select.value; };
+    for (const name of ['blink', 'smile', 'mouth']) {
+      const input = panel.querySelector(`[data-${name}]`); input.disabled = !motion.capabilities[name];
+      if (input.disabled && name === 'blink') input.checked = false;
+      input.oninput = () => { motion.settings[name] = name === 'blink' ? input.checked : Number(input.value); };
+    }
+  });
+}
 function clearInput() { held.clear(); keys.clear(); stepPulse = null; velocity.x = velocity.z = 0; }
 function leave() {
   active = false; clearInput(); surface.hidden = true;
@@ -143,7 +170,7 @@ function frame(time) {
     const forward = (pressed("forward") || keys.has("KeyW") || keys.has("ArrowUp") ? 1 : 0) - (pressed("back") || keys.has("KeyS") || keys.has("ArrowDown") ? 1 : 0);
     const side = (pressed("right") || keys.has("KeyD") || keys.has("ArrowRight") ? 1 : 0) - (pressed("left") || keys.has("KeyA") || keys.has("ArrowLeft") ? 1 : 0);
     const move = new THREE.Vector3(side * Math.cos(yaw) - forward * Math.sin(yaw), 0, -side * Math.sin(yaw) - forward * Math.cos(yaw));
-    if (move.lengthSq()) move.normalize().multiplyScalar(2.1);
+    if (move.lengthSq()) move.normalize().multiplyScalar(runMode || keys.has('ShiftLeft') || keys.has('ShiftRight') ? 3.6 : 2.1);
     velocity.x = move.x; velocity.z = move.z;
     const before = player.start.clone();
     // Three.js's capsule/Octree resolves walls and floors; small substeps prevent tunnelling.
@@ -185,7 +212,7 @@ function frame(time) {
   } else { camera.position.copy(player.end); camera.rotation.set(pitch, yaw, 0, "YXZ"); }
   camera.updateMatrixWorld();
   findTarget(); renderer.render(scene, camera);
-  if (params.get("qa") === "1") surface.dataset.qa = JSON.stringify({ position: camera.position.toArray(), avatar: avatar?.group.position.toArray(), avatarId: avatar?.group.userData.avatarId, avatarLoaded: avatar?.group.userData.modelLoaded, floor, items: items.map((item) => ({id:item.userData.item.id,position:item.position.toArray(),visible:item.visible})), target: target?.userData.item.id || null });
+  if (params.get("qa") === "1") surface.dataset.qa = JSON.stringify({ position: camera.position.toArray(), avatar: avatar?.group.position.toArray(), avatarId: avatar?.group.userData.avatarId, avatarLoaded: avatar?.group.userData.modelLoaded, motion: avatar?.group.userData.motion, blink: avatar?.group.userData.blink, floor, items: items.map((item) => ({id:item.userData.item.id,position:item.position.toArray(),visible:item.visible})), target: target?.userData.item.id || null });
 }
 async function enterCastle() {
   if (loading || document.body.classList.contains("entry-locked")) return;
@@ -235,7 +262,7 @@ async function enterCastle() {
         }
       });
       collisions = new Octree().fromGraphNode(collider);
-      if (avatarWorld) { avatar = createFudoAvatar(); scene.add(avatar.group); }
+      if (avatarWorld) { avatar = createFudoAvatar(); scene.add(avatar.group); addAvatarControls(); }
       if (!avatarWorld && params.get("qa") === "1") surface.dataset.placements = JSON.stringify(verifyPlacements());
       placeItems();
       let drag = null;
@@ -287,7 +314,7 @@ surface.querySelectorAll("[data-move]").forEach((button) => {
   for (const event of ["pointerup", "pointercancel", "lostpointercapture"]) button.addEventListener(event, () => held.delete(button.dataset.move));
 });
 inspect.onclick = () => { if (target && visibleItem(target)) { clearInput(); QuestInventory.openItem(target.userData.item.id); } };
-window.addEventListener("keydown", (event) => { if (active && !document.querySelector("dialog[open]") && /^(Key[WASD]|Arrow)/.test(event.code)) { event.preventDefault(); keys.add(event.code); } });
+window.addEventListener("keydown", (event) => { if (active && !document.querySelector("dialog[open]") && !event.target.closest('input, select, textarea') && /^(Key[WASD]|Arrow|Shift)/.test(event.code)) { event.preventDefault(); keys.add(event.code); } });
 window.addEventListener("keyup", (event) => keys.delete(event.code));
 window.addEventListener("blur", clearInput);
 document.addEventListener("visibilitychange", clearInput);
