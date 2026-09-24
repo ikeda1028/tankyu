@@ -1,4 +1,8 @@
 const STORAGE_KEY = "wakuwaku-quest-state-v3";
+const memberAvatarPresets = [
+  ["coral", "珊瑚の精霊"], ["miu", "美海（みう）"], ["shisa", "シーサー"], ["sora", "星の旅人"],
+  ["rin", "リン"], ["professor", "ハカセ"], ["robot", "ピコ"], ["explorer", "ワクワク冒険家"], ["manta", "海の精"], ["sprite", "キジムナー"],
+].map(([id, name]) => ({ id, name, image: `assets/avatar-presets/${["rin", "robot", "sprite"].includes(id) ? `${id}.png` : `${id}-preview.jpg`}` }));
 let publicExploration = { points: [], worlds: [] };
 const PUBLIC_API_BASE = location.hostname.endsWith("vercel.app")
   ? location.origin
@@ -842,6 +846,7 @@ function normalizeAvatar(avatar) {
   const color = String(avatar?.color || fallback.color).trim();
   const imageDataUrl = String(avatar?.imageDataUrl || "").trim();
   return {
+    presetId: String(avatar?.presetId || "").trim(),
     symbol: String(avatar?.symbol || fallback.symbol).trim().slice(0, 2) || fallback.symbol,
     color: /^#[0-9a-f]{6}$/i.test(color) ? color : fallback.color,
     aura: String(avatar?.aura || fallback.aura).trim().slice(0, 16) || fallback.aura,
@@ -1003,6 +1008,8 @@ function getEventModel3dFromForm(title = "現地3Dモデル") {
 function getModelWorldUrl(model3d, title = "3Dワールド", entrance = null) {
   const model = normalizeEventModel3d(model3d);
   if (!model) return "";
+  const hosted = window.WorldDestinations?.hostedUrl(model.modelUrl);
+  if (hosted && !WorldAccess.requiresLocation()) return hosted;
   const params = new URLSearchParams({ src: model.modelUrl, title: model.title || title });
   const point = WorldAccess.position(entrance);
   if (point) { params.set("lat", point.lat); params.set("lng", point.lng); }
@@ -2627,6 +2634,8 @@ function createPhotoMarkerIcon(imageSrc, color = "#2f8f63", label = "友") {
 
 function createAvatarMapMarkerIcon() {
   const avatar = normalizeAvatar(state.member.avatar);
+  const preset = memberAvatarPresets.find(item => item.id === avatar.presetId);
+  if (preset) return { url: preset.image, scaledSize: new google.maps.Size(60, 74), anchor: new google.maps.Point(30, 70) };
   const imageSrc = avatar.imageDataUrl || avatar.downloadUrl || "";
   const safeColor = /^#[0-9a-f]{6}$/i.test(avatar.color) ? avatar.color : "#2f8f63";
   if (imageSrc) {
@@ -5878,7 +5887,7 @@ function renderMemberSummary() {
 
 function renderAvatarElement(element, avatar) {
   if (!element) return;
-  const imageSrc = avatar.imageDataUrl || avatar.downloadUrl || "";
+  const imageSrc = memberAvatarPresets.find(item => item.id === avatar.presetId)?.image || avatar.imageDataUrl || avatar.downloadUrl || "";
   const equippedItems = getEquippedKidsItems(avatar);
   element.classList.add("avatar-3d");
   const face = imageSrc
@@ -7259,6 +7268,7 @@ function showMemberForm() {
 function getAvatarFromEditor() {
   const current = normalizeAvatar(state.member.avatar);
   return normalizeAvatar({
+    ...current,
     symbol: els.memberAvatarSymbol?.value,
     color: els.memberAvatarColor?.value,
     aura: els.memberAvatarAura?.value,
@@ -7275,6 +7285,11 @@ function renderAvatarEditor() {
   if (!els.memberAvatarPreview) return;
   const avatar = getAvatarFromEditor();
   renderAvatarElement(els.memberAvatarPreview, avatar);
+  const preset = memberAvatarPresets.find(item => item.id === avatar.presetId);
+  document.querySelector("#avatar-current-name").textContent = preset?.name || "自分のアバター";
+  document.querySelector("#avatar-current-kind").textContent = preset ? "選択済み・プロフィール画像" : avatar.imageDataUrl || avatar.downloadUrl ? "オリジナル画像" : "シンボル";
+  document.querySelector("#avatar-use-original").hidden = !preset;
+  document.querySelectorAll("[data-avatar-preset]").forEach(button => button.setAttribute("aria-pressed", String(button.dataset.avatarPreset === avatar.presetId)));
 }
 
 function updateAvatarFromEditor() {
@@ -7430,6 +7445,9 @@ async function generateMemberAvatar() {
     const compressedImage = await compressGeneratedAvatarImage(data.imageDataUrl);
     state.member.avatar = {
       ...getAvatarFromEditor(),
+      presetId: "",
+      downloadUrl: "",
+      storagePath: "",
       imageDataUrl: compressedImage,
       generatedAt: new Date().toISOString(),
       generationStage: "simple-3d",
@@ -9374,6 +9392,38 @@ els.memberForm.addEventListener("submit", saveMemberInfo);
 els.memberAvatarPhoto?.addEventListener("change", handleAvatarPhotoChange);
 els.memberBirthdate?.addEventListener("change", () => updateMemberGradeFromBirthdate({ applyGrade: true }));
 els.generateMemberAvatarButton?.addEventListener("click", generateMemberAvatar);
+const avatarModeTabs = [document.querySelector("#avatar-preset-tab"), document.querySelector("#avatar-image-tab")];
+document.querySelector("#avatar-use-original").addEventListener("click", () => {
+  state.member.avatar = normalizeAvatar({ ...getAvatarFromEditor(), presetId: "" });
+  renderAvatarEditor(); renderMemberSummary();
+  document.querySelector("#avatar-preset-status").textContent = "元のアバターに戻しました。「会員情報を保存」で確定します。";
+});
+function selectAvatarMode(index) {
+  avatarModeTabs.forEach((tab, i) => {
+    tab.setAttribute("aria-selected", String(i === index)); tab.tabIndex = i === index ? 0 : -1;
+    document.getElementById(tab.getAttribute("aria-controls")).hidden = i !== index;
+  });
+}
+avatarModeTabs.forEach((tab, index) => {
+  tab.addEventListener("click", () => selectAvatarMode(index));
+  tab.addEventListener("keydown", event => {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+    event.preventDefault(); const next = event.key === "Home" ? 0 : event.key === "End" ? 1 : 1 - index;
+    selectAvatarMode(next); avatarModeTabs[next].focus();
+  });
+});
+for (const preset of memberAvatarPresets) {
+  const button = document.createElement("button"); button.type = "button"; button.dataset.avatarPreset = preset.id;
+  button.setAttribute("aria-pressed", String(state.member.avatar.presetId === preset.id));
+  const img = document.createElement("img"); img.src = preset.image; img.alt = ""; img.width = 100; img.height = 110;
+  const label = document.createElement("span"); label.textContent = preset.name; button.append(img, label);
+  button.addEventListener("click", () => {
+    state.member.avatar = normalizeAvatar({ ...getAvatarFromEditor(), presetId: preset.id });
+    renderAvatarEditor(); renderMemberSummary();
+    document.querySelector("#avatar-preset-status").textContent = `${preset.name}を選択しました。「会員情報を保存」で確定します。`;
+  });
+  document.querySelector("#avatar-preset-grid").append(button);
+}
 els.addPartyRoleButton?.addEventListener("click", addPartyRole);
 els.memberPartyRoleInput?.addEventListener("keydown", (event) => {
   if (event.key !== "Enter") return;

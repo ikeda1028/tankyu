@@ -1,0 +1,18 @@
+import assert from "node:assert/strict";
+import vm from "node:vm";
+import { readFile } from "node:fs/promises";
+const root = new URL("../", import.meta.url);
+const ctx = vm.createContext({ window: {}, URL, URLSearchParams, PUBLIC_API_BASE: "https://tankyu-five.vercel.app", WorldAccess: { requiresLocation: () => false, position: p => p }, getModeForUserAge: () => "normal" });
+vm.runInContext(await readFile(new URL("world-destinations.js", root), "utf8"), ctx);
+const source = await readFile(new URL("app.js", root), "utf8");
+vm.runInContext(source.slice(source.indexOf("function normalizeEventModelUrl("), source.indexOf("function useManabiModelForEvent(")), ctx);
+const model = { modelUrl: "assets/Katsuren_Future_Castle.glb", title: "勝連未来城" };
+assert.equal(ctx.getModelWorldUrl(model), "https://katsuren-quest-visit.luketesla4.chatgpt.site/");
+assert.ok(ctx.getModelWorldUrl({ modelUrl: "assets/fudo.glb" }).startsWith("/model-world.html?"));
+assert.equal(ctx.window.WorldDestinations.hostedUrl("javascript:Katsuren_Future_Castle.glb"), "");
+assert.equal(ctx.window.WorldDestinations.hostedUrl("https://example.com/Other.glb?name=Katsuren_Future_Castle.glb"), "");
+ctx.WorldAccess.requiresLocation = () => true;
+const gated = ctx.getModelWorldUrl(model, "勝連城", { lat: 26.332836, lng: 127.879652 });
+assert.ok(gated.startsWith("/model-world.html?"));
+assert.ok(gated.includes("lat=26.332836"));
+console.log("PASS: Katsuren destination, unchanged other worlds, invalid inputs, location-gated entry retained");

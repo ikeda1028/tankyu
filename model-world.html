@@ -89,6 +89,7 @@
     <script src="public-config.js"></script>
     <script src="firebase-sync.js"></script>
     <script src="world-access.js"></script>
+    <script src="world-destinations.js"></script>
     <script>
       const params = new URLSearchParams(location.search);
       const rawSrc = (params.get("src") || "").trim();
@@ -143,6 +144,8 @@
         lastFix = fix;
         document.body.classList.remove("entry-locked");
         gate.hidden = true;
+        const hosted = window.WorldDestinations?.hostedUrl(modelSrc);
+        if (hosted) { location.replace(hosted); return true; }
         if (!viewer.getAttribute("src")) viewer.src = modelSrc;
         return true;
       }

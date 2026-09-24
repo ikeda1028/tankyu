@@ -92,9 +92,31 @@
           </select>
           <fieldset class="avatar-fieldset">
             <legend>自分のアバター</legend>
-            <div class="avatar-editor">
+            <div class="avatar-current">
               <div id="member-avatar-preview" class="member-avatar-preview">?</div>
+              <div><p class="avatar-current-label">現在使っているアバター</p><strong id="avatar-current-name">自分のアバター</strong><p id="avatar-current-kind">画像</p></div>
+            </div>
+            <div class="avatar-3d-action">
+              <button type="button" class="secondary-button" disabled aria-describedby="avatar-3d-availability">この姿を3Dにする</button>
+              <p id="avatar-3d-availability">準備中：料金・購入機能はまだありません。</p>
+            </div>
+            <div class="avatar-mode-tabs" role="tablist" aria-label="アバターの作成方法">
+              <button type="button" id="avatar-preset-tab" role="tab" aria-selected="true" aria-controls="avatar-preset-panel">用意されたものから選ぶ</button>
+              <button type="button" id="avatar-image-tab" role="tab" aria-selected="false" aria-controls="avatar-image-panel" tabindex="-1">画像から作る</button>
+            </div>
+            <div id="avatar-preset-panel" role="tabpanel" aria-labelledby="avatar-preset-tab"><div id="avatar-preset-grid" class="avatar-preset-grid"></div><button id="avatar-use-original" type="button" class="secondary-button" hidden>自分で作ったアバターに戻す</button><p id="avatar-preset-status" role="status"></p></div>
+            <div id="avatar-image-panel" role="tabpanel" aria-labelledby="avatar-image-tab" hidden>
               <div class="avatar-controls">
+                <label for="member-avatar-prompt">どんな姿にしたい？</label>
+                <textarea id="member-avatar-prompt" rows="3" placeholder="例：丸くて水色。虫眼鏡を持った、やさしい探偵の相棒キャラ。"></textarea>
+                <label for="member-avatar-photo">参考にする写真（任意）</label>
+                <input id="member-avatar-photo" type="file" accept="image/*" />
+                <div id="member-avatar-photo-preview" class="avatar-photo-preview hidden"></div>
+                <button id="generate-member-avatar-button" class="secondary-button" type="button">アバター画像を生成</button>
+                <p id="member-avatar-status" class="member-save-status" aria-live="polite"></p>
+              </div>
+            </div>
+            <details class="avatar-advanced"><summary>詳しい設定</summary><div class="avatar-controls">
                 <label for="member-avatar-symbol">シンボル</label>
                 <select id="member-avatar-symbol">
                   <option value="星">星</option>
@@ -116,15 +138,7 @@
                   <option value="発明">発明</option>
                   <option value="観察">観察</option>
                 </select>
-                <label for="member-avatar-prompt">テキスト指示</label>
-                <textarea id="member-avatar-prompt" rows="3" placeholder="例：丸くて水色。虫眼鏡を持った、やさしい探偵の相棒キャラ。"></textarea>
-                <label for="member-avatar-photo">本人写真から作る</label>
-                <input id="member-avatar-photo" type="file" accept="image/*" />
-                <div id="member-avatar-photo-preview" class="avatar-photo-preview hidden"></div>
-                <button id="generate-member-avatar-button" class="secondary-button" type="button">AIで生成</button>
-                <p id="member-avatar-status" class="member-save-status" aria-live="polite">最初はシンプルなキャラクターとして生成します。</p>
-              </div>
-            </div>
+              </div></details>
           </fieldset>
           <fieldset class="party-fieldset">
             <legend>パーティーに必要な役割</legend>
@@ -1332,6 +1346,7 @@
     <script src="world-access.js"></script>
     <script src="mentor-progression.js"></script>
     <script src="mentor-models.js"></script>
+    <script src="world-destinations.js"></script>
     <script src="app.js"></script>
     <script src="quest-items.js"></script>
     <script src="castle-quests.js"></script>

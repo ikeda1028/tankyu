@@ -911,10 +911,37 @@ textarea {
   gap: 14px;
 }
 
+.avatar-current { display: flex; align-items: center; gap: 22px; padding: 12px 0 20px; }
+.avatar-current .member-avatar-preview { flex: 0 0 136px; width: 136px; height: 152px; }
+.avatar-current-label { font-size: 14px; color: var(--muted); margin: 0 0 8px; }
+#avatar-current-name { font-size: 20px; overflow-wrap: anywhere; }
+#avatar-current-kind { font-size: 13px; color: var(--muted); margin: 8px 0 0; }
+.avatar-3d-action { border-top: 1px solid var(--line); padding: 16px 0; }
+.avatar-3d-action button:disabled { opacity: .6; cursor: not-allowed; }
+.avatar-3d-action p { font-size: 13px; margin: 8px 0 0; color: var(--muted); }
+.avatar-mode-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border-bottom: 1px solid var(--line); margin: 8px 0 18px; }
+.avatar-mode-tabs button { padding: 12px 8px; border: 0; border-bottom: 3px solid transparent; border-radius: 0; background: transparent; font-size: 14px; color: var(--muted); }
+.avatar-mode-tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: #2f8f63; }
+.avatar-preset-grid { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 10px; }
+.avatar-preset-grid button { min-width: 0; padding: 6px; border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--ink); }
+.avatar-preset-grid button[aria-pressed="true"] { outline: 2px solid #2f8f63; outline-offset: 1px; }
+.avatar-preset-grid img { width: 100%; height: auto; aspect-ratio: 1 / 1.1; object-fit: contain; display: block; }
+.avatar-preset-grid span { display: block; font-size: 12px; line-height: 1.5; min-height: 36px; overflow-wrap: anywhere; padding-top: 7px; }
+#avatar-preset-status { font-size: 13px; line-height: 1.6; }
+.avatar-advanced { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+.avatar-advanced summary { cursor: pointer; font-size: 14px; font-weight: 700; }
+.avatar-advanced .avatar-controls { padding-top: 14px; }
+#avatar-image-panel[hidden], #avatar-preset-panel[hidden] { display: none; }
+@media(max-width:600px) { .avatar-preset-grid { grid-template-columns: repeat(3,minmax(0,1fr)); }.avatar-current { gap: 14px; }.avatar-current .member-avatar-preview { flex-basis: 98px; width: 98px; height: 116px; } #avatar-current-name { font-size: 18px; } }
+
 .avatar-controls {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
   gap: 6px;
 }
+.avatar-fieldset { min-width: 0; }
+.avatar-controls :is(input, textarea, select, button) { min-width: 0; width: 100%; box-sizing: border-box; }
 
 .avatar-controls textarea {
   min-height: 70px;
