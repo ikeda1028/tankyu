@@ -5,7 +5,7 @@ let selected = "coral", user, busy = false;
 let destination = new URL("/", location.href);
 try {
   const candidate = new URL(params.get("returnTo"), location.href);
-  if ([location.origin, "https://katsuren-quest-visit.luketesla4.chatgpt.site", "https://fudo-mirai-do.luketesla4.chatgpt.site"].includes(candidate.origin) && ["/", "/index.html", "/ancient.html", "/model-world.html"].includes(candidate.pathname)) destination = candidate;
+  if ([location.origin, "https://katsuren-quest-visit.luketesla4.chatgpt.site", "https://fudo-mirai-do.luketesla4.chatgpt.site"].includes(candidate.origin) && ["/", "/index.html", "/ancient.html", "/model-world.html", "/model-world"].includes(candidate.pathname)) destination = candidate;
 } catch {}
 function choose(id) {
   if (!entries.some(([key]) => key === id)) return;

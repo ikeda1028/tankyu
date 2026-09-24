@@ -1943,9 +1943,9 @@ async function syncMemberProfile() {
   let saved = false;
   try {
     const profile = await window.WakuwakuFirebase.saveMemberProfile(getFirebaseConfig(), state, state, memberProfileRevision);
-    await window.WakuwakuFirebase.worldAvatar(getFirebaseConfig(), normalizeAvatar(state.member.avatar).presetId);
     if (!state.auth.loggedIn || state.auth.email !== email) return false;
     memberProfileRevision = profile.revision;
+    await window.WakuwakuFirebase.worldAvatar(getFirebaseConfig(), normalizeAvatar(state.member.avatar).presetId);
     saveState({ localOnly: true });
     saved = true;
     return true;
