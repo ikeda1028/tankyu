@@ -7,7 +7,7 @@ const dist = join(root, "dist");
 
 const publicFiles = ["index.html", "styles.css", "app.js", "database.js", "firebase-sync.js", "ar-dragon.html", "model-world.html", "world-access.js", "mentor-progression.js", "mentor-models.js", "quest-items.js", "quest-inventory.js", "quest-inventory.css"];
 const assetFiles = ["opening-kids.mp4", "fudozaka-dragon.glb", "fudo.glb", "fudozaka-dragon-poster.png", "MANABI_Shibuya_3F.glb", "Katsuren_Future_Castle.glb", "account.svg", "close.svg", "lucide-LICENSE", "quest-lens.svg", "quest-scroll.svg", "quest-prism.svg"];
-publicFiles.push("castle-quests.js", "castle-walk.js", "castle-walk.css", "world-destinations.js");
+publicFiles.push("castle-quests.js", "castle-walk.js", "castle-walk.css", "world-destinations.js", "fudo-avatar.js");
 assetFiles.push("quest-stone.svg", "quest-ceramic.svg", "quest-brass.svg", ...["up", "down", "left", "right", "exit", "hand"].map((name) => `walk-${name}.svg`));
 
 await mkdir(dist, { recursive: true });

@@ -193,11 +193,11 @@
         }
         if (isFudoWorld()) {
           return {
-            gate: { label: "入口", target: "0m 2m 0m", orbit: "0deg 68deg 34m", fov: "30deg" },
-            front: { label: "正面", target: "0m 6m -7m", orbit: "0deg 72deg 17m", fov: "26deg" },
-            floor1: { label: "1階", target: "0m 3.2m -4m", orbit: "-16deg 72deg 18m", fov: "28deg" },
-            floor2: { label: "2階", target: "0m 9.2m -4m", orbit: "-18deg 70deg 18m", fov: "28deg" },
-            item: { label: "アイテム", target: "0m 9.6m -8m", orbit: "22deg 68deg 13m", fov: "24deg" },
+            gate: { label: "全体", target: "0m 3m 0m", orbit: "0deg 65deg 80m", fov: "30deg" },
+            front: { label: "正面", target: "0m 3m -4m", orbit: "0deg 75deg 40m", fov: "30deg" },
+            floor1: { label: "参道", target: "0m 1m 6m", orbit: "-16deg 65deg 24m", fov: "30deg" },
+            floor2: { label: "不動尊", target: "0m 4m -4.4m", orbit: "-18deg 80deg 20m", fov: "30deg" },
+            item: { label: "瞑想の場", target: "7m 1m 4m", orbit: "22deg 65deg 18m", fov: "30deg" },
           };
         }
         return {
@@ -264,11 +264,11 @@
     <script src="castle-quests.js"></script>
     <script src="quest-inventory.js"></script>
     <script>
-      if (/Katsuren_Future_Castle\.glb/i.test(rawSrc)) {
+      if (/\/(?:Katsuren_Future_Castle|fudo)\.glb$/i.test(new URL(modelSrc || ".", location.href).pathname)) {
         import("./castle-walk.js").catch(() => {
           const note = document.createElement("p");
           note.className = "hint";
-          note.textContent = "しろの よみこみに しっぱいしました。もういちど ひらいてね。";
+          note.textContent = "歩行モードを読み込めませんでした。ページを開き直してください。";
           document.body.append(note);
         });
       }

@@ -2,22 +2,26 @@ import * as THREE from "three";
 import { GLTFLoader } from "./assets/vendor/three/addons/loaders/GLTFLoader.js";
 import { Octree } from "./assets/vendor/three/addons/math/Octree.js";
 import { Capsule } from "./assets/vendor/three/addons/math/Capsule.js";
+import { isFudoModel, createFudoAvatar } from "./fudo-avatar.js";
 
 const params = new URLSearchParams(location.search);
 const source = params.get("src");
+const fudo = isFudoModel(source);
 const world = QuestItems.worldKey(source);
 const viewer = document.querySelector("#world-model");
-const floors = [
+const floors = fudo ? [{ name: "不動尊・堂内", height: .65, spawn: [0, 10] }] : [
   { name: "こうりゅうのま", height: 9.95, spawn: [-11.7, 4.2], match: "Future layer 6" },
   { name: "じっけんのま", height: 18.58, spawn: [-5.7, -16.4], match: "Future layer 7" },
   { name: "てんぼうのま", height: 26.33, spawn: [-4.7, -36.4], match: "Future layer 8" },
 ];
 const enter = document.createElement("button");
-enter.type = "button"; enter.className = "castle-enter"; enter.textContent = "しろにはいる";
+const enterLabel = fudo ? "アバターで入る" : "しろにはいる";
+enter.type = "button"; enter.className = "castle-enter"; enter.textContent = enterLabel;
 document.body.append(enter);
 const surface = document.createElement("section");
 surface.className = "castle-interior"; surface.hidden = true;
-surface.setAttribute("aria-label", "かつれんじょうの なか");
+surface.setAttribute("aria-label", fudo ? "不動尊を歩く" : "かつれんじょうの なか");
+surface.classList.toggle("fudo-interior", fudo);
 surface.innerHTML = `<div class="castle-floor" role="status"></div><div class="castle-reticle" aria-hidden="true"></div>
 <div class="castle-move" aria-label="あるく">
 ${[["forward", "up", "まえへ"], ["left", "left", "ひだりへ"], ["back", "down", "うしろへ"], ["right", "right", "みぎへ"]].map(([direction, icon, text]) => `<button type="button" data-move="${direction}" aria-label="${text}" title="${text}"><img src="assets/walk-${icon}.svg" alt="" width="24" height="24"></button>`).join("")}</div>
@@ -29,6 +33,7 @@ const inspect = surface.querySelector(".castle-inspect");
 let renderer, scene, camera, castle, collisions, floor = 0, active = false, loading = false;
 let items = [], target = null, yaw = 0, pitch = -.32, lastTime = 0;
 let stepPulse = null;
+let avatar;
 const keys = new Set(), held = new Set();
 const player = new Capsule(new THREE.Vector3(), new THREE.Vector3(), .22);
 const velocity = new THREE.Vector3();
@@ -55,7 +60,7 @@ function makeRelic(item) {
   return relic;
 }
 function placeItems() {
-  if (!castle) return;
+  if (!castle || fudo) return;
   for (const object of items) {
     scene.remove(object);
     object.traverse((child) => child.geometry?.dispose());
@@ -89,13 +94,13 @@ function resize() {
   camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
 }
 function respawn(index) {
-  floor = Math.max(0, Math.min(2, index));
+  floor = Math.max(0, Math.min(floors.length - 1, index));
   const room = floors[floor], [x, z] = room.spawn;
   player.start.set(x, room.height + .3, z);
   player.end.set(x, room.height + 1.5, z);
   velocity.set(0, 0, 0); yaw = 0; pitch = -.32;
-  status.textContent = `${floor + 1} / 3　${room.name}`;
-  surface.querySelector('[data-floor="up"]').disabled = floor === 2;
+  status.textContent = fudo ? room.name : `${floor + 1} / 3　${room.name}`;
+  surface.querySelector('[data-floor="up"]').disabled = floor === floors.length - 1;
   surface.querySelector('[data-floor="down"]').disabled = floor === 0;
 }
 function visibleItem(object) {
@@ -134,6 +139,7 @@ function frame(time) {
     const move = new THREE.Vector3(side * Math.cos(yaw) - forward * Math.sin(yaw), 0, -side * Math.sin(yaw) - forward * Math.cos(yaw));
     if (move.lengthSq()) move.normalize().multiplyScalar(2.1);
     velocity.x = move.x; velocity.z = move.z;
+    const before = player.start.clone();
     // Three.js's capsule/Octree resolves walls and floors; small substeps prevent tunnelling.
     for (let step = 0; step < 3; step++) {
       velocity.y -= 14 * dt / 3;
@@ -144,12 +150,36 @@ function frame(time) {
         if (hit.normal.y > 0) velocity.y = 0;
       }
     }
+    if (fudo) {
+      // Step onto the model's low platforms; never allow a capsule to sink into them.
+      const foot = player.start.y - player.radius;
+      ray.set(new THREE.Vector3(player.start.x, foot + .36, player.start.z), new THREE.Vector3(0, -1, 0));
+      const support = ray.intersectObjects(floorMeshes, false).find(hit => hit.point.y >= foot - .4 && hit.point.y <= foot + .32);
+      if (support && velocity.y <= 0) {
+        player.translate(new THREE.Vector3(0, support.point.y - foot + .002, 0)); velocity.y = 0;
+      }
+      // A missing floor or the reflecting pool is not a walking surface.
+      if (!support && before.y > -.5) {
+        player.translate(new THREE.Vector3(before.x - player.start.x, 0, before.z - player.start.z));
+      }
+      if (move.lengthSq()) avatar.group.rotation.y = Math.atan2(-move.x, -move.z);
+    }
     if (player.start.y < floors[floor].height - 2) respawn(floor);
   } else clearInput();
-  camera.position.copy(player.end); camera.rotation.set(pitch, yaw, 0, "YXZ");
+  if (fudo) {
+    avatar.group.position.set(player.start.x, player.start.y - player.radius, player.start.z);
+    avatar.animate(time, Math.hypot(velocity.x, velocity.z));
+    const target = player.start.clone().add(new THREE.Vector3(0, 1.1, 0));
+    const elevation = THREE.MathUtils.clamp(-pitch + .18, .12, 1.1);
+    const offset = new THREE.Vector3(Math.sin(yaw) * Math.cos(elevation), Math.sin(elevation), Math.cos(yaw) * Math.cos(elevation)).multiplyScalar(4.5);
+    ray.set(target, offset.clone().normalize()); ray.far = offset.length();
+    const obstruction = ray.intersectObjects(opaque, false)[0]; ray.far = Infinity;
+    if (obstruction) offset.setLength(Math.max(.5, obstruction.distance - .15));
+    camera.position.copy(target).add(offset); camera.lookAt(target);
+  } else { camera.position.copy(player.end); camera.rotation.set(pitch, yaw, 0, "YXZ"); }
   camera.updateMatrixWorld();
   findTarget(); renderer.render(scene, camera);
-  if (params.get("qa") === "1") surface.dataset.qa = JSON.stringify({ position: camera.position.toArray(), floor, items: items.map((item) => ({id:item.userData.item.id,position:item.position.toArray(),visible:item.visible})), target: target?.userData.item.id || null });
+  if (params.get("qa") === "1") surface.dataset.qa = JSON.stringify({ position: camera.position.toArray(), avatar: avatar?.group.position.toArray(), floor, items: items.map((item) => ({id:item.userData.item.id,position:item.position.toArray(),visible:item.visible})), target: target?.userData.item.id || null });
 }
 async function enterCastle() {
   if (loading || document.body.classList.contains("entry-locked")) return;
@@ -160,7 +190,7 @@ async function enterCastle() {
       renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
       renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping;
       renderer.toneMappingExposure = 1.18;
-      renderer.domElement.setAttribute("aria-label", "しろのなかを みまわす");
+      renderer.domElement.setAttribute("aria-label", fudo ? "不動尊を見回す" : "しろのなかを みまわす");
       renderer.domElement.tabIndex = 0; surface.prepend(renderer.domElement);
       scene = new THREE.Scene(); scene.background = new THREE.Color(0xc9e0e5); scene.fog = new THREE.Fog(0xc9e0e5, 110, 260);
       camera = new THREE.PerspectiveCamera(65, 1, .04, 400);
@@ -172,6 +202,15 @@ async function enterCastle() {
       castle.traverse((mesh) => {
         if (!mesh.isMesh) return;
         const readable = mesh.name.replaceAll("_", " ");
+        if (fudo) {
+          // Detailed statue/water meshes stay visual-only; architecture provides collision.
+          if (/hall foundation|arrival bridge|entrance step|dry central causeway|meditation timber deck|purification stepping terrace|slender bronze support|curved glass edge|curved meditation bench|Fudo altar|cleansing basin|Swept oculus/i.test(readable)) {
+            const copy = new THREE.Mesh(mesh.geometry); copy.applyMatrix4(mesh.matrixWorld); collider.add(copy);
+            opaque.push(mesh);
+          }
+          if (/arrival bridge$|entrance step|dry central causeway|meditation timber deck|purification stepping terrace/i.test(readable)) floorMeshes.push(mesh);
+          return;
+        }
         const room = floors.findIndex((entry) => readable.includes(entry.match));
         if (!mesh.material.transparent || mesh.material.opacity > .8) opaque.push(mesh);
         if (room >= 0) {
@@ -180,7 +219,8 @@ async function enterCastle() {
         }
       });
       collisions = new Octree().fromGraphNode(collider);
-      if (params.get("qa") === "1") surface.dataset.placements = JSON.stringify(verifyPlacements());
+      if (fudo) { avatar = createFudoAvatar(); scene.add(avatar.group); }
+      if (!fudo && params.get("qa") === "1") surface.dataset.placements = JSON.stringify(verifyPlacements());
       placeItems();
       let drag = null;
       renderer.domElement.addEventListener("pointerdown", (event) => { drag = { id: event.pointerId, x: event.clientX, y: event.clientY, distance: 0 }; renderer.domElement.setPointerCapture(event.pointerId); });
@@ -213,11 +253,18 @@ async function enterCastle() {
     leave(); renderer?.dispose(); renderer?.domElement.remove(); renderer = null; castle = null;
     opaque.length = floorMeshes.length = 0;
     enter.textContent = "もういちど はいる";
-  } finally { loading = false; enter.disabled = false; if (castle) enter.textContent = "しろにはいる"; }
+  } finally { loading = false; enter.disabled = false; if (castle) enter.textContent = enterLabel; }
 }
 enter.onclick = enterCastle;
 surface.querySelector(".castle-leave").onclick = leave;
 surface.querySelectorAll("[data-floor]").forEach((button) => button.onclick = () => { clearInput(); respawn(floor + (button.dataset.floor === "up" ? 1 : -1)); });
+if (fudo) {
+  surface.querySelectorAll("[data-floor]").forEach(button => { button.hidden = true; });
+  const reset = document.createElement("button");
+  reset.type = "button"; reset.textContent = "入口"; reset.title = "入口に戻る"; reset.setAttribute("aria-label", "入口に戻る");
+  reset.onclick = () => { clearInput(); respawn(0); };
+  surface.querySelector(".castle-actions").prepend(reset);
+}
 surface.querySelectorAll("[data-move]").forEach((button) => {
   button.addEventListener("click", () => { stepPulse = { direction: button.dataset.move, until: performance.now() + 160 }; });
   button.addEventListener("pointerdown", (event) => { event.preventDefault(); held.add(button.dataset.move); button.setPointerCapture(event.pointerId); });

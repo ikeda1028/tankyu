@@ -56,12 +56,16 @@ async function testViewer(query, requireLocation = true) {
     addEventListener(type, fn) { this.events[type] = fn; },
   };
   let currentFix = fix, watch;
-  const sandbox = vm.createContext({ document, URLSearchParams, location: { search: query }, setInterval: () => 1, clearInterval() {},
+  const sandbox = vm.createContext({ document, URL, URLSearchParams, location: { search: query, href: "https://example.org/model-world.html" }, setInterval: () => 1, clearInterval() {},
     WAKUWAKU_CONFIG: { worldAccess: { requireLocation } },
     navigator: { geolocation: { getCurrentPosition(resolve) { resolve(currentFix); }, watchPosition(fn) { watch = fn; return 1; }, clearWatch() {} } },
   });
+  sandbox.window = sandbox;
   vm.runInContext(source, sandbox);
-  for (const script of html.matchAll(/<script>([\s\S]*?)<\/script>/g)) vm.runInContext(script[1], sandbox);
+  for (const script of html.matchAll(/<script>([\s\S]*?)<\/script>/g)) {
+    // The WebGL module bootstrap is exercised by test-fudo-walk in a browser.
+    if (!script[1].includes('import("./castle-walk.js")')) vm.runInContext(script[1], sandbox);
+  }
   const viewer = document.querySelector("#world-model"), button = document.querySelector("#entry-check");
   if (!requireLocation) {
     assert.equal(viewer.getAttribute("src"), "/assets/fudo.glb", "unrestricted entry loads without GPS");

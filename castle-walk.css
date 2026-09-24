@@ -21,3 +21,4 @@
 .castle-walking .title small { display: none; }
 .castle-walking .title strong { font-size: 22px; }
 .quest-table small { display: block; margin-top: 4px; }
+.fudo-interior [data-floor][hidden], .fudo-interior .castle-reticle { display: none; }
