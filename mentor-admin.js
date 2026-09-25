@@ -13,7 +13,7 @@
   $('mentor-duplicate').onclick=()=>{if(!isAdminUser())return;editingId='';els.mentorPoint.value='';els.mentorName.value=(els.mentorName.value+'（コピー）').slice(0,40);$('mentor-profile-choice').value='';els.mentorSave.textContent='新しいメンターとして保存';};
   $('mentor-test').onclick=()=>{if(!isAdminUser())return;const value=read();if(!value.mentorBehavior.enabled){els.mentorSettingsStatus.textContent='AI会話を有効にしてからお試しください。';return;}MentorChat.open(value,{preview:true});};
  }
- function options(){setup();const select=$('mentor-profile-choice');select.replaceChildren(new Option('新しいメンター／ポイント専用',''));for(const p of profiles())select.add(new Option(p.name,p.id));select.value=editingId;}
+ function options(){setup();const select=$('mentor-profile-choice');select.replaceChildren(new Option('新しいメンター／ポイント専用',''));for(const p of profiles())select.add(new Option(p.name,p.id));select.value=editingId;renderEditorList();}
  function fill(character){setup();editingId=character?.mentorProfileId||character?.id||'';options();const b=MentorBehavior.normalize(character?.mentorBehavior);for(const key of Object.keys(fieldLabels))$('mentor-ai-'+key).value=b[key];for(const key of ['enabled','castleEnabled','voiceInput','voiceOutput'])$('mentor-ai-'+key).checked=b[key];for(const key of ['projectMode','voice','maxLength'])$('mentor-ai-'+key).value=b[key];els.mentorSave.disabled=false;els.mentorSave.textContent='メンター設定を保存';}
  function load(id){if(!isAdminUser())return;const p=profiles().find(x=>x.id===id);if(!p){newProfile(false);return;}els.mentorPoint.value='';els.mentorName.value=p.name;els.mentorRole.value=p.role||'';els.mentorRank.value=p.mentorLevel||1;els.mentorEnabled.checked=p.mentorEnabled!==false;els.mentorMessage.value=p.message||'';els.mentorModelUrl.value=p.model3d?.modelUrl||'';fill(p);previewMentorModel();els.mentorSettingsStatus.textContent='保存すると、このメンターを配置した探究ポイントにも応対設定を反映します。';}
  function newProfile(sage){if(!isAdminUser())return;els.mentorPoint.value='';els.mentorName.value=sage?'探究の仙人':'';els.mentorRole.value=sage?'気になることを問いと小さなプロジェクトに育てる伴走者':'';els.mentorRank.value='1';els.mentorEnabled.checked=true;els.mentorMessage.value=sage?MentorBehavior.sage.opening:'';els.mentorModelUrl.value='';fill({mentorBehavior:sage?MentorBehavior.sage:MentorBehavior.defaults});previewMentorModel();els.mentorSettingsStatus.textContent='配置先は後から選べます。仙人以外のメンターも個別に登録できます。';}
@@ -35,6 +35,32 @@
   if(!saveState()){state.mentorProfiles=previousProfiles;state.customEvents=previousEvents;els.mentorSettingsStatus.textContent='保存できませんでした。入力内容は残しています。';return;}
   editingId=id;render();populateMentorSettings(selectedId);if(!selectedId)load(id);els.mentorSettingsStatus.textContent='メンター設定を保存しました。クラウド同期状況は設定画面で確認できます。';queueFirebaseSync('メンター応対設定');
  }
+ function renderEditorList(){
+  const host=$('mentor-editor-list');if(!host)return;host.replaceChildren();if(!isAdminUser())return;
+  const registry=profiles(),known=new Set(registry.map(p=>p.id));
+  const rows=registry.map(p=>({profile:p}));
+  for(const point of getEncounters()){
+   const p=getEventCharacter(point);
+   if(point.publicReadOnly||!p?.mentorEnabled||known.has(p.mentorProfileId))continue;
+   rows.push({profile:p,point});
+  }
+  const count=$('mentor-registry-count');if(count)count.textContent=rows.length+'人';
+  for(const {profile:p,point} of rows){
+   const row=document.createElement('article');row.className='mentor-registry-card';
+   const selected=point?els.mentorPoint.value===point.id:editingId===p.id;
+   row.dataset.selected=String(selected);
+   const name=document.createElement('h4');name.textContent=p.name||'名前未設定';
+   const role=document.createElement('p');role.className='mentor-registry-role';role.textContent=p.role||'役割・専門分野を設定できます';
+   const b=MentorBehavior.normalize(p.mentorBehavior),info=document.createElement('p');info.className='mentor-registry-meta';
+   info.textContent=(p.mentorEnabled===false?'休止中':'有効')+' · AI会話 '+(b.enabled?'ON':'OFF')+' · '+(b.voiceOutput?'音声あり':'文字のみ');
+   const place=document.createElement('p');place.className='mentor-registry-meta';
+   const assigned=getEncounters().filter(x=>x.character?.mentorProfileId===p.id).length;
+   place.textContent=point?'配置：'+point.title:[b.castleEnabled?'勝連城の登場候補':'',assigned?'探究ポイント '+assigned+'か所':''].filter(Boolean).join(' / ')||'配置先は未設定';
+   const button=document.createElement('button');button.type='button';button.className='secondary-button';button.textContent=selected?'編集中':'設定を開く';
+   button.onclick=()=>{if(!isAdminUser())return;if(point)openMentorSettings(point.id);else load(p.id);$('mentor-settings-form').scrollIntoView?.({behavior:'smooth',block:'start'});els.mentorName.focus?.({preventScroll:true});};
+   row.append(name,role,info,place,button);host.append(row);
+  }
+ }
  function renderRegistry(){
   const host=$('admin-mentor-profiles');host.replaceChildren();if(!isAdminUser())return;
   for(const profile of profiles()){
@@ -42,5 +68,5 @@
   }
   if(!profiles().length)host.textContent='登録済みのメンターはありません。「メンターを追加」から登録できます。';
  }
- window.MentorAdmin={fill,options,save,renderRegistry,newProfile,load};
+ window.MentorAdmin={fill,options,save,renderRegistry,renderEditorList,newProfile,load};
 })();

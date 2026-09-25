@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Wakuwaku Quest</title>
     <link rel="stylesheet" href="styles.css" />
-    <link rel="stylesheet" href="mentor-settings.css" />
+    <link rel="stylesheet" href="mentor-settings.css?v=registry-2" />
     <link rel="stylesheet" href="quest-inventory.css" />
   </head>
   <body>
@@ -518,7 +518,12 @@
         </section>
 
         <section class="mentor-settings-view hidden" aria-label="メンター設定">
-          <header class="section-head"><h2>メンター設定</h2><button type="button" data-admin-return class="secondary-button">管理者画面へ戻る</button></header>
+          <header class="section-head"><h2>メンター管理</h2><button type="button" data-admin-return class="secondary-button">管理者画面へ戻る</button></header>
+          <section class="mentor-registry" aria-label="メンター一覧">
+            <h3>メンター一覧 <span id="mentor-registry-count"></span></h3>
+            <p class="mentor-help">調整したいメンターの「設定を開く」を選んでください。</p>
+            <div id="mentor-editor-list" class="mentor-editor-list"></div>
+          </section>
           <div class="mentor-settings-layout">
             <form id="mentor-settings-form">
               <label for="mentor-profile-choice">登録済みのメンター</label><select id="mentor-profile-choice"></select>
@@ -1371,7 +1376,7 @@
     <script src="world-destinations.js"></script>
     <script src="mentor-behavior.js"></script>
     <script src="mentor-chat.js"></script>
-    <script src="mentor-admin.js"></script>
+    <script src="mentor-admin.js?v=registry-2"></script>
     <script src="app.js"></script>
     <script src="quest-items.js"></script>
     <script src="castle-quests.js"></script>

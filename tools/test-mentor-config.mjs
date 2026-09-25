@@ -23,7 +23,13 @@ vm.createContext(ctx);vm.runInContext(fs.readFileSync('mentor-admin.js','utf8'),
 A.newProfile(true);els.mentorPoint.value='point-a';A.save();assert.equal(state.mentorProfiles.length,2);assert.equal(state.customEvents[0].character.mentorBehavior.tone,B.sage.tone);
 const sageId=state.mentorProfiles.at(-1).id;A.newProfile(false);els.mentorName.value='博士';document.getElementById('mentor-ai-tone').value='落ち着いた敬語';A.save();assert.equal(state.mentorProfiles.length,3);assert.equal(state.customEvents[1].character.name,'森のメンター');
 A.load(sageId);assert.equal(document.getElementById('mentor-ai-tone').value,B.sage.tone);document.getElementById('mentor-ai-hints').value='比較するヒントをひとつ出す';A.save();assert.equal(state.customEvents[0].character.mentorBehavior.hints,'比較するヒントをひとつ出す');assert.equal(saved.mentorProfiles.length,3);
-admin=false;A.newProfile(true);A.save();assert.equal(state.mentorProfiles.length,3);
+// The settings screen lists reusable profiles and editable point-only mentors.
+state.customEvents.push({id:'legacy',title:'科学館',character:{name:'科学館の先生',mentorEnabled:true,role:'科学'}});
+A.renderEditorList();const cards=document.getElementById('mentor-editor-list').children;
+assert.equal(cards.length,4);assert.equal(document.getElementById('mentor-registry-count').textContent,'4人');
+const doctor=cards.find(c=>c.children[0].textContent==='博士');doctor.children.at(-1).onclick();assert.equal(els.mentorName.value,'博士');
+assert.equal(document.getElementById('mentor-ai-tone').value,'落ち着いた敬語');
+admin=false;A.renderEditorList();assert.equal(document.getElementById('mentor-editor-list').children.length,0);A.newProfile(true);A.save();assert.equal(state.mentorProfiles.length,3);
 // Public point publication keeps the response settings; private registry stays private.
 const fbCtx={window:{}};vm.createContext(fbCtx);vm.runInContext(fs.readFileSync('firebase-sync.js','utf8'),fbCtx);const publicData=fbCtx.window.WakuwakuFirebase.createPublicExploration({customEvents:[{...state.customEvents[0],position:{lat:35,lng:139}}],mentorProfiles:state.mentorProfiles});assert.equal(publicData.points[0].character.mentorBehavior.hints,'比較するヒントをひとつ出す');assert.equal(publicData.mentorProfiles,undefined);
 // IndexedDB round trip uses the same registry as local/cloud snapshots.
