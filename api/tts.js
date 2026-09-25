@@ -51,7 +51,8 @@ export default async function handler(request, response) {
       },
       body: JSON.stringify({
         model: process.env.OPENAI_TTS_MODEL || DEFAULT_TTS_MODEL,
-        voice: normalizeVoice(body.voice || process.env.OPENAI_TTS_VOICE),
+        voice: body.voiceStyle === "elder" ? "onyx" : normalizeVoice(body.voice || process.env.OPENAI_TTS_VOICE),
+        ...((process.env.OPENAI_TTS_MODEL || DEFAULT_TTS_MODEL).startsWith("gpt-4o-mini-tts") && body.voiceStyle === "elder" ? {instructions: "日本語で、温かくひょうきんな高齢の男性の仙人として話してください。低めで深みがあり、少しかすれたおじいさんの声。穏やかで自然な抑揚、聞き取りやすい速さ。大げさな演技や笑い声は加えず、本文だけを読んでください。"} : {}),
         input,
         response_format: "mp3",
         speed: 0.9,
