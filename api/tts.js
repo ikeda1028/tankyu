@@ -51,11 +51,11 @@ export default async function handler(request, response) {
       },
       body: JSON.stringify({
         model: process.env.OPENAI_TTS_MODEL || DEFAULT_TTS_MODEL,
-        voice: body.voiceStyle === "elder" ? "onyx" : normalizeVoice(body.voice || process.env.OPENAI_TTS_VOICE),
-        ...((process.env.OPENAI_TTS_MODEL || DEFAULT_TTS_MODEL).startsWith("gpt-4o-mini-tts") && body.voiceStyle === "elder" ? {instructions: "日本語で、温かくひょうきんな高齢の男性の仙人として話してください。低めで深みがあり、少しかすれたおじいさんの声。穏やかで自然な抑揚、聞き取りやすい速さ。大げさな演技や笑い声は加えず、本文だけを読んでください。"} : {}),
+        voice: body.voiceStyle === "elder" ? "cedar" : normalizeVoice(body.voice || process.env.OPENAI_TTS_VOICE),
+        ...((process.env.OPENAI_TTS_MODEL || DEFAULT_TTS_MODEL).startsWith("gpt-4o-mini-tts") && body.voiceStyle === "elder" ? {instructions: "日本語のプロの声優が、威厳と優しさのある年老いた仙人を自然に演じる。声質は低めの温かい男性のバリトン。年齢は微かな息の質感と落ち着きで表し、わざとしゃがれさせたり声を震わせたりしない。目の前の一人の子どもへ語りかける距離感。相手の発見には小さな驚きと笑み、考える言葉には短い間、励ます言葉には温かい確信を込める。意味のまとまりで息を継ぎ、重要な語だけを自然に強調する。句読点ごとに機械的に止まらず、文末を毎回同じ調子にしない。日本語のアクセントと母音を明瞭に、普段の会話のテンポで。芝居がかった朗読、過剰な老人の物まね、ささやき、歌、本文にない笑い声や台詞は入れない。読み上げるのは本文のみ。"} : {}),
         input,
         response_format: "mp3",
-        speed: 0.9,
+        speed: body.voiceStyle === "elder" ? 1.0 : 0.9,
       }),
     });
 
