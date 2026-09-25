@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import vm from 'node:vm';
+import { readFile } from 'node:fs/promises';
+const context = vm.createContext({ URL });
+vm.runInContext(await readFile(new URL('../sanctuary-sky.js', import.meta.url), 'utf8'), context);
+const base = 'https://tankyu-five.vercel.app/model-world';
+const matches = query => context.SanctuarySky.matches(new URLSearchParams(query), base);
+const model = 'src=assets/MANABI_Shibuya_3F.glb';
+assert(matches(model + '&lat=35.706795&lng=139.762661'));
+assert(matches(model + '&title=' + encodeURIComponent('子供の探究の聖地')));
+assert(!matches(model + '&title=MANABI渋谷3F&lat=35.66&lng=139.70'));
+assert(!matches('src=assets/Katsuren_Future_Castle.glb&lat=35.706795&lng=139.762661'));
+assert(!matches('src=assets/fudo.glb&title=' + encodeURIComponent('子供の探究の聖地')));
+assert(!matches(model));
+await readFile(new URL('../dist/' + context.SanctuarySky.image, import.meta.url));
+console.log('PASS: Hongo scene scoping and published panorama asset; other worlds unchanged.');

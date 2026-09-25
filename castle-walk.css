@@ -27,3 +27,8 @@
 .avatar-motion-controls label { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 10px; white-space: nowrap; }
 .avatar-motion-controls input[type="range"] { width: 90px; min-width: 0; }
 .avatar-motion-controls select { max-width: 115px; padding: 5px; }
+
+.sanctuary-views { position: absolute; right: 16px; top: 108px; display: grid; gap: 8px; max-width: 180px; }
+.sanctuary-views p { margin: 0; padding: 5px; color: #fff; text-shadow: 0 1px 5px #14384b; font: 12px system-ui; }
+.sanctuary-views button { padding: 8px 12px; font: 600 13px system-ui; }
+@media (max-width: 480px) { .sanctuary-views { top: 210px; right: 12px; max-width: 146px; } }

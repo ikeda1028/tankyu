@@ -9,6 +9,7 @@ const source = params.get("src");
 const fudo = isFudoModel(source);
 const manabi = /\/MANABI_Shibuya_3F\.glb$/i.test(new URL(source || ".", location.href).pathname);
 const avatarWorld = fudo || manabi;
+const sanctuary = window.SanctuarySky?.matches(params, location.href) === true;
 const world = QuestItems.worldKey(source);
 const viewer = document.querySelector("#world-model");
 const floors = fudo ? [{ name: "不動尊・堂内", height: .65, spawn: [0, 10] }] : manabi ? [
@@ -104,7 +105,7 @@ function respawn(index) {
   const room = floors[floor], [x, z] = room.spawn;
   player.start.set(x, room.height + .3, z);
   player.end.set(x, room.height + 1.5, z);
-  velocity.set(0, 0, 0); yaw = 0; pitch = -.32;
+  velocity.set(0, 0, 0); yaw = 0; pitch = sanctuary ? .02 : -.32;
   status.textContent = fudo ? room.name : `${floor + 1} / 3　${room.name}`;
   surface.querySelector('[data-floor="up"]').disabled = floor === floors.length - 1;
   surface.querySelector('[data-floor="down"]').disabled = floor === 0;
@@ -227,6 +228,15 @@ async function enterCastle() {
       renderer.domElement.tabIndex = 0; surface.prepend(renderer.domElement);
       scene = new THREE.Scene(); scene.background = new THREE.Color(0xc9e0e5); scene.fog = new THREE.Fog(0xc9e0e5, 110, 260);
       camera = new THREE.PerspectiveCamera(65, 1, .04, 400);
+      if (sanctuary) {
+        scene.fog = null;
+        const sky = await new THREE.TextureLoader().loadAsync(SanctuarySky.image);
+        sky.mapping = THREE.EquirectangularReflectionMapping;
+        sky.colorSpace = THREE.SRGBColorSpace;
+        scene.background = sky;
+        scene.backgroundRotation.y = -Math.PI / 2;
+        scene.backgroundIntensity = .85;
+      }
       scene.add(new THREE.HemisphereLight(0xebfaff, 0x81877b, 2.6));
       const sun = new THREE.DirectionalLight(0xffefcf, 3.2); sun.position.set(-35, 80, 30); scene.add(sun);
       const gltf = await new GLTFLoader().loadAsync(source);
@@ -301,6 +311,20 @@ async function enterCastle() {
 enter.onclick = enterCastle;
 surface.querySelector(".castle-leave").onclick = leave;
 surface.querySelectorAll("[data-floor]").forEach((button) => button.onclick = () => { clearInput(); respawn(floor + (button.dataset.floor === "up" ? 1 : -1)); });
+if (sanctuary) {
+  const views = document.createElement('div');
+  views.className = 'sanctuary-views';
+  views.innerHTML = '<p>本郷 · 上空約500mのイメージ</p><button type="button" data-sky="fuji">富士山と空を見る</button><button type="button" data-sky="city">東京を見下ろす</button>';
+  surface.append(views);
+  views.querySelectorAll('[data-sky]').forEach(button => {
+    button.onclick = () => {
+      clearInput(); respawn(2);
+      // The third-floor entrance opens toward +Z; turn out from the building.
+      yaw = Math.PI; pitch = button.dataset.sky === 'city' ? -.4 : .06;
+      renderer?.domElement.focus();
+    };
+  });
+}
 if (avatarWorld) {
   if (fudo) surface.querySelectorAll("[data-floor]").forEach(button => { button.hidden = true; });
   const reset = document.createElement("button");
