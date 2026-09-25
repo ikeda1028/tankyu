@@ -4,6 +4,8 @@ import { Octree } from "./assets/vendor/three/addons/math/Octree.js";
 import { Capsule } from "./assets/vendor/three/addons/math/Capsule.js";
 import { isFudoModel, createFudoAvatar } from "./fudo-avatar.js";
 
+import { windowFocusAmount, smoothWindowFocus, isExteriorWindow } from "./window-view.js";
+
 const params = new URLSearchParams(location.search);
 const source = params.get("src");
 const fudo = isFudoModel(source);
@@ -11,6 +13,7 @@ const manabi = /\/MANABI_Shibuya_3F\.glb$/i.test(new URL(source || ".", location
 const avatarWorld = fudo || manabi;
 const skyline = window.SanctuarySky?.resolve(params, location.href);
 const sanctuary = Boolean(skyline);
+const clearWindowView = skyline?.id === "shibuya";
 const world = QuestItems.worldKey(source);
 const viewer = document.querySelector("#world-model");
 const floors = fudo ? [{ name: "不動尊・堂内", height: .65, spawn: [0, 10] }] : manabi ? [
@@ -42,6 +45,8 @@ let renderer, scene, camera, castle, collisions, floor = 0, active = false, load
 let items = [], target = null, yaw = 0, pitch = -.32, lastTime = 0;
 let stepPulse = null;
 let avatar;
+let windowFocus = 0;
+const exteriorWindows = [], windowMaterials = [];
 const keys = new Set(), held = new Set();
 const player = new Capsule(new THREE.Vector3(), new THREE.Vector3(), .22);
 const velocity = new THREE.Vector3();
@@ -106,7 +111,7 @@ function respawn(index) {
   const room = floors[floor], [x, z] = room.spawn;
   player.start.set(x, room.height + .3, z);
   player.end.set(x, room.height + 1.5, z);
-  velocity.set(0, 0, 0); yaw = 0; pitch = sanctuary ? .02 : -.32;
+  velocity.set(0, 0, 0); windowFocus = 0; if (avatar) avatar.group.visible = true; yaw = 0; pitch = sanctuary ? .02 : -.32;
   status.textContent = fudo ? room.name : `${floor + 1} / 3　${room.name}`;
   surface.querySelector('[data-floor="up"]').disabled = floor === floors.length - 1;
   surface.querySelector('[data-floor="down"]').disabled = floor === 0;
@@ -158,6 +163,22 @@ function addAvatarControls() {
     }
   });
 }
+function updateWindowFocus(target, dt) {
+  if (!clearWindowView || !exteriorWindows.length) return;
+  const direction = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw));
+  let nearest = Infinity;
+  // Also sample below eye level so the low terrace glazing can be approached.
+  for (const height of [0, -.75]) {
+    const origin = target.clone(); origin.y += height;
+    ray.set(origin, direction); ray.far = 2.2;
+    const windowHit = ray.intersectObjects(exteriorWindows, false)[0];
+    const wallHit = ray.intersectObjects(opaque, false)[0];
+    if (windowHit && (!wallHit || windowHit.distance < wallHit.distance)) nearest = Math.min(nearest, windowHit.distance);
+  }
+  ray.far = Infinity;
+  windowFocus = smoothWindowFocus(windowFocus, windowFocusAmount(nearest), dt);
+  for (const material of windowMaterials) material.opacity = THREE.MathUtils.lerp(.10, .008, windowFocus);
+}
 function clearInput() { held.clear(); keys.clear(); stepPulse = null; velocity.x = velocity.z = 0; }
 function leave() {
   active = false; clearInput(); surface.hidden = true;
@@ -205,16 +226,22 @@ function frame(time) {
     avatar.group.position.set(player.start.x, player.start.y - player.radius, player.start.z);
     avatar.animate(time, Math.hypot(velocity.x, velocity.z));
     const target = player.start.clone().add(new THREE.Vector3(0, 1.1, 0));
-    const elevation = THREE.MathUtils.clamp(-pitch + .18, .12, 1.1);
-    const offset = new THREE.Vector3(Math.sin(yaw) * Math.cos(elevation), Math.sin(elevation), Math.cos(yaw) * Math.cos(elevation)).multiplyScalar(manabi ? 2.8 : 4.5);
-    ray.set(target, offset.clone().normalize()); ray.far = offset.length();
+    updateWindowFocus(target, dt);
+    // At the glass, approach eye height without moving the player's collider.
+    target.y += windowFocus * .33;
+    avatar.group.visible = windowFocus < .72;
+    const elevation = THREE.MathUtils.clamp(-pitch + .18, clearWindowView ? -.7 : .12, 1.1);
+    const offset = new THREE.Vector3(Math.sin(yaw) * Math.cos(elevation), Math.sin(elevation), Math.cos(yaw) * Math.cos(elevation)).multiplyScalar((manabi ? 2.8 : 4.5) * (1 - windowFocus));
+    ray.set(target, offset.clone().normalize()); ray.far = Math.max(.001, offset.length());
     const obstruction = ray.intersectObjects(opaque, false)[0]; ray.far = Infinity;
-    if (obstruction) offset.setLength(Math.max(.5, obstruction.distance - .15));
-    camera.position.copy(target).add(offset); camera.lookAt(target);
+    if (obstruction) offset.setLength(Math.min(offset.length(), Math.max(.04, obstruction.distance - .15)));
+    camera.position.copy(target).add(offset);
+    // A separate look direction remains valid even when the follow offset reaches zero.
+    camera.lookAt(camera.position.clone().add(new THREE.Vector3(-Math.sin(yaw) * Math.cos(elevation), -Math.sin(elevation), -Math.cos(yaw) * Math.cos(elevation))));
   } else { camera.position.copy(player.end); camera.rotation.set(pitch, yaw, 0, "YXZ"); }
   camera.updateMatrixWorld();
   findTarget(); renderer.render(scene, camera);
-  if (params.get("qa") === "1") surface.dataset.qa = JSON.stringify({ position: camera.position.toArray(), avatar: avatar?.group.position.toArray(), avatarId: avatar?.group.userData.avatarId, avatarLoaded: avatar?.group.userData.modelLoaded, motion: avatar?.group.userData.motion, blink: avatar?.group.userData.blink, floor, items: items.map((item) => ({id:item.userData.item.id,position:item.position.toArray(),visible:item.visible})), target: target?.userData.item.id || null });
+  if (params.get("qa") === "1") surface.dataset.qa = JSON.stringify({ windowFocus, exteriorWindowCount: exteriorWindows.length, position: camera.position.toArray(), avatar: avatar?.group.position.toArray(), avatarId: avatar?.group.userData.avatarId, avatarLoaded: avatar?.group.userData.modelLoaded, motion: avatar?.group.userData.motion, blink: avatar?.group.userData.blink, floor, items: items.map((item) => ({id:item.userData.item.id,position:item.position.toArray(),visible:item.visible})), target: target?.userData.item.id || null });
 }
 async function enterCastle() {
   if (loading || document.body.classList.contains("entry-locked")) return;
@@ -247,6 +274,12 @@ async function enterCastle() {
         if (!mesh.isMesh) return;
         const readable = mesh.name.replaceAll("_", " ");
         if (manabi) {
+          if (clearWindowView && isExteriorWindow(readable)) {
+            // Low-opacity glass is visual only for the camera, but still collides below.
+            const glass = new THREE.MeshBasicMaterial({ color: 0xe4f5fa, transparent: true, opacity: .10, depthWrite: false, side: THREE.DoubleSide, toneMapped: false });
+            mesh.material = glass;
+            exteriorWindows.push(mesh); windowMaterials.push(glass);
+          }
           // Keep tiny display objects and foliage out of the walking collision tree.
           if (!/Foliage|Stem|Soil|luminous|light|Book\d*$|Cup|Microscope|Robot link|Robot joint|Prototype|Question tree|Inquiry branch/i.test(readable)) {
             const copy = new THREE.Mesh(mesh.geometry); copy.applyMatrix4(mesh.matrixWorld); collider.add(copy);
@@ -306,6 +339,7 @@ async function enterCastle() {
     console.warn("Castle interior unavailable", error);
     leave(); renderer?.dispose(); renderer?.domElement.remove(); renderer = null; castle = null;
     opaque.length = floorMeshes.length = 0;
+    exteriorWindows.length = 0; windowMaterials.splice(0).forEach(material => material.dispose()); windowFocus = 0;
     enter.textContent = "もういちど はいる";
   } finally { loading = false; enter.disabled = false; if (castle) enter.textContent = enterLabel; }
 }
@@ -350,3 +384,4 @@ window.addEventListener("resize", resize);
 window.addEventListener("quest-inventory-updated", placeItems);
 new MutationObserver(() => { if (document.body.classList.contains("entry-locked")) leave(); }).observe(document.body, { attributes: true, attributeFilter: ["class"] });
 window.CastleWalk = { canCollect: (item) => Boolean(items.find((object) => object.userData.item.id === item.id && visibleItem(object))) };
+
