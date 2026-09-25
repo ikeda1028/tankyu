@@ -15,3 +15,8 @@ assert(isExteriorWindow('Terrace glazing.001'));
 assert(!isExteriorWindow('Frosted privacy glass'));
 assert(!isExteriorWindow('Terrace frame'));
 console.log('PASS: near/far focus, frame-rate independent transitions, exterior-only glass selection.');
+
+assert(isExteriorWindow('Curved_glass_edge'));
+assert(isExteriorWindow('Future layer 8', 'Cyan architectural glazing'));
+assert(!isExteriorWindow('Pool', 'Pool water'));
+assert(!isExteriorWindow('Rear facade glass', 'Frosted privacy glass'));

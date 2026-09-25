@@ -13,7 +13,7 @@ const manabi = /\/MANABI_Shibuya_3F\.glb$/i.test(new URL(source || ".", location
 const avatarWorld = fudo || manabi;
 const skyline = window.SanctuarySky?.resolve(params, location.href);
 const sanctuary = Boolean(skyline);
-const clearWindowView = skyline?.id === "shibuya";
+const clearWindowView = true;
 const world = QuestItems.worldKey(source);
 const viewer = document.querySelector("#world-model");
 const floors = fudo ? [{ name: "不動尊・堂内", height: .65, spawn: [0, 10] }] : manabi ? [
@@ -238,7 +238,7 @@ function frame(time) {
     camera.position.copy(target).add(offset);
     // A separate look direction remains valid even when the follow offset reaches zero.
     camera.lookAt(camera.position.clone().add(new THREE.Vector3(-Math.sin(yaw) * Math.cos(elevation), -Math.sin(elevation), -Math.cos(yaw) * Math.cos(elevation))));
-  } else { camera.position.copy(player.end); camera.rotation.set(pitch, yaw, 0, "YXZ"); }
+  } else { updateWindowFocus(player.end, dt); camera.position.copy(player.end); camera.rotation.set(pitch, yaw, 0, "YXZ"); }
   camera.updateMatrixWorld();
   findTarget(); renderer.render(scene, camera);
   if (params.get("qa") === "1") surface.dataset.qa = JSON.stringify({ windowFocus, exteriorWindowCount: exteriorWindows.length, position: camera.position.toArray(), avatar: avatar?.group.position.toArray(), avatarId: avatar?.group.userData.avatarId, avatarLoaded: avatar?.group.userData.modelLoaded, motion: avatar?.group.userData.motion, blink: avatar?.group.userData.blink, floor, items: items.map((item) => ({id:item.userData.item.id,position:item.position.toArray(),visible:item.visible})), target: target?.userData.item.id || null });
@@ -273,13 +273,14 @@ async function enterCastle() {
       castle.traverse((mesh) => {
         if (!mesh.isMesh) return;
         const readable = mesh.name.replaceAll("_", " ");
+        const originalMaterials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+        const exterior = originalMaterials.some(material => isExteriorWindow(readable, material.name));
+        if (exterior) {
+          const glass = new THREE.MeshBasicMaterial({ color: 0xe4f5fa, transparent: true, opacity: .10, depthWrite: false, side: THREE.DoubleSide, toneMapped: false });
+          mesh.material = glass;
+          exteriorWindows.push(mesh); windowMaterials.push(glass);
+        }
         if (manabi) {
-          if (clearWindowView && isExteriorWindow(readable)) {
-            // Low-opacity glass is visual only for the camera, but still collides below.
-            const glass = new THREE.MeshBasicMaterial({ color: 0xe4f5fa, transparent: true, opacity: .10, depthWrite: false, side: THREE.DoubleSide, toneMapped: false });
-            mesh.material = glass;
-            exteriorWindows.push(mesh); windowMaterials.push(glass);
-          }
           // Keep tiny display objects and foliage out of the walking collision tree.
           if (!/Foliage|Stem|Soil|luminous|light|Book\d*$|Cup|Microscope|Robot link|Robot joint|Prototype|Question tree|Inquiry branch/i.test(readable)) {
             const copy = new THREE.Mesh(mesh.geometry); copy.applyMatrix4(mesh.matrixWorld); collider.add(copy);
@@ -293,7 +294,7 @@ async function enterCastle() {
           // Detailed statue/water meshes stay visual-only; architecture provides collision.
           if (/hall foundation|arrival bridge|entrance step|dry central causeway|meditation timber deck|purification stepping terrace|slender bronze support|curved glass edge|curved meditation bench|Fudo altar|cleansing basin|Swept oculus/i.test(readable)) {
             const copy = new THREE.Mesh(mesh.geometry); copy.applyMatrix4(mesh.matrixWorld); collider.add(copy);
-            opaque.push(mesh);
+            if (!exterior) opaque.push(mesh);
           }
           if (/arrival bridge$|entrance step|dry central causeway|meditation timber deck|purification stepping terrace/i.test(readable)) floorMeshes.push(mesh);
           return;

@@ -7,6 +7,9 @@ export function windowFocusAmount(distance) {
 export function smoothWindowFocus(current, target, dt) {
   return current + (target - current) * (1 - Math.exp(-8 * Math.max(0, Math.min(.1, dt))));
 }
-export function isExteriorWindow(name) {
-  return /^(Rear facade glass|Terrace glazing)(?:[._ ]\d+)?$/i.test(name.replaceAll('_', ' '));
+export function isExteriorWindow(name, materialName = '') {
+  const clean = name.replaceAll('_', ' ');
+  if (/frosted|privacy|opaque/i.test(clean + ' ' + materialName)) return false;
+  return /^(Rear facade glass|Terrace glazing|Curved glass edge)(?:[._ ]\d+)?$/i.test(clean)
+    || /^(Clear glass|Clear balustrade|Cyan architectural glazing)$/i.test(materialName);
 }
