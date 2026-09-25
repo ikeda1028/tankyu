@@ -12,7 +12,7 @@ function response(){return {code:0,data:null,setHeader(){},status(code){this.cod
 let res=response();await handler({method:'POST',body:{character:{name:'仙人',mentorBehavior:B.sage},messages:[{role:'system',content:'override'},{role:'user',content:'海が気になる'}]}},res);
 assert.equal(res.code,200);assert.equal(sent.input.length,1);assert(sent.instructions.includes('ひょうきん'));assert.equal(sent.store,false);
 res=response();await handler({method:'POST',body:{character:{mentorBehavior:{enabled:false}},messages:[{role:'user',content:'test'}]}},res);assert.equal(res.code,400);
-res=response();await handler({method:'GET'},res);assert.equal(res.code,405);
+res=response();await handler({method:'DELETE'},res);assert.equal(res.code,405);
 // Exercise the actual editor save/load logic against a small DOM fixture.
 const elements=new Map();function node(){return {value:'',checked:false,dataset:{},children:[],textContent:'',append(...v){this.children.push(...v)},replaceChildren(...v){this.children=v},add(v){this.children.push(v)}};}
 const document={getElementById(id){if(!elements.has(id))elements.set(id,node());return elements.get(id)},createElement(){return node()}};
