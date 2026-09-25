@@ -9,7 +9,7 @@ const publicFiles = ["index.html", "styles.css", "app.js", "database.js", "fireb
 const assetFiles = ["opening-kids.mp4", "fudozaka-dragon.glb", "fudo.glb", "fudozaka-dragon-poster.png", "MANABI_Shibuya_3F.glb", "Katsuren_Future_Castle.glb", "account.svg", "close.svg", "lucide-LICENSE", "quest-lens.svg", "quest-scroll.svg", "quest-prism.svg"];
 publicFiles.push("castle-quests.js", "castle-walk.js", "castle-walk.css", "world-destinations.js", "fudo-avatar.js", "avatar-motion.js");
 publicFiles.push("world-avatar.html", "world-avatar-picker.js", "sanctuary-sky.js");
-assetFiles.push("hongo-tokyo-sky.jpg");
+assetFiles.push("hongo-tokyo-sky.jpg", "shibuya-40f-sky.jpg");
 assetFiles.push("quest-stone.svg", "quest-ceramic.svg", "quest-brass.svg", ...["up", "down", "left", "right", "exit", "hand"].map((name) => `walk-${name}.svg`));
 
 await mkdir(dist, { recursive: true });

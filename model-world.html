@@ -119,10 +119,11 @@
       titleEl.textContent = title;
       document.title = `${title} | Wakuwaku Quest`;
       const modelSrc = resolveModelSrc(rawSrc);
-      if (window.SanctuarySky?.matches(params, location.href)) {
-        viewer.setAttribute("skybox-image", SanctuarySky.image);
+      const skyline = window.SanctuarySky?.resolve(params, location.href);
+      if (skyline) {
+        viewer.setAttribute("skybox-image", skyline.image);
         // Keep neutral indoor lighting; the panorama supplies the distant view.
-        document.querySelector('.hint').textContent = '本郷の上空約500mをイメージした空間。東京の街並み・富士山・山並み・入道雲を見渡せます。ドラッグで見回せます。';
+        document.querySelector('.hint').textContent = skyline.hint;
       }
       if (!modelSrc) {
         document.body.innerHTML = '<main class="error"><div><h1>3Dモデルが見つかりません</h1><p>探究ポイントの3DモデルURLを確認してください。</p><p><a class="back" href="/?return=map" aria-label="地図へ戻る">×</a></p></div></main>';

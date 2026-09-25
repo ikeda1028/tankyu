@@ -14,3 +14,12 @@ assert(!matches('src=assets/fudo.glb&title=' + encodeURIComponent('子供の探�
 assert(!matches(model));
 await readFile(new URL('../dist/' + context.SanctuarySky.image, import.meta.url));
 console.log('PASS: Hongo scene scoping and published panorama asset; other worlds unchanged.');
+
+const resolve = query => context.SanctuarySky.resolve(new URLSearchParams(query), base);
+assert.equal(resolve(model + '&title=MANABI渋谷3F').id, 'shibuya');
+assert.equal(resolve(model + '&title=MANABI渋谷3F&lat=35.706795&lng=139.762661').id, 'hongo', 'Hongo entrance wins over a stale default title');
+assert.equal(resolve(model + '&title=Other'), null);
+assert.equal(resolve('src=assets/fudo.glb&title=MANABI渋谷3F'), null);
+assert.notEqual(resolve(model + '&title=MANABI渋谷3F').image, resolve(model + '&title=子供の探究の聖地').image);
+await readFile(new URL('../dist/' + resolve(model + '&title=MANABI渋谷3F').image, import.meta.url));
+console.log('PASS: distinct Shibuya and Hongo panoramas and location precedence.');

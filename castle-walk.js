@@ -9,7 +9,8 @@ const source = params.get("src");
 const fudo = isFudoModel(source);
 const manabi = /\/MANABI_Shibuya_3F\.glb$/i.test(new URL(source || ".", location.href).pathname);
 const avatarWorld = fudo || manabi;
-const sanctuary = window.SanctuarySky?.matches(params, location.href) === true;
+const skyline = window.SanctuarySky?.resolve(params, location.href);
+const sanctuary = Boolean(skyline);
 const world = QuestItems.worldKey(source);
 const viewer = document.querySelector("#world-model");
 const floors = fudo ? [{ name: "不動尊・堂内", height: .65, spawn: [0, 10] }] : manabi ? [
@@ -230,11 +231,11 @@ async function enterCastle() {
       camera = new THREE.PerspectiveCamera(65, 1, .04, 400);
       if (sanctuary) {
         scene.fog = null;
-        const sky = await new THREE.TextureLoader().loadAsync(SanctuarySky.image);
+        const sky = await new THREE.TextureLoader().loadAsync(skyline.image);
         sky.mapping = THREE.EquirectangularReflectionMapping;
         sky.colorSpace = THREE.SRGBColorSpace;
         scene.background = sky;
-        scene.backgroundRotation.y = -Math.PI / 2;
+        scene.backgroundRotation.y = skyline.rotation;
         scene.backgroundIntensity = .85;
       }
       scene.add(new THREE.HemisphereLight(0xebfaff, 0x81877b, 2.6));
@@ -314,7 +315,10 @@ surface.querySelectorAll("[data-floor]").forEach((button) => button.onclick = ()
 if (sanctuary) {
   const views = document.createElement('div');
   views.className = 'sanctuary-views';
-  views.innerHTML = '<p>本郷 · 上空約500mのイメージ</p><button type="button" data-sky="fuji">富士山と空を見る</button><button type="button" data-sky="city">東京を見下ろす</button>';
+  views.innerHTML = '<p></p><button type="button" data-sky="fuji"></button><button type="button" data-sky="city"></button>';
+  views.querySelector('p').textContent = skyline.label;
+  views.querySelector('[data-sky="fuji"]').textContent = skyline.skyline;
+  views.querySelector('[data-sky="city"]').textContent = skyline.city;
   surface.append(views);
   views.querySelectorAll('[data-sky]').forEach(button => {
     button.onclick = () => {
