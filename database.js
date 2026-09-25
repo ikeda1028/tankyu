@@ -128,6 +128,7 @@ function toProfile(state) {
     joyActions: state.joyActions || [],
     selectedReflection: state.selectedReflection,
     worlds: state.worlds || [],
+    mentorProfiles: state.mentorProfiles || [],
     streak: state.streak,
     lastActiveDate: state.lastActiveDate,
     updatedAt: new Date().toISOString(),
@@ -159,6 +160,7 @@ function fromProfile(defaultState, profile) {
   return profile
     ? {
         ...defaultState,
+        mentorProfiles: profile.mentorProfiles || [],
         auth: profile.auth || defaultState.auth,
         member: profile.member || defaultState.member,
         childProfile: profile.childProfile || defaultState.childProfile,
@@ -301,3 +303,4 @@ window.WakuwakuDB = {
   exportSnapshot,
   seedEvents,
 };
+

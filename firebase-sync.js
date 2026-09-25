@@ -413,7 +413,7 @@ function createPublicExploration(snapshot) {
     ...pickPublicFields(point, ["id", "title", "description", "impact", "locationName", "tags", "keywords", "index", "color", "eventType", "startDate", "endDate", "questionPath", "createdAt", "updatedAt", "aiGenerated", "sourceUrl", "sourceTitle", "sourceType", "verificationNote", "verificationLevel", "verifiedAt"]),
     position: position(point.position),
     boost: pickPublicFields(point.boost, ["joy", "distance", "reflection"]),
-    character: point.character ? { ...pickPublicFields(point.character, ["name", "role", "message", "symbol", "color", "localOnly", "radius", "mentorEnabled", "mentorLevel", "imageDataUrl", "downloadUrl"]), model3d: model(point.character.model3d) } : null,
+    character: point.character ? { ...pickPublicFields(point.character, ["name", "role", "message", "symbol", "color", "localOnly", "radius", "mentorEnabled", "mentorLevel", "mentorProfileId", "mentorBehavior", "imageDataUrl", "downloadUrl"]), model3d: model(point.character.model3d) } : null,
     model3d: model(point.model3d),
   })).filter((point) => point.id && point.position);
   const worlds = (snapshot.worlds || []).map((world) => {
@@ -426,6 +426,8 @@ function createPublicExploration(snapshot) {
       model3d: model(world.model3d),
     };
   }).filter((world) => world.id && world.entrancePosition);
+  const registry=(Array.isArray(snapshot.mentorProfiles)&&snapshot.mentorProfiles.length?snapshot.mentorProfiles:[window.MentorBehavior?.sageProfile]).filter(Boolean);
+  worlds.push({id:'mentor-registry-v1',kind:'mentor-registry',mentors:registry.map(p=>({...pickPublicFields(p,['id','name','role','mentorEnabled','mentorBehavior']),model3d:model(p.model3d)}))});
   return { points, worlds };
 }
 
@@ -435,7 +437,7 @@ async function loadPublicExploration(config) {
   for (const kind of ["points", "worlds"]) {
     const collection = firestore.collection(db, "publicExplorers", PUBLIC_OWNER_ID, kind);
     const snapshot = await firestore.getDocs(collection);
-    result[kind] = snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }));
+    result[kind] = snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id })).filter(record => record.kind !== "mentor-registry");
   }
   return result;
 }
@@ -499,3 +501,4 @@ window.WakuwakuFirebase = {
   saveMemberProfile,
   watchMemberProfile,
 };
+

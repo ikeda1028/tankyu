@@ -199,6 +199,7 @@ const defaultState = {
   joyActions: [],
   completed: [],
   visitedCharacters: [],
+  mentorProfiles: [],
   mentorship: { unlockedAt: "", selectedEventId: "", met: [] },
   reflections: [],
   feedbacks: [],
@@ -743,6 +744,7 @@ let kidsTtsAudio = null;
 let eventGeneratedCharacterImageDataUrl = "";
 let eventGeneratedCharacterDownloadUrl = "";
 let eventCharacterModel3d = null;
+let eventMentorConfig = {};
 let verifiedMentorModelUrl = "";
 
 function cloneDefaultState() {
@@ -1186,7 +1188,9 @@ function normalizeCharacter(character) {
   if (!character || !name) return null;
   return {
     name,
-    role: String(character.role || "現地案内人").trim().slice(0, 40),
+    role: String(character.role || "現地案内人").trim().slice(0, 80),
+    mentorProfileId: String(character.mentorProfileId || "").slice(0, 100),
+    mentorBehavior: MentorBehavior.normalize(character.mentorBehavior),
     mentorEnabled: character.mentorEnabled !== false,
     mentorLevel: MentorProgression.level(character.mentorLevel),
     model3d: MentorModels.normalize(character.model3d, PUBLIC_API_BASE),
@@ -1612,6 +1616,7 @@ function hasPortableUserData(snapshot = state) {
       snapshot.childProfile?.nickname ||
       avatar.imageDataUrl ||
       avatar.downloadUrl ||
+      (Array.isArray(snapshot.mentorProfiles) && snapshot.mentorProfiles.length) ||
       (Array.isArray(snapshot.worlds) && snapshot.worlds.length) ||
       (Array.isArray(snapshot.customEvents) && snapshot.customEvents.length) ||
       (Array.isArray(snapshot.fieldPosts) && snapshot.fieldPosts.length) ||
@@ -5307,6 +5312,10 @@ function renderCharacterCard(encounter) {
         ${model3dMarkup}
         ${editActionMarkup}
       </div>`;
+  if (unlocked && character.mentorEnabled && character.mentorBehavior.enabled) {
+    const talk = document.createElement('button'); talk.type='button';talk.className='primary-button';talk.textContent=character.name+'と話す';
+    talk.onclick=()=>MentorChat.open(character);els.characterCard.append(talk);
+  }
   const mentorModelHost = els.characterCard.querySelector("[data-mentor-model]");
   if (mentorModelHost) MentorModels.mount(mentorModelHost, character.model3d, character.name);
   els.characterCard.querySelector("[data-point-character]")?.addEventListener("click", (event) => {
@@ -7678,7 +7687,8 @@ async function initDatabase() {
       dbState.feedbacks.length ||
       (Array.isArray(dbState.customEvents) && dbState.customEvents.length) ||
       (Array.isArray(dbState.fieldPosts) && dbState.fieldPosts.length) ||
-      (Array.isArray(dbState.worlds) && dbState.worlds.length);
+      (Array.isArray(dbState.worlds) && dbState.worlds.length) ||
+      (Array.isArray(dbState.mentorProfiles) && dbState.mentorProfiles.length);
 
     if (hasDbProfile) {
       Object.assign(state, dbState);
@@ -8207,6 +8217,7 @@ function populateMentorSettings(eventId = "") {
   const points = getEncounters().filter((point) => !point.publicReadOnly);
   els.mentorPoint.innerHTML = '<option value="">探究ポイントを選択</option>' + points.map((point) => `<option value="${escapeHtml(point.id)}">${escapeHtml(point.title)}</option>`).join("");
   els.mentorPoint.value = points.some((point) => point.id === eventId) ? eventId : "";
+  MentorAdmin.options();
   loadMentorSettings();
 }
 
@@ -8223,6 +8234,7 @@ function loadMentorSettings() {
   els.mentorSave.disabled = !point;
   els.mentorSave.textContent = point && !state.customEvents.some((item) => item.id === point.id) ? "コピーして保存" : "保存";
   els.mentorSettingsStatus.textContent = "";
+  MentorAdmin.fill(character);
   previewMentorModel();
 }
 
@@ -8250,38 +8262,7 @@ function previewMentorModel() {
   });
 }
 
-function saveMentorSettings(event) {
-  event?.preventDefault();
-  if (!isAdminUser()) return;
-  const point = getEncounters().find((item) => item.id === els.mentorPoint.value);
-  if (!point || point.publicReadOnly) { els.mentorSettingsStatus.textContent = "編集できる探究ポイントを選択してください。"; return; }
-  const name = els.mentorName.value.trim();
-  if (!name) { els.mentorSettingsStatus.textContent = "メンター名を入力してください。"; return; }
-  const raw = els.mentorModelUrl.value.trim();
-  const model3d = MentorModels.normalize({ modelUrl: raw, title: name }, PUBLIC_API_BASE);
-  if (raw && (!model3d || verifiedMentorModelUrl !== model3d.modelUrl)) {
-    els.mentorSettingsStatus.textContent = "「3Dを確認」でモデルが表示されてから保存してください。";
-    return;
-  }
-  const original = state.customEvents.find((item) => item.id === point.id);
-  const character = normalizeCharacter({
-    ...getEventCharacter(point), name, role: els.mentorRole.value.trim(),
-    mentorEnabled: els.mentorEnabled.checked, mentorLevel: els.mentorRank.value,
-    message: els.mentorMessage.value.trim(), model3d,
-  });
-  const saved = {
-    ...(original || point), id: original?.id || createEventId(point.title), character,
-    userCreated: true, updatedAt: new Date().toISOString(),
-    ...(!original ? { sourceEventId: point.id } : {}),
-  };
-  if (original) state.customEvents = state.customEvents.map((item) => item.id === original.id ? saved : item);
-  else state.customEvents.unshift(saved);
-  saveState();
-  render();
-  populateMentorSettings(saved.id);
-  els.mentorSettingsStatus.textContent = "保存しました。クラウド同期状況は設定画面で確認できます。";
-  queueFirebaseSync("メンター設定");
-}
+function saveMentorSettings(event) { return MentorAdmin.save(event); }
 
 function canOpenManagementMode(mode, options = {}) {
   if (mode === "admin" || mode === "mentor-settings" || (mode === "worlds" && options.worldEditor)) return isAdminUser();
@@ -8292,8 +8273,9 @@ function canOpenManagementMode(mode, options = {}) {
 function renderAdminHub() {
   if (!els.adminView) return;
   if (!isAdminUser()) { els.adminView.classList.add("hidden"); els.adminMentorList.innerHTML = ""; return; }
+  MentorAdmin.renderRegistry();
   const points = getEncounters();
-  els.adminSummary.textContent = `ワールド ${state.worlds.length}件 / 探究ポイント ${points.length}件 / メンター ${points.filter((point) => getEventCharacter(point)?.mentorEnabled).length}人`;
+  els.adminSummary.textContent = `ワールド ${state.worlds.length}件 / 探究ポイント ${points.length}件 / 登録メンター ${(state.mentorProfiles?.length || 1)}人 / 配置済み ${points.filter((point) => getEventCharacter(point)?.mentorEnabled).length}件`;
   const query = (els.adminMentorSearch?.value || "").trim().toLowerCase();
   els.adminMentorList.innerHTML = points.filter((point) => `${point.title} ${getEventCharacter(point)?.name}`.toLowerCase().includes(query)).map((point) => {
     const character = getEventCharacter(point);
@@ -8726,6 +8708,7 @@ function getEventCharacterPreviewData(extra = {}) {
     mentorEnabled: els.eventMentorEnabled?.checked !== false,
     mentorLevel: MentorProgression.level(els.eventMentorLevel?.value),
     model3d: eventCharacterModel3d,
+    ...eventMentorConfig,
     message: els.eventCharacterMessage?.value.trim() || extra.message || fallback.message,
     localOnly: els.eventCharacterEnabled?.checked !== false,
     personality: extra.personality || fallback.personality || "",
@@ -8777,6 +8760,7 @@ function getRequiredCharacterFromForm(payload) {
     mentorEnabled: els.eventMentorEnabled?.checked !== false,
     mentorLevel: MentorProgression.level(els.eventMentorLevel?.value),
     model3d: eventCharacterModel3d,
+    ...eventMentorConfig,
     message: els.eventCharacterMessage?.value.trim() || "現地で見えたことを記録して、次の問いを見つけよう。",
     localOnly,
     imageDataUrl: eventGeneratedCharacterImageDataUrl,
@@ -8791,6 +8775,7 @@ function getRequiredCharacterFromForm(payload) {
     mentorEnabled: els.eventMentorEnabled?.checked !== false,
     mentorLevel: MentorProgression.level(els.eventMentorLevel?.value),
     model3d: eventCharacterModel3d,
+    ...eventMentorConfig,
     localOnly,
     imageDataUrl: eventGeneratedCharacterImageDataUrl,
     downloadUrl: eventGeneratedCharacterDownloadUrl,
@@ -8999,6 +8984,7 @@ function resetEventFormToCreate(status = "新規登録") {
   eventGeneratedCharacterImageDataUrl = "";
   eventGeneratedCharacterDownloadUrl = "";
   eventCharacterModel3d = null;
+  eventMentorConfig = {};
   els.eventForm.reset();
   els.eventIndex.value = 78;
   els.eventColor.value = "#2f8f63";
@@ -9047,6 +9033,7 @@ function populateEventForm(eventData) {
   eventGeneratedCharacterImageDataUrl = character.imageDataUrl || "";
   eventGeneratedCharacterDownloadUrl = character.downloadUrl || "";
   eventCharacterModel3d = MentorModels.normalize(character.model3d, PUBLIC_API_BASE);
+  eventMentorConfig = { mentorProfileId: character.mentorProfileId || "", mentorBehavior: MentorBehavior.normalize(character.mentorBehavior) };
   if (els.eventCharacterEnabled) els.eventCharacterEnabled.checked = Boolean(eventData.character?.localOnly ?? true);
   if (els.eventCharacterName) els.eventCharacterName.value = character.name || "";
   if (els.eventCharacterRole) els.eventCharacterRole.value = character.role || "";
@@ -9485,7 +9472,12 @@ document.querySelectorAll("[data-admin-open]").forEach((button) => button.addEve
   showMode(mode, { worldEditor: mode === "worlds" });
 }));
 els.adminMentorSearch?.addEventListener("input", renderAdminHub);
-els.mentorPoint?.addEventListener("change", loadMentorSettings);
+els.mentorPoint?.addEventListener("change", () => {
+  if (document.getElementById('mentor-profile-choice').value) {
+    els.mentorSettingsStatus.textContent='保存すると、選択したポイントにこのメンターを配置します。';
+  } else loadMentorSettings();
+});
+document.getElementById('admin-mentor-new')?.addEventListener('click',()=>{if(!isAdminUser())return;openMentorSettings();MentorAdmin.newProfile(false);});
 els.mentorSettingsForm?.addEventListener("submit", saveMentorSettings);
 document.querySelector("#mentor-preview-button")?.addEventListener("click", previewMentorModel);
 document.querySelector("#mentor-remove-model")?.addEventListener("click", () => {
@@ -9790,3 +9782,4 @@ async function loadPublicExploration() {
     console.warn("Public exploration could not be loaded:", error);
   }
 }
+

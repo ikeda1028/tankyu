@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Wakuwaku Quest</title>
     <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="mentor-settings.css" />
     <link rel="stylesheet" href="quest-inventory.css" />
   </head>
   <body>
@@ -507,6 +508,9 @@
           <p id="admin-summary"></p>
           <section id="admin-mentors" class="admin-mentors">
             <h3>メンター管理</h3>
+            <button type="button" id="admin-mentor-new" class="primary-button">メンターを追加</button>
+            <div id="admin-mentor-profiles"></div>
+            <h4>探究ポイントへの配置</h4>
             <label for="admin-mentor-search">メンター・探究ポイントを検索</label>
             <input id="admin-mentor-search" type="search" placeholder="名前・場所" />
             <div id="admin-mentor-list" class="admin-mentor-list"></div>
@@ -517,13 +521,16 @@
           <header class="section-head"><h2>メンター設定</h2><button type="button" data-admin-return class="secondary-button">管理者画面へ戻る</button></header>
           <div class="mentor-settings-layout">
             <form id="mentor-settings-form">
+              <label for="mentor-profile-choice">登録済みのメンター</label><select id="mentor-profile-choice"></select>
+              <div class="mentor-settings-actions"><button id="mentor-new" type="button">新規作成</button><button id="mentor-sage" type="button">仙人の応対をひな形にする</button><button id="mentor-duplicate" type="button">複製して作成</button></div>
+              <p class="mentor-help">メンターごとに応対と3Dモデルを設定できます。配置先は後から選べます。設定内容には秘密情報を含めないでください。</p>
               <label for="mentor-point">配置する探究ポイント</label>
-              <select id="mentor-point" required></select>
+              <select id="mentor-point"></select>
               <button type="button" data-admin-open="event-admin" class="secondary-button mini-action">探究ポイントを登録</button>
               <label for="mentor-name">メンター名</label>
               <input id="mentor-name" maxlength="40" required />
               <label for="mentor-role">役割・専門分野</label>
-              <input id="mentor-role" maxlength="40" />
+              <input id="mentor-role" maxlength="80" />
               <label for="mentor-rank">出会えるレベル</label>
               <select id="mentor-rank">
                 <option value="1">Lv.1 観察と気づき</option><option value="2">Lv.2 背景と根拠</option>
@@ -538,6 +545,21 @@
                 <button id="mentor-preview-button" type="button" class="secondary-button">3Dを確認</button>
                 <button id="mentor-remove-model" type="button" class="secondary-button">3Dを解除</button>
               </div>
+              <fieldset><legend>AIの応対</legend>
+                <label class="mentor-toggle"><input id="mentor-ai-enabled" type="checkbox">AI会話を有効にする</label>
+                <label class="mentor-toggle"><input id="mentor-ai-castleEnabled" type="checkbox">勝連城のAIメンター候補にする</label>
+                <p class="mentor-help">勝連城では候補の中から1人が、訪問ごとに城内の異なる場所に現れます。仙人の3D表示に使用します。</p>
+                <div id="mentor-behavior-fields"></div>
+                <label for="mentor-ai-projectMode">プロジェクト化のタイミング</label><select id="mentor-ai-projectMode"><option value="off">問いの探究に集中する</option><option value="ask">本人の希望を聞いてから進める</option><option value="guide">小さな実践案を積極的に提案する</option></select>
+                <label for="mentor-ai-maxLength">1回の返答の長さ（文字数の目安）</label><input id="mentor-ai-maxLength" type="number" min="80" max="500" step="10">
+              </fieldset>
+              <fieldset><legend>音声で会話</legend>
+                <label class="mentor-toggle"><input id="mentor-ai-voiceInput" type="checkbox">マイクで話せるようにする</label>
+                <label class="mentor-toggle"><input id="mentor-ai-voiceOutput" type="checkbox">AIの返事を読み上げる</label>
+                <label for="mentor-ai-voice">声（試し会話で聞き比べられます）</label><select id="mentor-ai-voice"><option value="sage">sage</option><option value="onyx">onyx</option><option value="ash">ash</option><option value="echo">echo</option><option value="fable">fable</option><option value="alloy">alloy</option><option value="ballad">ballad</option><option value="coral">coral</option><option value="nova">nova</option><option value="shimmer">shimmer</option><option value="verse">verse</option></select>
+                <p class="mentor-help">マイクは参加者がボタンを押してから開始します。音声入力に対応していないブラウザーでは文字入力を使います。</p>
+              </fieldset>
+              <button id="mentor-test" type="button" class="secondary-button">この設定で会話を試す</button>
               <button id="mentor-save" type="submit">保存</button>
               <p id="mentor-settings-status" role="status"></p>
             </form>
@@ -1347,9 +1369,13 @@
     <script src="mentor-progression.js"></script>
     <script src="mentor-models.js"></script>
     <script src="world-destinations.js"></script>
+    <script src="mentor-behavior.js"></script>
+    <script src="mentor-chat.js"></script>
+    <script src="mentor-admin.js"></script>
     <script src="app.js"></script>
     <script src="quest-items.js"></script>
     <script src="castle-quests.js"></script>
     <script src="quest-inventory.js"></script>
   </body>
 </html>
+

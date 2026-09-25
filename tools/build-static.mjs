@@ -6,6 +6,7 @@ const root = new URL("..", import.meta.url).pathname;
 const dist = join(root, "dist");
 
 const publicFiles = ["index.html", "styles.css", "app.js", "database.js", "firebase-sync.js", "ar-dragon.html", "model-world.html", "world-access.js", "mentor-progression.js", "mentor-models.js", "quest-items.js", "quest-inventory.js", "quest-inventory.css"];
+publicFiles.push("mentor-behavior.js", "mentor-chat.js", "mentor-admin.js", "mentor-settings.css");
 const assetFiles = ["opening-kids.mp4", "fudozaka-dragon.glb", "fudo.glb", "fudozaka-dragon-poster.png", "MANABI_Shibuya_3F.glb", "Katsuren_Future_Castle.glb", "account.svg", "close.svg", "lucide-LICENSE", "quest-lens.svg", "quest-scroll.svg", "quest-prism.svg"];
 publicFiles.push("castle-quests.js", "castle-walk.js", "castle-walk.css", "world-destinations.js", "fudo-avatar.js", "avatar-motion.js");
 publicFiles.push("world-avatar.html", "world-avatar-picker.js", "sanctuary-sky.js", "window-view.js");
@@ -89,4 +90,5 @@ const config = {
 };
 
 await writeFile(join(dist, "public-config.js"), `window.WAKUWAKU_CONFIG = ${JSON.stringify(config, null, 2)};\n`, "utf8");
+
 
