@@ -2702,9 +2702,19 @@ function createAvatarMapMarkerIcon() {
   };
 }
 
+let castleMarkerPreview, castleMarkerLoading;
 function createCharacterMapMarkerIcon(encounter, evaluation = null) {
   const model3d = normalizeEventModel3d(encounter?.model3d);
   if (model3d) {
+    const isCastle = /Katsuren_Future_Castle\.glb(?:[?#]|$)/i.test(model3d.modelUrl);
+    if (isCastle && !castleMarkerLoading) {
+      castleMarkerLoading = fetch('assets/katsuren-future-marker-v2.png').then(response => {
+        if (!response.ok) throw Error('Castle preview unavailable');
+        return response.blob();
+      }).then(blob => new Promise((resolve, reject) => {
+        const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(blob);
+      })).then(image => { castleMarkerPreview = image; renderGoogleMapMarkers(); }).catch(error => console.warn('Castle marker preview unavailable', error));
+    }
     const safeColor = /^#[0-9a-f]{6}$/i.test(encounter?.color) ? encounter.color : "#2f8f63";
     const score = String(evaluation ? evaluation.total : encounter?.index || 70).slice(0, 3);
     const title = escapeHtml(model3d.title || encounter?.title || "3D");
@@ -2725,8 +2735,9 @@ function createCharacterMapMarkerIcon(encounter, evaluation = null) {
       </defs>
       <ellipse cx="62" cy="118" rx="38" ry="10" fill="#10231f" opacity="0.24"/>
       <path d="M62 120 C55 100 18 86 18 50 C18 24 36 10 62 10 C88 10 106 24 106 50 C106 86 69 100 62 120Z" fill="url(#gate)" stroke="#ffffff" stroke-width="7" filter="url(#shadow)"/>
-      <path d="M40 42 L62 29 L84 42 L84 68 L62 82 L40 68Z" fill="url(#cube)" stroke="#ffffff" stroke-width="4"/>
-      <path d="M40 42 L62 55 L84 42 M62 55 L62 82" fill="none" stroke="#276a8f" stroke-width="3" opacity="0.72"/>
+      ${isCastle && castleMarkerPreview
+        ? `<image href="${castleMarkerPreview}" x="15" y="9" width="94" height="82" preserveAspectRatio="xMidYMid meet"/>`
+        : `<path d="M40 42 L62 29 L84 42 L84 68 L62 82 L40 68Z" fill="url(#cube)" stroke="#ffffff" stroke-width="4"/><path d="M40 42 L62 55 L84 42 M62 55 L62 82" fill="none" stroke="#276a8f" stroke-width="3" opacity="0.72"/>`}
       <circle cx="93" cy="25" r="19" fill="#ffffff" stroke="${safeColor}" stroke-width="4"/>
       <text x="93" y="31" text-anchor="middle" font-family="system-ui, sans-serif" font-size="15" font-weight="900" fill="#17211b">${score}</text>
       <rect x="35" y="82" width="54" height="22" rx="11" fill="#ffffff" opacity="0.95"/>

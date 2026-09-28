@@ -13,6 +13,8 @@ publicFiles.push("world-avatar.html", "world-avatar-picker.js", "sanctuary-sky.j
 assetFiles.push("hongo-tokyo-sky.jpg", "shibuya-40f-sky.jpg");
 assetFiles.push("quest-stone.svg", "quest-ceramic.svg", "quest-brass.svg", ...["up", "down", "left", "right", "exit", "hand"].map((name) => `walk-${name}.svg`));
 
+assetFiles.push("katsuren-future-marker-v2.png");
+
 await mkdir(dist, { recursive: true });
 await mkdir(join(dist, "assets"), { recursive: true });
 
