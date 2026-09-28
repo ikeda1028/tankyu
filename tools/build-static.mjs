@@ -13,6 +13,7 @@ publicFiles.push("world-avatar.html", "world-avatar-picker.js", "sanctuary-sky.j
 assetFiles.push("hongo-tokyo-sky.jpg", "shibuya-40f-sky.jpg");
 publicFiles.push("visit.html", "visit.js", "visit.css");
 publicFiles.push("map-qr-camera.js");
+publicFiles.push("mobile-map-viewport.js");
 assetFiles.push("scan-qr.svg");
 assetFiles.push("quest-stone.svg", "quest-ceramic.svg", "quest-brass.svg", ...["up", "down", "left", "right", "exit", "hand"].map((name) => `walk-${name}.svg`));
 
@@ -97,4 +98,3 @@ const config = {
 };
 
 await writeFile(join(dist, "public-config.js"), `window.WAKUWAKU_CONFIG = ${JSON.stringify(config, null, 2)};\n`, "utf8");
-

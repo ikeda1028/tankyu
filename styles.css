@@ -7001,14 +7001,23 @@ body:has(.map-canvas.kids-map-active) .kids-navigator-bot {
 
   body.map-screen-active:not(.kids-screen-active) .shell,
   body.map-screen-active:not(.kids-screen-active) .map-area {
-    height: 100dvh;
+    height: var(--map-visible-height, 100dvh);
     min-height: 0;
     overflow: hidden;
   }
 
+  body.map-screen-active:not(.kids-screen-active) .shell {
+    position: fixed;
+    top: var(--map-visible-top, 0px);
+    left: 0;
+    right: 0;
+    width: 100%;
+    margin: 0;
+  }
+
   body.map-screen-active:not(.kids-screen-active) .map-controls {
     position: absolute;
-    top: calc(132px + env(safe-area-inset-top));
+    top: calc(max(8px, env(safe-area-inset-top)) + var(--map-toolbar-height, 116px) + 10px);
     right: 16px;
   }
 
