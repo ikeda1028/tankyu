@@ -187,6 +187,7 @@
           <div id="member-party-summary" class="party-summary"></div>
           <p id="member-summary-status" class="member-save-status" aria-live="polite"></p>
           <button class="secondary-button quest-inventory-entry" type="button" data-quest-inventory><img src="assets/quest-lens.svg" width="32" height="32" alt="" />もちもの</button>
+          <a class="secondary-button db-button" href="visit.html">訪問ポイント・現地QR</a>
           <button id="logout-button" class="secondary-button db-button" type="button">ログアウト</button>
         </section>
 
@@ -300,6 +301,8 @@
             <button id="map-search-button" type="button">探す</button>
           </div>
           <div class="topbar-actions">
+            <button id="map-qr-camera" class="map-qr-camera" type="button" title="QRを撮影" aria-label="QRを撮影"><img src="assets/scan-qr.svg" alt="" width="24" height="24" /></button>
+            <input id="map-qr-file" type="file" accept="image/*" capture="environment" hidden />
             <button id="account-button" class="account-icon-button" type="button" aria-label="アカウントを開く" title="アカウント" aria-expanded="false" aria-controls="account-panel"><img src="assets/account.svg" width="24" height="24" alt="" /></button>
             <div class="mode-tabs" role="tablist" aria-label="表示モード">
               <button type="button" data-mode="kids" onclick="window.setQuestMode && window.setQuestMode('kids')">キッズ</button>
@@ -504,6 +507,7 @@
             <button type="button" data-admin-open="worlds" class="secondary-button">ワールド管理</button>
             <button type="button" data-admin-open="event-admin" class="secondary-button">探究ポイント管理</button>
             <button type="button" data-admin-open="mentors" class="secondary-button">メンター管理</button>
+            <a class="secondary-button" href="visit.html">現地QR管理</a>
           </nav>
           <p id="admin-summary"></p>
           <section id="admin-mentors" class="admin-mentors">
@@ -1378,6 +1382,7 @@
     <script src="mentor-chat.js"></script>
     <script src="mentor-admin.js?v=registry-2"></script>
     <script src="app.js"></script>
+    <script src="map-qr-camera.js"></script>
     <script src="quest-items.js"></script>
     <script src="castle-quests.js"></script>
     <script src="quest-inventory.js"></script>

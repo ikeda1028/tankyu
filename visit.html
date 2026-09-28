@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="referrer" content="no-referrer"><title>訪問ポイント | 探究</title><link rel="stylesheet" href="visit.css"></head>
+<body><header><a href="/index.html">地図へ戻る</a><h1>訪問ポイント</h1><p id="identity">未ログイン</p><button id="login">Googleでログイン</button></header>
+<main>
+  <p id="status" role="status" aria-live="polite"></p>
+  <section class="balance"><h2>合計ポイント</h2><output id="balance">—</output><span>pt</span><button id="refresh" disabled>更新</button></section>
+  <section class="photo-actions"><h2>現地QRを読み取る</h2><label class="photo-button" for="qr-camera">QRを撮影</label><input id="qr-camera" type="file" accept="image/*" capture="environment"><label class="photo-button secondary" for="qr-photo">写真から選ぶ</label><input id="qr-photo" type="file" accept="image/*"></section>
+  <section id="claim-panel" hidden><h2>現地チェックイン</h2><p>10ポイント・このQRにつき1人1回</p><button id="claim" disabled>10ポイントを受け取る</button></section>
+  <section id="receipt" hidden aria-live="polite"><p id="receipt-title"></p><strong id="award"></strong><p id="receipt-total"></p></section>
+  <details><summary>QRのURLを入力</summary><form id="qr-input"><label for="qr-url">現地QRのURL</label><input id="qr-url" type="url" required maxlength="600" autocomplete="off"><button>QRを確認</button></form></details>
+  <section><h2>訪問コレクション <span id="collection-count"></span></h2><p id="history-note">ログインするとコレクションを確認できます</p><ul id="history" class="collection"></ul></section>
+  <section id="admin" hidden><h2>現地QR管理</h2><form id="create"><label for="station-title">設置場所</label><input id="station-title" required maxlength="80" placeholder="例：本郷・入口"><button>QRを発行</button></form>
+    <div id="issued" hidden><h3 id="issued-title"></h3><img id="qr-image" alt="設置用QRコード" width="256" height="256"><p>10ポイント・1人1回</p><a id="download" download="visit-qr.svg">QR画像をダウンロード</a><button id="print">印刷</button><p id="issued-url"></p></div>
+    <p id="admin-status" role="status"></p><ul id="stations"></ul>
+  </section>
+</main>
+<script src="public-config.js"></script><script src="firebase-sync.js"></script><script src="assets/vendor/jsQR.js"></script><script type="module" src="visit.js"></script>
+</body></html>

@@ -1,6 +1,10 @@
 import '../mentor-behavior.js';
 const {normalize,instructions}=globalThis.MentorBehavior;
 export default async function handler(req,res){
+ if(req.query?.visitPoints==='1') {
+  const {default:visitHandler}=await import('../server/visit-service.js');
+  return visitHandler(req,res);
+ }
  res.setHeader('Cache-Control','no-store');
  if(req.method==='GET')return getMentorConfig(req,res);
  if(req.method!=='POST'){res.setHeader('Allow','GET, POST');return res.status(405).json({error:'POST only'});}

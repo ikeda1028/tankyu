@@ -6157,7 +6157,9 @@ body:has(.map-canvas.kids-map-active) .kids-navigator-bot {
   }
 }
 
+.map-qr-camera { display: none; }
 @media (max-width: 620px) {
+  .map-qr-camera { display: grid; place-items: center; flex: 0 0 40px; width: 40px; height: 44px; padding: 0; border: 1px solid #cdded5; border-radius: 8px; background: white; color: #216e55; font-weight: 800; order: 1; }
   body:has(.kids-view:not(.hidden)) {
     overflow: hidden;
   }

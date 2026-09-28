@@ -11,6 +11,9 @@ const assetFiles = ["opening-kids.mp4", "fudozaka-dragon.glb", "fudo.glb", "fudo
 publicFiles.push("castle-quests.js", "castle-walk.js", "castle-walk.css", "world-destinations.js", "fudo-avatar.js", "avatar-motion.js");
 publicFiles.push("world-avatar.html", "world-avatar-picker.js", "sanctuary-sky.js", "window-view.js");
 assetFiles.push("hongo-tokyo-sky.jpg", "shibuya-40f-sky.jpg");
+publicFiles.push("visit.html", "visit.js", "visit.css");
+publicFiles.push("map-qr-camera.js");
+assetFiles.push("scan-qr.svg");
 assetFiles.push("quest-stone.svg", "quest-ceramic.svg", "quest-brass.svg", ...["up", "down", "left", "right", "exit", "hand"].map((name) => `walk-${name}.svg`));
 
 assetFiles.push("katsuren-future-marker-v2.png");
@@ -21,6 +24,8 @@ await mkdir(join(dist, "assets"), { recursive: true });
 for (const file of publicFiles) await copyFile(join(root, file), join(dist, file));
 for (const file of assetFiles) await copyFile(join(root, "assets", file), join(dist, "assets", file));
 await cp(join(root, "assets/vendor/three"), join(dist, "assets/vendor/three"), { recursive: true });
+await copyFile(join(root, "assets/vendor/jsQR.js"), join(dist, "assets/vendor/jsQR.js"));
+await copyFile(join(root, "assets/vendor/jsQR-LICENSE"), join(dist, "assets/vendor/jsQR-LICENSE"));
 await cp(join(root, "assets/avatar-presets"), join(dist, "assets/avatar-presets"), { recursive: true });
 await cp(join(root, "assets/world-avatars"), join(dist, "assets/world-avatars"), { recursive: true });
 await cp(join(root, "assets/avatar-motion"), join(dist, "assets/avatar-motion"), { recursive: true });
@@ -92,5 +97,4 @@ const config = {
 };
 
 await writeFile(join(dist, "public-config.js"), `window.WAKUWAKU_CONFIG = ${JSON.stringify(config, null, 2)};\n`, "utf8");
-
 

@@ -2,6 +2,7 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "cleanUrls": true,
+  "rewrites": [{ "source": "/api/visit-points", "destination": "/api/mentor-chat?visitPoints=1" }],
   "headers": [
     {
       "source": "/(.*)",
