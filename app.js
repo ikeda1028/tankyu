@@ -1035,7 +1035,7 @@ function useFudoModelForEvent() {
 
 function getEncounters() {
   const shared = publicExploration.points.map((event) => ({ ...event, publicReadOnly: true }));
-  const events = new Map([...seedEncounters, ...shared, ...state.customEvents].map((event) => [event.id, event]));
+  const events = new Map([...seedEncounters, ...(window.WorldDestinations?.points || []), ...shared, ...state.customEvents].map((event) => [event.id, event]));
   return [...events.values()].filter(isPublishableEncounter).map((event) => {
     const withCharacter = ensureEventCharacter(event);
     return { ...withCharacter, model3d: normalizeEventModel3d(withCharacter?.model3d) };
@@ -3078,6 +3078,9 @@ function renderGoogleMapMarkers() {
   const themeActive = Boolean(state.themeSearch?.query);
   const kidsMapActive = Boolean(state.ui?.kidsMapActive);
   const markerEncounters = kidsMapActive ? getKidsScopedPoints(state.ui?.kidsPointScope || "own") : rankedEncounters();
+  for (const point of window.WorldDestinations?.points || []) {
+    if (!markerEncounters.some((item) => item.id === point.id)) markerEncounters.push(point);
+  }
   markerEncounters.forEach((encounter) => {
     if (!hasValidLatLng(encounter.position)) return;
     const position = { lat: Number(encounter.position.lat), lng: Number(encounter.position.lng) };
