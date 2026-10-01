@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import vm from 'node:vm';
+const context = { window: {}, URL };
+vm.runInNewContext(readFileSync(new URL('../world-destinations.js', import.meta.url), 'utf8'), context);
+const { points, hostedUrl } = context.window.WorldDestinations;
+const point = points.find(p => p.id === 'shiga-kogen-ski-world');
+assert.equal(point.position.lat, 36.7078761);
+assert.equal(point.position.lng, 138.5044109);
+assert.equal(hostedUrl(point.model3d.modelUrl), 'https://shiga-kogen-ski.manabinomichi.chatgpt.site/');
+assert.equal(hostedUrl('https://shiga-kogen-ski.manabinomichi.chatgpt.site.evil.test/'), '');
+assert.equal(hostedUrl('javascript:alert(1)'), '');
+assert.equal(hostedUrl('assets/Katsuren_Future_Castle.glb'), 'https://katsuren-quest-visit.luketesla4.chatgpt.site/');
+assert.ok(points.find(p => p.id === 'ocean-expo-future-world'));
+const app = readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+assert.ok(app.includes('...(window.WorldDestinations?.points || [])'));
+console.log('PASS: Shiga coordinates, destination allowlist, map inclusion, existing worlds retained');
