@@ -1010,6 +1010,8 @@ function getEventModel3dFromForm(title = "現地3Dモデル") {
 function getModelWorldUrl(model3d, title = "3Dワールド", entrance = null) {
   const model = normalizeEventModel3d(model3d);
   if (!model) return "";
+  model.modelUrl = window.WorldDestinations?.modelSource(model.modelUrl, title) || model.modelUrl;
+  if (/子(?:供|ども)の探究の聖地/.test(title)) model.title = title;
   const hosted = window.WorldDestinations?.hostedUrl(model.modelUrl);
   const presetId = normalizeAvatar(state.member.avatar).presetId;
   if (hosted && !WorldAccess.requiresLocation()) return `${hosted}#avatar=${encodeURIComponent(presetId || "coral")}`;
@@ -9796,4 +9798,3 @@ async function loadPublicExploration() {
     console.warn("Public exploration could not be loaded:", error);
   }
 }
-

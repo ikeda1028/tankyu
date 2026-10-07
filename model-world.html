@@ -118,7 +118,7 @@
 
       titleEl.textContent = title;
       document.title = `${title} | Wakuwaku Quest`;
-      const modelSrc = resolveModelSrc(rawSrc);
+      const modelSrc = resolveModelSrc(window.WorldDestinations?.modelSource(rawSrc, title) || rawSrc);
       const skyline = window.SanctuarySky?.resolve(params, location.href);
       if (skyline) {
         viewer.setAttribute("skybox-image", skyline.image);
@@ -201,6 +201,12 @@
       }
 
       function getWalkPoints() {
+        if (/learning-tree\.glb/i.test(modelSrc)) return {
+          gate: { label: "全体", target: "0m 12m 0m", orbit: "25deg 65deg 70m", fov: "40deg" },
+          front: { label: "入口", target: "0m 2m 7m", orbit: "0deg 75deg 24m", fov: "35deg" },
+          floor1: { label: "螺旋階段", target: "0m 8m 0m", orbit: "65deg 70deg 35m", fov: "40deg" },
+          floor2: { label: "最上階", target: "0m 19m 0m", orbit: "0deg 75deg 28m", fov: "40deg" },
+        };
         if (/Katsuren_Future_Castle\.glb/i.test(rawSrc)) {
           return {
             gate: { label: "全体", target: "auto auto auto", orbit: "0deg 65deg auto", fov: "30deg" },
@@ -280,7 +286,7 @@
     <script src="castle-quests.js"></script>
     <script src="quest-inventory.js"></script>
     <script>
-      if (/\/(?:Katsuren_Future_Castle|fudo|MANABI_Shibuya_3F)\.glb$/i.test(new URL(modelSrc || ".", location.href).pathname)) {
+      if (/\/(?:Katsuren_Future_Castle|fudo|MANABI_Shibuya_3F|learning-tree)\.glb$/i.test(new URL(modelSrc || ".", location.href).pathname)) {
         import("./castle-walk.js").catch(() => {
           const note = document.createElement("p");
           note.className = "hint";

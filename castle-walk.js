@@ -3,20 +3,27 @@ import { GLTFLoader } from "./assets/vendor/three/addons/loaders/GLTFLoader.js";
 import { Octree } from "./assets/vendor/three/addons/math/Octree.js";
 import { Capsule } from "./assets/vendor/three/addons/math/Capsule.js";
 import { isFudoModel, createFudoAvatar } from "./fudo-avatar.js";
+import { isLearningTree, learningTreeMeshRole, createLearningTreeNavigation } from "./learning-tree-navigation.js";
 
 import { windowFocusAmount, smoothWindowFocus, isExteriorWindow } from "./window-view.js";
 
 const params = new URLSearchParams(location.search);
-const source = params.get("src");
+const tree = isLearningTree(params.get("src"), params.get("title"));
+const source = tree ? "assets/learning-tree.glb" : params.get("src");
 const fudo = isFudoModel(source);
 const manabi = /\/MANABI_Shibuya_3F\.glb$/i.test(new URL(source || ".", location.href).pathname);
-const avatarWorld = fudo || manabi;
+const avatarWorld = fudo || manabi || tree;
 const skyline = window.SanctuarySky?.resolve(params, location.href);
 const sanctuary = Boolean(skyline);
 const clearWindowView = true;
 const world = QuestItems.worldKey(source);
 const viewer = document.querySelector("#world-model");
-const floors = fudo ? [{ name: "不動尊・堂内", height: .65, spawn: [0, 10] }] : manabi ? [
+const floors = tree ? [
+  { name: "探究の木・入口", height: .65, spawn: [0, 8] },
+  { name: "交流のフロア", height: 6.65, spawn: [0, 6] },
+  { name: "学びのフロア", height: 12.65, spawn: [0, 6] },
+  { name: "創造のフロア", height: 18.65, spawn: [0, 6] },
+] : fudo ? [{ name: "不動尊・堂内", height: .65, spawn: [0, 10] }] : manabi ? [
   { name: "1階・交流と対話", height: .32, spawn: [0, 10] },
   { name: "2階・実験ラボ", height: 4.32, spawn: [0, 10] },
   { name: "3階・相談と探究", height: 8.32, spawn: [0, 10] },
@@ -45,6 +52,7 @@ let renderer, scene, camera, castle, collisions, floor = 0, active = false, load
 let items = [], target = null, yaw = 0, pitch = -.32, lastTime = 0;
 let stepPulse = null;
 let avatar;
+let treeNavigation, stairRoute = null;
 let windowFocus = 0;
 const exteriorWindows = [], windowMaterials = [];
 const keys = new Set(), held = new Set();
@@ -111,8 +119,8 @@ function respawn(index) {
   const room = floors[floor], [x, z] = room.spawn;
   player.start.set(x, room.height + .3, z);
   player.end.set(x, room.height + 1.5, z);
-  velocity.set(0, 0, 0); windowFocus = 0; if (avatar) avatar.group.visible = true; yaw = 0; pitch = sanctuary ? .02 : -.32;
-  status.textContent = fudo ? room.name : `${floor + 1} / 3　${room.name}`;
+  velocity.set(0, 0, 0); windowFocus = 0; if (avatar) avatar.group.visible = true; yaw = tree ? -Math.PI / 2 : 0; pitch = tree ? -.32 : sanctuary ? .02 : -.32;
+  status.textContent = fudo ? room.name : `${floor + 1} / ${floors.length}　${room.name}`;
   surface.querySelector('[data-floor="up"]').disabled = floor === floors.length - 1;
   surface.querySelector('[data-floor="down"]').disabled = floor === 0;
 }
@@ -179,7 +187,7 @@ function updateWindowFocus(target, dt) {
   windowFocus = smoothWindowFocus(windowFocus, windowFocusAmount(nearest), dt);
   for (const material of windowMaterials) material.opacity = THREE.MathUtils.lerp(.10, .008, windowFocus);
 }
-function clearInput() { held.clear(); keys.clear(); stepPulse = null; velocity.x = velocity.z = 0; }
+function clearInput() { held.clear(); keys.clear(); stepPulse = null; stairRoute = null; velocity.x = velocity.z = 0; }
 function leave() {
   active = false; clearInput(); surface.hidden = true;
   if (document.body.classList.contains("castle-walking")) document.body.classList.remove("castle-walking");
@@ -193,9 +201,26 @@ function frame(time) {
     const forward = (pressed("forward") || keys.has("KeyW") || keys.has("ArrowUp") ? 1 : 0) - (pressed("back") || keys.has("KeyS") || keys.has("ArrowDown") ? 1 : 0);
     const side = (pressed("right") || keys.has("KeyD") || keys.has("ArrowRight") ? 1 : 0) - (pressed("left") || keys.has("KeyA") || keys.has("ArrowLeft") ? 1 : 0);
     const move = new THREE.Vector3(side * Math.cos(yaw) - forward * Math.sin(yaw), 0, -side * Math.sin(yaw) - forward * Math.cos(yaw));
+    if (tree && (forward || side)) stairRoute = null;
+    if (tree && stairRoute) {
+      const waypoint = stairRoute.points[0];
+      move.set(waypoint.x - player.start.x, 0, waypoint.z - player.start.z);
+      if (move.length() < .10) { stairRoute.points.shift(); if (!stairRoute.points.length) stairRoute = null; move.set(0, 0, 0); }
+      else yaw = Math.atan2(-move.x, -move.z);
+    }
     if (move.lengthSq()) move.normalize().multiplyScalar(runMode || keys.has('ShiftLeft') || keys.has('ShiftRight') ? 3.6 : 2.1);
     velocity.x = move.x; velocity.z = move.z;
     const before = player.start.clone();
+    if (tree) {
+      for (let step = 0; step < 3; step++) treeNavigation.step(player, move.clone().multiplyScalar(dt / 3));
+      velocity.y = 0;
+      if (player.start.distanceToSquared(before) < 1e-8) velocity.x = velocity.z = 0;
+      if (move.lengthSq()) avatar.group.rotation.y = Math.atan2(-move.x, -move.z);
+      floor = Math.min(3, Math.max(0, Math.floor((player.start.y - player.radius - .65 + .08) / 6)));
+      status.textContent = `${floor + 1} / 4　${floors[floor].name}`;
+      surface.querySelector('[data-floor="up"]').disabled = player.start.y - player.radius > 18.5;
+      surface.querySelector('[data-floor="down"]').disabled = player.start.y - player.radius < .8;
+    } else {
     // Three.js's capsule/Octree resolves walls and floors; small substeps prevent tunnelling.
     for (let step = 0; step < 3; step++) {
       velocity.y -= 14 * dt / 3;
@@ -221,6 +246,7 @@ function frame(time) {
       if (move.lengthSq()) avatar.group.rotation.y = Math.atan2(-move.x, -move.z);
     }
     if (player.start.y < floors[floor].height - 2) respawn(floor);
+    }
   } else clearInput();
   if (avatarWorld) {
     avatar.group.position.set(player.start.x, player.start.y - player.radius, player.start.z);
@@ -273,6 +299,13 @@ async function enterCastle() {
       castle.traverse((mesh) => {
         if (!mesh.isMesh) return;
         const readable = mesh.name.replaceAll("_", " ");
+        if (tree) {
+          const role = learningTreeMeshRole(mesh.name);
+          if (role === "floor") floorMeshes.push(mesh);
+          if (role === "wall") { const copy = new THREE.Mesh(mesh.geometry); copy.applyMatrix4(mesh.matrixWorld); collider.add(copy); }
+          if (role !== "decoration") opaque.push(mesh);
+          return;
+        }
         const originalMaterials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
         const exterior = originalMaterials.some(material => isExteriorWindow(readable, material.name));
         if (exterior) {
@@ -307,6 +340,7 @@ async function enterCastle() {
         }
       });
       collisions = new Octree().fromGraphNode(collider);
+      if (tree) treeNavigation = createLearningTreeNavigation(floorMeshes, collisions);
       if (avatarWorld) { avatar = createFudoAvatar(); scene.add(avatar.group); addAvatarControls(); }
       if (!avatarWorld && params.get("qa") === "1") surface.dataset.placements = JSON.stringify(verifyPlacements());
       placeItems();
@@ -346,7 +380,18 @@ async function enterCastle() {
 }
 enter.onclick = enterCastle;
 surface.querySelector(".castle-leave").onclick = leave;
-surface.querySelectorAll("[data-floor]").forEach((button) => button.onclick = () => { clearInput(); respawn(floor + (button.dataset.floor === "up" ? 1 : -1)); });
+surface.querySelectorAll("[data-floor]").forEach((button) => {
+  if (tree) { const label = button.dataset.floor === "up" ? "螺旋階段を登る" : "螺旋階段を降りる"; button.title = label; button.setAttribute("aria-label", label); }
+  button.onclick = () => {
+    clearInput();
+    if (!tree) { respawn(floor + (button.dataset.floor === "up" ? 1 : -1)); return; }
+    const foot = player.start.clone(); foot.y -= player.radius;
+    let nearest = 0;
+    treeNavigation.path.forEach((point, i) => { if (point.distanceTo(foot) < treeNavigation.path[nearest].distanceTo(foot)) nearest = i; });
+    if (treeNavigation.path[nearest].distanceTo(foot) > 1.5) { status.textContent = "螺旋階段の近くに移動してください"; return; }
+    stairRoute = { points: button.dataset.floor === "up" ? treeNavigation.path.slice(nearest) : treeNavigation.path.slice(0, nearest + 1).reverse() };
+  };
+});
 if (sanctuary) {
   const views = document.createElement('div');
   views.className = 'sanctuary-views';
@@ -357,7 +402,7 @@ if (sanctuary) {
   surface.append(views);
   views.querySelectorAll('[data-sky]').forEach(button => {
     button.onclick = () => {
-      clearInput(); respawn(2);
+      clearInput(); if (!tree) respawn(2);
       // The third-floor entrance opens toward +Z; turn out from the building.
       yaw = Math.PI; pitch = button.dataset.sky === 'city' ? -.4 : .06;
       renderer?.domElement.focus();
@@ -385,4 +430,3 @@ window.addEventListener("resize", resize);
 window.addEventListener("quest-inventory-updated", placeItems);
 new MutationObserver(() => { if (document.body.classList.contains("entry-locked")) leave(); }).observe(document.body, { attributes: true, attributeFilter: ["class"] });
 window.CastleWalk = { canCollect: (item) => Boolean(items.find((object) => object.userData.item.id === item.id && visibleItem(object))) };
-

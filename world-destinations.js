@@ -36,5 +36,8 @@
     questionPath: ["雪にはどんな特徴がある？", "なぜ高原に雪が積もる？", "雪は自然や暮らしにどう関わる？", "スキーからどんな科学を学べる？", "雪山を守るために何ができる？"],
     boost: { joy: 4, distance: 4, reflection: 3 }
   });
-  root.WorldDestinations = { hostedUrl, points };
+  function modelSource(source, title) {
+    return /子(?:供|ども)の探究の聖地/.test(title || "") ? "assets/learning-tree.glb" : source;
+  }
+  root.WorldDestinations = { hostedUrl, points, modelSource };
 })(window);

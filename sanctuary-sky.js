@@ -5,6 +5,7 @@
     const src = params.get('src') || '';
     let model;
     try { model = new URL(src, base).pathname; } catch { return false; }
+    if (/\/learning-tree\.glb$/i.test(model)) return true;
     if (!/\/MANABI_Shibuya_3F\.glb$/i.test(model)) return false;
     const lat = Number(params.get('lat')), lng = Number(params.get('lng'));
     const atHongo = params.has('lat') && params.has('lng') && Math.abs(lat - 35.706795) < .001 && Math.abs(lng - 139.762661) < .001;

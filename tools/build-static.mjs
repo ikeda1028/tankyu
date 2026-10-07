@@ -10,6 +10,8 @@ publicFiles.push("mentor-behavior.js", "mentor-chat.js", "mentor-admin.js", "men
 const assetFiles = ["opening-kids.mp4", "fudozaka-dragon.glb", "fudo.glb", "fudozaka-dragon-poster.png", "MANABI_Shibuya_3F.glb", "Katsuren_Future_Castle.glb", "account.svg", "close.svg", "lucide-LICENSE", "quest-lens.svg", "quest-scroll.svg", "quest-prism.svg"];
 publicFiles.push("castle-quests.js", "castle-walk.js", "castle-walk.css", "world-destinations.js", "fudo-avatar.js", "avatar-motion.js");
 publicFiles.push("world-avatar.html", "world-avatar-picker.js", "sanctuary-sky.js", "window-view.js");
+publicFiles.push("learning-tree-navigation.js");
+assetFiles.push("learning-tree.glb");
 assetFiles.push("hongo-tokyo-sky.jpg", "shibuya-40f-sky.jpg");
 publicFiles.push("visit.html", "visit.js", "visit.css");
 publicFiles.push("map-qr-camera.js");
