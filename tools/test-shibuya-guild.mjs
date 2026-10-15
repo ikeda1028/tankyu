@@ -2,27 +2,39 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import * as THREE from 'three';
 import { GLTFLoader } from '../assets/vendor/three/addons/loaders/GLTFLoader.js';
+import { Octree } from '../assets/vendor/three/addons/math/Octree.js';
+import { Capsule } from '../assets/vendor/three/addons/math/Capsule.js';
+import { isGuildTree, guildFloors, learningTreeMeshRole, createLearningTreeNavigation } from '../learning-tree-navigation.js';
 
+assert(isGuildTree('assets/MANABI_Shibuya_3F.glb'));
+assert(!isGuildTree('assets/learning-tree.glb'));
 const file=fs.readFileSync(new URL('../assets/MANABI_Shibuya_3F.glb',import.meta.url));
 const gltf=await new GLTFLoader().parseAsync(file.buffer.slice(file.byteOffset,file.byteOffset+file.byteLength),'');
 gltf.scene.updateMatrixWorld(true);
-const display=gltf.scene.getObjectByName('MANABI_Guild_Display_3F');
-assert(display,'Shibuya scene includes guild display');
-const box=new THREE.Box3().setFromObject(display);
-assert(Math.abs(box.min.y-8.32)<.005,'Display rests on third-floor surface');
-assert(box.max.y<11.7,'Tree fits below third-floor ceiling');
-assert(box.min.x>-1 && box.max.x<1.1,'Display stays clear of consultation pods');
-assert(box.min.z>5.5 && box.max.z<8,'Display leaves room around third-floor spawn');
-const ray=new THREE.Raycaster();
-const floorMeshes=[];
-gltf.scene.traverse(mesh=>{if(mesh.isMesh && /3F_oak_finish/.test(mesh.name)) floorMeshes.push(mesh);});
-assert(floorMeshes.length,'Original third floor preserved');
-for (const [x,z] of [[0,7],[0,10],[-1.5,7],[1.5,7]]) {
-  ray.set(new THREE.Vector3(x,9,z),new THREE.Vector3(0,-1,0));
-  const hit=ray.intersectObjects(floorMeshes,false)[0];
-  assert(hit && Math.abs(hit.point.y-8.32)<.02,`Floor support at ${x},${z}`);
-}
-const doors=[];display.traverse(o=>{if(/open_door$/.test(o.name))doors.push(o);});
-assert.equal(doors.length,4,'All four open door leaves preserved');
-assert(gltf.scene.getObjectByName('MANABI_Shibuya_|_three-storey_concept'),'Original building retained');
-console.log(JSON.stringify({pass:true,displayBounds:{min:box.min.toArray(),max:box.max.toArray()},openDoors:doors.length,thirdFloorSupported:true}));
+assert(!gltf.scene.getObjectByName('MANABI_Guild_Display_3F'),'Miniature removed');
+assert(!gltf.scene.getObjectByName('MANABI_Shibuya_|_three-storey_concept'),'Previous building replaced');
+const floors=[],collider=new THREE.Group();
+gltf.scene.traverse(mesh=>{
+ if(!mesh.isMesh)return;
+ const role=learningTreeMeshRole(mesh.name);
+ if(role==='floor')floors.push(mesh);
+ if(role==='wall'){const copy=new THREE.Mesh(mesh.geometry);copy.applyMatrix4(mesh.matrixWorld);collider.add(copy);}
+});
+const nav=createLearningTreeNavigation(floors,new Octree().fromGraphNode(collider));
+assert.equal(nav.path.length,241);
+const player=new Capsule(new THREE.Vector3(0,.42,3.025),new THREE.Vector3(0,1.62,3.025),.22);
+function follow(points){let count=0;for(const [index,target] of points.entries()){
+ for(let guard=0;guard<100;guard++){
+  const delta=new THREE.Vector3(target.x-player.start.x,0,target.z-player.start.z);
+  if(delta.length()<.025)break;
+  delta.setLength(Math.min(.025,delta.length()));
+  const old=player.start.y;
+  assert(nav.step(player,delta),`Blocked ${nav.blockedReason} at ${index}: ${player.start.toArray()} -> ${target.toArray()}`);
+  assert(Math.abs(player.start.y-old)<.15,'No teleport between levels');count++;
+  assert(guard<99,'Route makes progress');
+ }
+}return count;}
+const up=follow(nav.path);const summit=player.start.y-player.radius;assert(summit>9.8);
+const down=follow([...nav.path].reverse());assert(player.start.y-player.radius<.25);
+for(const floor of guildFloors){const [x,z]=floor.spawn;assert(Math.abs(nav.heightAt(x,z,floor.height)-floor.height)<.03,'Each destination supported');}
+console.log(JSON.stringify({pass:true,spiralWaypoints:nav.path.length,summit,upSteps:up,downSteps:down,returnedHeight:player.start.y-player.radius}));

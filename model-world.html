@@ -77,7 +77,7 @@
       <button type="button" data-walk-point="front">正面</button>
       <button type="button" data-walk-point="floor1">1階</button>
       <button type="button" data-walk-point="floor2">2階</button>
-      <button type="button" data-walk-point="floor3">3階・大樹</button>
+      <button type="button" data-walk-point="floor3">最上階</button>
       <button type="button" data-walk-point="item">アイテム</button>
     </nav>
     <p class="hint">下のボタンで歩く位置を変えられます。ドラッグで回転、ピンチで少し拡大できます。</p>
@@ -224,12 +224,11 @@
           };
         }
         if (/MANABI_Shibuya_3F\.glb/i.test(rawSrc)) return {
-          gate: { label: "入口", target: "0m 1.6m 0m", orbit: "0deg 70deg 18m", fov: "30deg" },
-          front: { label: "正面", target: "0m 2.4m -2m", orbit: "0deg 70deg 10m", fov: "28deg" },
-          floor1: { label: "1階", target: "0m 2m -1m", orbit: "-18deg 72deg 12m", fov: "30deg" },
-          floor2: { label: "2階", target: "0m 5.8m -3m", orbit: "-18deg 70deg 12m", fov: "30deg" },
-          floor3: { label: "3階・大樹", target: "0m 9.65m 7m", orbit: "12deg 82deg 4.5m", fov: "42deg" },
-          item: { label: "アイテム", target: "0m 5.8m -7m", orbit: "18deg 68deg 9m", fov: "26deg" },
+          gate: { label: "大樹の全体", target: "0m 7m 0m", orbit: "18deg 72deg 28m", fov: "40deg" },
+          front: { label: "ギルド入口", target: "0m 1.4m 2.5m", orbit: "0deg 78deg 9m", fov: "40deg" },
+          floor1: { label: "青・発見", target: "1.5m 4.5m 2m", orbit: "30deg 78deg 9m", fov: "40deg" },
+          floor2: { label: "紫・探究", target: "-1.5m 7m 2m", orbit: "-30deg 78deg 9m", fov: "40deg" },
+          floor3: { label: "金・新しい冒険", target: "0m 10.6m 1.5m", orbit: "0deg 78deg 10m", fov: "40deg" },
         };
         return {
           gate: { label: "入口", target: "0m 1.6m 0m", orbit: "0deg 70deg 18m", fov: "30deg" },
@@ -259,6 +258,7 @@
         button.addEventListener("click", () => moveToWalkPoint(button.dataset.walkPoint));
       });
       function shouldShowDefaultItem() {
+        if (/MANABI_Shibuya_3F\.glb/i.test(rawSrc)) return false;
         return params.get("item") !== "none" && (/MANABI_Shibuya_3F/i.test(rawSrc) || /MANABI/i.test(title));
       }
 

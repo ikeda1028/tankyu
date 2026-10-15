@@ -3,22 +3,23 @@ import { GLTFLoader } from "./assets/vendor/three/addons/loaders/GLTFLoader.js";
 import { Octree } from "./assets/vendor/three/addons/math/Octree.js";
 import { Capsule } from "./assets/vendor/three/addons/math/Capsule.js";
 import { isFudoModel, createFudoAvatar } from "./fudo-avatar.js";
-import { isLearningTree, learningTreeMeshRole, createLearningTreeNavigation } from "./learning-tree-navigation.js";
+import { isLearningTree, isGuildTree, guildFloors, learningTreeMeshRole, createLearningTreeNavigation } from "./learning-tree-navigation.js";
 
 import { windowFocusAmount, smoothWindowFocus, isExteriorWindow } from "./window-view.js";
 
 const params = new URLSearchParams(location.search);
-const tree = isLearningTree(params.get("src"), params.get("title"));
-const source = tree ? "assets/learning-tree.glb" : params.get("src");
+const guild = isGuildTree(params.get("src")) && !isLearningTree(params.get("src"), params.get("title"));
+const tree = guild || isLearningTree(params.get("src"), params.get("title"));
+const source = tree && !guild ? "assets/learning-tree.glb" : params.get("src");
 const fudo = isFudoModel(source);
-const manabi = /\/MANABI_Shibuya_3F\.glb$/i.test(new URL(source || ".", location.href).pathname);
+const manabi = !tree && /\/MANABI_Shibuya_3F\.glb$/i.test(new URL(source || ".", location.href).pathname);
 const avatarWorld = fudo || manabi || tree;
 const skyline = window.SanctuarySky?.resolve(params, location.href);
 const sanctuary = Boolean(skyline);
 const clearWindowView = true;
 const world = QuestItems.worldKey(source);
 const viewer = document.querySelector("#world-model");
-const floors = tree ? [
+const floors = guild ? guildFloors : tree ? [
   { name: "探究の木・入口", height: .65, spawn: [0, 8] },
   { name: "交流のフロア", height: 6.65, spawn: [0, 6] },
   { name: "学びのフロア", height: 12.65, spawn: [0, 6] },
@@ -216,10 +217,10 @@ function frame(time) {
       velocity.y = 0;
       if (player.start.distanceToSquared(before) < 1e-8) velocity.x = velocity.z = 0;
       if (move.lengthSq()) avatar.group.rotation.y = Math.atan2(-move.x, -move.z);
-      floor = Math.min(3, Math.max(0, Math.floor((player.start.y - player.radius - .65 + .08) / 6)));
+      floor = guild ? floors.reduce((current, entry, index) => player.start.y - player.radius >= entry.height - .08 ? index : current, 0) : Math.min(3, Math.max(0, Math.floor((player.start.y - player.radius - .65 + .08) / 6)));
       status.textContent = `${floor + 1} / 4　${floors[floor].name}`;
-      surface.querySelector('[data-floor="up"]').disabled = player.start.y - player.radius > 18.5;
-      surface.querySelector('[data-floor="down"]').disabled = player.start.y - player.radius < .8;
+      surface.querySelector('[data-floor="up"]').disabled = player.start.y - player.radius > (guild ? guildFloors[3].height - .1 : 18.5);
+      surface.querySelector('[data-floor="down"]').disabled = player.start.y - player.radius < (guild ? .3 : .8);
     } else {
     // Three.js's capsule/Octree resolves walls and floors; small substeps prevent tunnelling.
     for (let step = 0; step < 3; step++) {
@@ -314,14 +315,6 @@ async function enterCastle() {
           exteriorWindows.push(mesh); windowMaterials.push(glass);
         }
         if (manabi) {
-          if (mesh.name.startsWith("GuildDisplay__")) {
-            // The miniature's trunk and plinth block walking; tiny rails stay visual.
-            if (/Hollow.trunk|Circular.stone.plinth/i.test(readable)) {
-              const copy = new THREE.Mesh(mesh.geometry); copy.applyMatrix4(mesh.matrixWorld); collider.add(copy);
-            }
-            opaque.push(mesh);
-            return;
-          }
           // Keep tiny display objects and foliage out of the walking collision tree.
           if (!/Foliage|Stem|Soil|luminous|light|Book\d*$|Cup|Microscope|Robot link|Robot joint|Prototype|Question tree|Inquiry branch/i.test(readable)) {
             const copy = new THREE.Mesh(mesh.geometry); copy.applyMatrix4(mesh.matrixWorld); collider.add(copy);
