@@ -1,8 +1,9 @@
 import { mkdir, copyFile, readFile, writeFile, cp } from "node:fs/promises";
 import { join } from "node:path";
 import vm from "node:vm";
+import { fileURLToPath } from "node:url";
 
-const root = new URL("..", import.meta.url).pathname;
+const root = fileURLToPath(new URL("..", import.meta.url));
 const dist = join(root, "dist");
 
 const publicFiles = ["index.html", "styles.css", "app.js", "database.js", "firebase-sync.js", "ar-dragon.html", "model-world.html", "world-access.js", "mentor-progression.js", "mentor-models.js", "quest-items.js", "quest-inventory.js", "quest-inventory.css"];

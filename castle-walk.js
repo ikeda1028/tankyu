@@ -314,6 +314,14 @@ async function enterCastle() {
           exteriorWindows.push(mesh); windowMaterials.push(glass);
         }
         if (manabi) {
+          if (mesh.name.startsWith("GuildDisplay__")) {
+            // The miniature's trunk and plinth block walking; tiny rails stay visual.
+            if (/Hollow.trunk|Circular.stone.plinth/i.test(readable)) {
+              const copy = new THREE.Mesh(mesh.geometry); copy.applyMatrix4(mesh.matrixWorld); collider.add(copy);
+            }
+            opaque.push(mesh);
+            return;
+          }
           // Keep tiny display objects and foliage out of the walking collision tree.
           if (!/Foliage|Stem|Soil|luminous|light|Book\d*$|Cup|Microscope|Robot link|Robot joint|Prototype|Question tree|Inquiry branch/i.test(readable)) {
             const copy = new THREE.Mesh(mesh.geometry); copy.applyMatrix4(mesh.matrixWorld); collider.add(copy);
